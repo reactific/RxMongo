@@ -1,10 +1,16 @@
 *.class
 *.log
-
+.idea/modules
+.idea/libraries
+.idea/workspace.xml
+.idea/shelf
+.idea/rebel_project.xml
+.idea/uiDesigner.xml
 # sbt specific
 .cache/
 .history/
 .lib/
+*/old/*
 dist/*
 target/
 lib_managed/
