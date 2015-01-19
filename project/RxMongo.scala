@@ -66,7 +66,7 @@ object RxMongo extends Build {
   val buildSettings : Seq[sbt.Def.Setting[_]] = Defaults.coreDefaultSettings ++ Seq(
     organization := "org.rxmongo",
     version := BuildInfo.version,
-    scalaVersion := "2.11.5",
+    scalaVersion := "2.11.4",
     javaOptions in test ++= Seq("-Xmx512m", "-XX:MaxPermSize=512m"),
     scalacOptions ++= Seq("-feature", "-unchecked", "-deprecation", "-target:jvm-1.7"),
     scalacOptions in (Compile, doc) ++= Seq("-feature", "-unchecked", "-deprecation", "-diagrams", "-implicits", "-skip-packages", "samples"),
@@ -98,14 +98,14 @@ object RxMongo extends Build {
         resolvers := Dependencies.resolvers)).
       aggregate(bson, client)
 
-  lazy val client = Project(s"${BuildInfo.name}-Client", file("client"),
+  lazy val client = Project(s"${BuildInfo.name}-Client", file("./client"),
       settings = buildSettings ++ Seq(
         resolvers := Dependencies.resolvers,
         libraryDependencies ++= Dependencies.client
       )).
       dependsOn(bson)
 
-  lazy val bson = Project(s"${BuildInfo.name}-BSON", file("bson"),
+  lazy val bson = Project(s"${BuildInfo.name}-BSON", file("./bson"),
     settings = buildSettings ++ Seq(
       libraryDependencies ++= Dependencies.bson)
     )
