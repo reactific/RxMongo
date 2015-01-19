@@ -9,6 +9,8 @@ A reactive, non-blocking, asynchronous driver for MongoDB 2.8 with ReactiveStrea
 
 ### Development: Scala 2.11, SBT 0.13.7, Mongo 2.8
 
+Will be available shortly with something like this:
+
 ```scala
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 libraryDependencies := "org.rxmongo" %% "rxmongo-client" % "0.1.0-SNAPSHOT"
