@@ -1,6 +1,5 @@
 *.class
 *.log
-.idea/modules
 .idea/libraries
 .idea/workspace.xml
 .idea/shelf
