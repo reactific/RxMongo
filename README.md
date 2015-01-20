@@ -1,8 +1,7 @@
 # RxMongo
 A reactive, non-blocking, asynchronous driver for MongoDB 2.8 with ReactiveStreams and Akka.
 
-# Status
-[![Build Status](https://travis-ci.org/reactific/RxMongo.svg?branch=master)](https://travis-ci.org/reactific/RxMongo)
+# Status [![Build Status](https://travis-ci.org/reactific/RxMongo.svg?branch=master)](https://travis-ci.org/reactific/RxMongo)
 RxMongo is just getting started. Developers and testers are needed. If you want to help, please contact Reid.
 
 # Quick Start
