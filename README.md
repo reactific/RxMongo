@@ -34,23 +34,29 @@ regresses unnecessarily.
 RxMongo also seeks to maintain a clean clean and stable API for interacting with MongoDB that matches the MongoDB
 interface but also makes use of Scala's many features so the API is not tedious to use.
 
-# Important Design Distinctions
+# Important Design Points
 
 ### Low Level BSON Interface
 
 Many Scala implementations of BSON use a variety of case classes to model the contents of a bson document and then
-serialize or deserialize accordingly. RxMongo takes a differnet approach. BSON documents simply wrap a NIO ByteBuffer
-so that serialization and deserialization is unnecessary. This eliminates one translation step to and from the
-wire. When we get a BSON document as a byte array from MongoD, that byte array is wrapped in a BSON Document without
-modification. The BSON Document class takes care of interpreting those bytes correctly.
+serialize or deserialize accordingly. RxMongo takes a different approach. An RxMongo BSON Object simply wrap an
+Akka ByteString which is a rope-like data structure that avoids buffer copying. RxMongo provides a builder for
+constructing a BSON Object that directly constructs a ByteString with a ByteStringBuilder. At the end, you have
+a buffer that is ready to be written to an I/O channel. Similarly, data streams read from the mongod will be
+retained in place and BSON Object simply interprets that data instead of copying it into lots of case classes.
+The goal of all this is to eliminate data copying to and from the BSON binary format which is one of the key
+elements of a driver that performs well.
 
 ### Reactive Streams Based Interface
 
-RxMongo is based on akka-streams and akka-actor and not much else. RxMongo uses the constructs of Reactive Streams
-(akka-streams) internally and also provides them through its API. For example, an RxMongo Cursor can be obtained as
-a `Source[BSON.Document]` which can then be processed with any Flow or connected to a Sink of some sort. Becasue of this,
-the application writer need not worry about buffering as back pressure is communicated all the way through and dealt
-with at the interface to mongod.
+RxMongo is based on [akka-streams](http://doc.akka.io/docs/akka-stream-and-http-experimental/1.0-M2/scala.html) which
+is an implementation of [Reactive Streams](http://www.reactive-streams.org/), and not much else. RxMongo uses the
+akka-streams internally but also provides akka-stream concepts (Sink, Source, Flow) in its API so that RxMongo can
+be included in larger [Flow Graphs](http://doc.akka.io/docs/akka-stream-and-http-experimental/1.0-M2/scala/stream-graphs.html).
+For example, an RxMongo Cursor can be obtained as a `Source[BSON.Object]` which can then be processed with any Flow or
+connected to a Sink of some sort. Becasue of this, the application writer need not worry about buffering as back
+pressure is communicated all the way through and dealt with at the interface to mongod.
+
 
 # Getting Started
 

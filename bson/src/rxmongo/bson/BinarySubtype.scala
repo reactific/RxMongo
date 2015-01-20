@@ -22,7 +22,29 @@
 
 package rxmongo.bson
 
-/** Primary Interface To BSON Model */
-object BSON {
+/** Binary fields specify their sub type  which we model with instances of this trait */
+trait BinarySubtype {
+  /** The code value for the binary subtype as required by the BSON specification */
+  val code: Byte
+}
 
+object BinarySubtype {
+  case object GenericBinary extends { val code = 0.toByte } with BinarySubtype
+  case object FunctionBinary extends { val code = 1.toByte }  with BinarySubtype
+  case object DeprecatedGenericBinary extends { val code = 2.toByte }  with BinarySubtype
+  case object DeprecatedUUIDBinary extends { val code = 3.toByte }  with BinarySubtype
+  case object UUIDBinary extends { val code = 4.toByte }  with BinarySubtype
+  case object MD5SumBinary extends { val code = 5.toByte }  with BinarySubtype
+  case object UserDefinedBinary extends  { val code : Byte = -128 } with BinarySubtype
+
+  def apply(code: Byte) = code match {
+    case 0 => GenericBinary
+    case 1 => FunctionBinary
+    case 2 => DeprecatedGenericBinary
+    case 3 => DeprecatedUUIDBinary
+    case 4 => UUIDBinary
+    case 5 => MD5SumBinary
+    case -128 => UserDefinedBinary
+    case _    => throw new NoSuchElementException(s"BinarySubtype($code)")
+  }
 }

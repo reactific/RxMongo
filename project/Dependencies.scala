@@ -35,11 +35,11 @@ object Dependencies {
   val akka_streams    = "com.typesafe.akka"   %% "akka-stream-experimental"   % "1.0-M2"
   val grizzled_slf4j  = "org.clapper"         %% "grizzled-slf4j"             % "1.0.2"
   val logback_classic = "ch.qos.logback"       % "logback-classic"            % "1.1.2"      % "test"
-  val specs           = "org.specs2"          %% "specs2-core"                % "2.4.15"     % "test"
+  val specs           = "org.specs2"          %% "specs2-core"                % "2.3.11"     % "test"
 
   val common = Seq(specs, grizzled_slf4j, logback_classic)
 
-  val bson = common
+  val bson = common ++ Seq( akka_actor )
 
   val client = common ++ Seq( akka_streams, akka_actor )
 }
