@@ -22,6 +22,8 @@
 
 package rxmongo.bson
 
+import java.lang.management.{ ManagementFactory }
+
 import org.specs2.mutable.Specification
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
@@ -33,11 +35,12 @@ class BSONSpec extends Specification {
   "BSON" should {
     "build and interpret reflectively" in {
       val startime = System.nanoTime()
-      val bsonObject = GraphBuilder.makeObject
+      val bsonObject = Helper.makeObject
       val endtime = System.nanoTime
       val constructiontime = endtime - startime
 
-      constructiontime must beLessThan(200000000L)
+      if (Helper.suitableForTimingTests)
+        constructiontime must beLessThan(200000000L)
 
       val map = bsonObject.value
       val double = map.get("double")
@@ -81,33 +84,31 @@ class BSONSpec extends Specification {
       double.get.value must beEqualTo(42.0D)
       string.get.value must beEqualTo("fourty-two")
       obj.get.value.asInstanceOf[Map[String, BSONValue]] must beEqualTo(
-        Map("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
-      )
+        Map("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four")))
       array.get.value.asInstanceOf[Iterator[BSONValue]].toSeq must beEqualTo(
-        Seq(BSONDouble(42.0D), BSONString("fourty-two"))
-      )
+        Seq(BSONDouble(42.0D), BSONString("fourty-two")))
 
       val pair = binary.get.value.asInstanceOf[(BinarySubtype, Array[Byte])]
       pair._1 must beEqualTo(UserDefinedBinary)
-      pair._2 must beEqualTo(GraphBuilder.data)
+      pair._2 must beEqualTo(Helper.data)
 
       undefined.get.value.asInstanceOf[Unit] must beEqualTo({})
-      objectid.get.value.asInstanceOf[Array[Byte]] must beEqualTo(GraphBuilder.data)
+      objectid.get.value.asInstanceOf[Array[Byte]] must beEqualTo(Helper.data)
       boolean.get.value.asInstanceOf[Boolean] must beEqualTo(true)
       utcDate.get.value.asInstanceOf[Long] must beLessThan(System.currentTimeMillis)
       nil.get.value.asInstanceOf[Unit] must beEqualTo({})
       regex.get.value.asInstanceOf[Regex].pattern.pattern must beEqualTo("(?imsUx)pattern")
 
-      val (referent, objid) = dbpointer.get.value.asInstanceOf[(String,Array[Byte])]
+      val (referent, objid) = dbpointer.get.value.asInstanceOf[(String, Array[Byte])]
       referent must beEqualTo("referent")
-      objid must beEqualTo(GraphBuilder.data)
+      objid must beEqualTo(Helper.data)
 
       jscode.get.value.asInstanceOf[String] must beEqualTo("function(x) { return x + 1; };")
       symbol.get.value.asInstanceOf[String] must beEqualTo("symbol")
 
-      val (code, scope) = scopedJsCode.get.value.asInstanceOf[(String,BSONObject)]
+      val (code, scope) = scopedJsCode.get.value.asInstanceOf[(String, BSONObject)]
       code must beEqualTo("function(x)")
-      scope must beEqualTo(GraphBuilder.anObject)
+      scope must beEqualTo(Helper.anObject)
 
       integer.get.value.asInstanceOf[Int] must beEqualTo(42)
       timestamp.get.value.asInstanceOf[Long] must beEqualTo(42L)
@@ -119,7 +120,7 @@ class BSONSpec extends Specification {
 
     "build and compact a 10,000 node object graph quickly" in {
       val startime = System.nanoTime()
-      val obj = GraphBuilder.makeObject(10,4)
+      val obj = Helper.makeObject(10, 4)
       val endtime = System.nanoTime
       val compactObj = obj.compact
       val compactend = System.nanoTime()
@@ -128,18 +129,23 @@ class BSONSpec extends Specification {
       val constructiontime = endtime - startime
       val compactiontime = compactend - endtime
       len must beEqualTo(compact_len)
-      constructiontime must beLessThan(2000000000L) // < 1 second for 10,000 nodes
-      compactiontime must beLessThan(200000000L) // < 400ms for 5MB compaction
+      if (Helper.suitableForTimingTests) {
+        constructiontime must beLessThan(2000000000L) // < 2 seconds for 10,000 nodes
+        compactiontime must beLessThan(200000000L) // < 400ms for 5MB compaction
+        success
+      } else {
+        skipped(": machine too busy for timing tests")
+      }
     }
   }
 }
 
-object GraphBuilder {
+object Helper {
 
-  val data = Array[Byte](0,1,2,3,4,5,6,7,8,9,10,11)
+  val data = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
 
-  def makeObj : Builder = {
+  def makeObj: Builder = {
     val b = Builder()
     b.double("double", 42.0D).
       string("string", "fourty-two").
@@ -148,7 +154,7 @@ object GraphBuilder {
       binary("binary", data, UserDefinedBinary).
       undefined("undefined").
       objectID("objectid", data).
-      boolean("boolean", value=true).
+      boolean("boolean", value = true).
       utcDate("date", System.currentTimeMillis()).
       nil("null").
       regex("regex", "pattern", "ilmsux").
@@ -162,9 +168,9 @@ object GraphBuilder {
     b
   }
 
-  def makeObject : BSONObject = makeObj.bsonObj
+  def makeObject: BSONObject = makeObj.bsonObj
 
-  def makeObject(width: Int, depth: Int) : BSONObject = {
+  def makeObject(width: Int, depth: Int): BSONObject = {
     val bldr = makeObj
     if (depth > 0) {
       val kids = for (i <- 1 to width) yield {
@@ -173,5 +179,12 @@ object GraphBuilder {
       bldr.array("kids", kids.toSeq)
     }
     bldr.bsonObj
+  }
+
+  val suitableForTimingTests: Boolean = {
+    val os = ManagementFactory.getOperatingSystemMXBean
+    val processors = os.getAvailableProcessors
+    val avg = os.getSystemLoadAverage
+    avg < processors / 4
   }
 }
