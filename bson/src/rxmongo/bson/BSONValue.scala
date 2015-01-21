@@ -27,7 +27,7 @@ import java.nio.ByteOrder
 import akka.util.{ByteIterator, ByteString, ByteStringBuilder}
 
 /** Primary Interface To BSON Model */
-object Document {
+object BSONObject {
 
 
   /*
@@ -53,7 +53,7 @@ object Document {
 */
 }
 
-trait Value {
+trait BSONValue {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
   val buffer: ByteString
   def value : Any
@@ -72,37 +72,44 @@ trait Value {
     require(itr.getByte == 0.toByte)
     new String(buf, utf8)
   }
+
+  def code : TypeCode = TypeCode(this)
 }
 
-case class BSONDouble private[bson] (buffer: ByteString) extends Value {
+case class BSONDouble private[bson] (buffer: ByteString) extends BSONValue {
   def value : Double = { buffer.iterator.getDouble }
 }
 
-case class BSONString private[bson] (buffer: ByteString) extends Value {
+object BSONDouble {
+  def apply(d: Double) = {
+    val buffer = ByteString.newBuilder
+    buffer.putDouble(d)(ByteOrder.LITTLE_ENDIAN)
+    new BSONDouble(buffer.result)
+  }
+}
+
+case class BSONString private[bson] (buffer: ByteString) extends BSONValue {
   def value : String = { getStr(buffer.iterator) }
 }
 
-case class BSONBinary private[bson] (buffer: ByteString) extends Value {
-  def value : (BinarySubtype, Array[Byte]) = {
-    val itr = buffer.iterator
-    val len = itr.getInt
-    val subtype = itr.getByte
-    val result = Array.ofDim[Byte](len)
-    itr.copyToArray(result)
-    BinarySubtype(subtype) -> result
+object BSONString {
+  def apply(s: String) = {
+    val buffer = ByteString.newBuilder
+    buffer.putInt(s.length + 1)(ByteOrder.LITTLE_ENDIAN)
+    buffer.putBytes(s.getBytes(utf8))
+    buffer.putByte(0.toByte)
+    new BSONString(buffer.result)
   }
-
-  def subtype : BinarySubtype = { BinarySubtype(buffer.iterator.drop(4).getByte) }
 }
 
-case class Document private[bson] (buffer: ByteString) extends { val itr = buffer.iterator }
-with Value with Iterable[(String,Value)] {
+case class BSONObject private[bson] (buffer: ByteString) extends { val itr = buffer.iterator }
+with BSONValue with Iterable[(String,BSONValue)] {
 
-  case class DocIterator private[bson] (itr: ByteIterator) extends Iterator[(String,Value)] {
+  case class DocIterator private[bson] (itr: ByteIterator) extends Iterator[(String,BSONValue)] {
     private def getKey: String = { getCStr(itr) }
 
     def hasNext: Boolean = itr.hasNext
-    def next(): (String, Value) = {
+    def next(): (String, BSONValue) = {
       if (!hasNext)
         Iterator.empty.next()
       else {
@@ -126,10 +133,32 @@ with Value with Iterable[(String,Value)] {
     DocIterator(itr.slice(0,length-1))
   }
 
-  def toMap : Map[String,Value] = iterator.toMap
+  def toMap : Map[String,BSONValue] = iterator.toMap
 
-  def value : Map[String,Value] = iterator.toMap
+  def value : Map[String,BSONValue] = iterator.toMap
 }
+
+case class BSONArray private[bson] (buffer: ByteString) extends BSONValue {
+  def value : Array[Any] = ???
+}
+
+object BSONArray {
+  def apply() : BSONArray = ???
+}
+
+case class BSONBinary private[bson] (buffer: ByteString) extends BSONValue {
+  def value : (BinarySubtype, Array[Byte]) = {
+    val itr = buffer.iterator
+    val len = itr.getInt
+    val subtype = itr.getByte
+    val result = Array.ofDim[Byte](len)
+    itr.copyToArray(result)
+    BinarySubtype(subtype) -> result
+  }
+
+  def subtype : BinarySubtype = { BinarySubtype(buffer.iterator.drop(4).getByte) }
+}
+
 
 
 

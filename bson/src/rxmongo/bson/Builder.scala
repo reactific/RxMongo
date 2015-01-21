@@ -41,26 +41,38 @@ case class Builder() {
     finisher.buffer.result()
   }
 
-  def double(key: String, value: Double) : this.type = {
+  def double(key: String, value: Double) : Builder = {
     putPrefix(DoubleCode, key)
     buffer.putDouble(value)
     this
   }
 
-  def string(key: String, value: String) : this.type = {
+  def string(key: String, value: String) : Builder = {
     putPrefix(StringCode, key)
     putStr(value)
     this
   }
 
-  def obj(key: String, value: Builder) : this.type = {
+  def obj(key: String, value: Builder) : Builder = {
     putPrefix(ObjectCode, key)
     putObj(value)
   }
 
-  def array(key: String, value: Array[_]) = ???
+  def array(key: String, values: Iterable[BSONValue]) : Builder = {
+    putPrefix(ArrayCode, key)
+    val array = ByteString.newBuilder
+    values.zipWithIndex.foreach { case (value, index) =>
+      array.putByte(value.code.code)
+      putCStr(array, index.toString)
+      array ++= value.buffer
+    }
+    buffer.putInt(array.length+1)
+    buffer ++= array.result
+    buffer.putByte(0)
+    this
+  }
 
-  def binary(key: String, blob: Array[Byte], kind: BinarySubtype) : this.type = {
+  def binary(key: String, blob: Array[Byte], kind: BinarySubtype) : Builder = {
     putPrefix(BinaryCode, key)
     buffer.putInt(blob.length)
     buffer.putByte(kind.code)
@@ -72,37 +84,37 @@ case class Builder() {
     putPrefix(UndefinedCode, key)
   }
 
-  def objectID(key: String, value: Array[Byte]) : this.type = {
+  def objectID(key: String, value: Array[Byte]) : Builder = {
     require(value.length == 12)
     putPrefix(ObjectIDCode, key)
     buffer.putBytes(value)
     this
   }
 
-  def boolean(key: String, value: Boolean) : this.type = {
+  def boolean(key: String, value: Boolean) : Builder = {
     putPrefix(BooleanCode, key)
     buffer.putByte(if(value) 1.toByte else 0.toByte)
     this
   }
 
-  def utcDate(key: String, time: Long) : this.type = {
+  def utcDate(key: String, time: Long) : Builder = {
     putPrefix(DateCode, key)
     buffer.putLong(time)
     this
   }
 
-  def nil(key: String) : this.type = {
+  def nil(key: String) : Builder = {
     putPrefix(NullCode, key)
   }
 
-  def regex(key: String, pattern: String, options: String = "") : this.type = {
+  def regex(key: String, pattern: String, options: String = "") : Builder = {
     require(options.matches("i?l?m?s?u?x?"))
     putPrefix(RegexCode, key)
-    putCString(pattern)
-    putCString(options)
+    putCStr(pattern)
+    putCStr(options)
   }
 
-  def dbPointer(key: String, referent: String, id: Array[Byte]) : this.type = {
+  def dbPointer(key: String, referent: String, id: Array[Byte]) : Builder = {
     require(id.length == 12)
     putPrefix(DBPointerCode, key)
     putStr(referent)
@@ -110,70 +122,83 @@ case class Builder() {
     this
   }
 
-  def jsCode(key: String, code: String) : this.type = {
+  def jsCode(key: String, code: String) : Builder = {
     putPrefix(JavaScriptCode, key)
     putStr(code)
   }
 
-  def symbol(key: String, symbol: String) : this.type = {
+  def symbol(key: String, symbol: String) : Builder = {
     putPrefix(SymbolCode, key)
     putStr(symbol)
   }
 
-  def scopedJsCode(key: String, code: String, scope: this.type) : this.type = {
+  def scopedJsCode(key: String, code: String, scope: Builder) : Builder = {
     putPrefix(ScopedJSCode, key)
-    putStr(code)
-    putObj(scope)
+    val content = ByteString.newBuilder
+    putStr(content, code)
+    putObj(content, scope)
+    val tmp = content.result()
+    buffer.putInt(tmp.length)
+    buffer ++= tmp
+    this
   }
 
-  def integer(key: String, value: Int) : this.type = {
+  def integer(key: String, value: Int) : Builder = {
     putPrefix(IntegerCode, key)
     buffer.putInt(value)
     this
   }
 
-  def timestamp(key: String, value: Long) : this.type = {
+  def timestamp(key: String, value: Long) : Builder = {
     putPrefix(TimestampCode, key)
     buffer.putLong(value)
     this
   }
 
-  def long(key: String, value: Long) : this.type = {
+  def long(key: String, value: Long) : Builder = {
     putPrefix(LongCode, key)
     buffer.putLong(value)
     this
   }
 
-  protected def putCString(s: String) : this.type = {
+  protected def putCStr(bldr: ByteStringBuilder, s: String) : Builder = {
     val bytes = s.getBytes(utf8)
     for (by <- bytes if by == 0.toByte) {
       throw new IllegalArgumentException("UTF-8 encoding of BSON keys must not contain a 0 byte")
     }
-    buffer.putBytes(bytes)
-    buffer.putByte(0.toByte)
+    bldr.putBytes(bytes)
+    bldr.putByte(0.toByte)
     this
   }
 
-  protected def putPrefix(code: TypeCode, key: String) : this.type = {
+  protected def putCStr(s: String) : Builder = {
+    putCStr(this.buffer, s)
+  }
+
+  protected def putPrefix(code: TypeCode, key: String) : Builder = {
     buffer.putByte(code.code)
-    putCString(key)
+    putCStr(key)
     this
   }
 
-  protected def putStr(value: String) : this.type = {
+  protected def putStr(bldr: ByteStringBuilder, value: String) : Builder = {
     val bytes = value.getBytes(utf8)
     val length = bytes.length + 1
-    buffer.putInt(bytes.length + 1)
-    buffer.putBytes(bytes)
-    buffer.putByte(0.toByte)
+    bldr.putInt(bytes.length + 1)
+    bldr.putBytes(bytes)
+    bldr.putByte(0.toByte)
     this
   }
 
-  protected def putObj(value: Builder) : this.type = {
+  protected def putStr(value: String) : Builder = putStr(buffer, value)
+
+  protected def putObj(bldr: ByteStringBuilder, value: Builder) : Builder = {
     val result = value.buffer.result()
-    buffer.putInt(result.length + 1)
-    buffer ++= result
-    buffer.putByte(0.toByte)
+    bldr.putInt(result.length + 1)
+    bldr ++= result
+    bldr.putByte(0.toByte)
     this
   }
+
+  protected def putObj(value: Builder) : Builder = putObj(buffer, value)
 }

@@ -46,7 +46,7 @@ class DocumentSpec extends Specification {
         builder.putByte(0.toByte) // terminating null
         builder.result()
       }
-      val doc = Document(bytes)
+      val doc = BSONObject(bytes)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, value) = itr.next()
@@ -70,7 +70,7 @@ class DocumentSpec extends Specification {
         builder.putByte(0.toByte) // terminating null
         builder.result()
       }
-      val doc = Document(bytes)
+      val doc = BSONObject(bytes)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, value) = itr.next()
@@ -102,7 +102,7 @@ class DocumentSpec extends Specification {
         builder.putByte(0.toByte) // terminating null
         builder.result()
       }
-      val doc = Document(bytes)
+      val doc = BSONObject(bytes)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, value) = itr.next()

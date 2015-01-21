@@ -12,7 +12,7 @@ RxMongo is just getting started. Developers and testers are needed. If you want 
 
 ### Development: Scala 2.11, SBT 0.13.7, Mongo 2.8
 
-Will be available shortly with something like this:
+Will be available in February 2015 with something like this:
 
 ```scala
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
@@ -20,11 +20,13 @@ libraryDependencies := "org.rxmongo" %% "rxmongo-client" % "0.1.0-SNAPSHOT"
 ```
 
 # Introduction
-RxMongo is a rewrite of [ReactiveMongo](https://github.com/ReactiveMongo/ReactiveMongo) that was necessitated when
-that project fell into disrepair due to a lack of maintenance. Several design initiatives were suggested and requested
-for ReactiveMongo but there was no response from that project's owners. Consequently, it was decided that this type of
-driver for Mongo was too important to be allowed to dwindle so RxMongo was started to keep up to date with Mongo's
-developments and changes in the Scalascape.
+RxMongo is similar in purpose to [ReactiveMongo](https://github.com/ReactiveMongo/ReactiveMongo), but not in
+implementation. RxMongo has the same aim, however: to provide a highly performant and scalable non-blocking asynchronous
+driver in Scala for MongoDB. Some attempts were made to modify ReactiveMongo but when pull requests were ignored and
+incremental modification got too difficult, we decided to start over from a fresh slate and let ReactiveMongo inform
+our design. RxMongo differs in its approach by emphasizing performance over ease of use and minimizing dependencies.
+It utilizes Akka for nearly everything (logging, I/O, streams, actors, configuration, etc.) and is reticent to
+depend on other packages.
 
 The goals of RxMongo is to provide best performing non-blocking, asynchronous, Scala driver for MongoDB that is
 provably correct and production ready. This will be accomplished by using reactive programming principles, ensuring
