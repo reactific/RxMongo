@@ -36,7 +36,8 @@ class BSONSpec extends Specification {
       val b = Builder()
       b.double("double", 42.0D)
       b.string("string", "fourty-two")
-      b.obj("obj", Builder().double("one", 84.0D).string("two", "eighty-four"))
+      val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
+      b.obj("obj", anObject )
       b.array("array", Seq(BSONDouble(42.0D), BSONString("fourty-two")))
       b.binary("binary", data, UserDefinedBinary)
 

@@ -101,11 +101,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0) // terminating null of whole obj
         builder.result()
       }
-      val builder1 = Builder()
-      builder1.string("string", "fourty-two")
-      builder1.double("double", 42.0)
+      val obj = BSONObject(Map("string" -> BSONString("fourty-two"), "double" -> BSONDouble(42.0)))
       val builder2 = Builder()
-      builder2.obj("obj", builder1)
+      builder2.obj("obj", obj)
       builder2.result must beEqualTo(expected)
     }
 
@@ -292,11 +290,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0) // terminating null
         builder.result()
       }
-      val builder1 = Builder()
-      builder1.string("string", "fourty-two")
-      builder1.double("double", 42.0)
+      val obj = BSONObject(Map("string" -> BSONString("fourty-two"), "double" -> BSONDouble(42.0)))
       val builder2 = Builder()
-      builder2.scopedJsCode("scopedJsCode", code, builder1)
+      builder2.scopedJsCode("scopedJsCode", code, obj)
       builder2.result must beEqualTo(expected)
 
     }
