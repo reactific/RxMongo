@@ -222,7 +222,7 @@ class BSONValueSpec extends Specification {
       key must beEqualTo("date")
       value.isInstanceOf[BSONDate] must beTrue
       val time = value.asInstanceOf[BSONDate].value
-      time must beEqualTo(new Date(data))
+      time must beEqualTo(data)
     }
 
     "interpret null correctly" in {
@@ -309,13 +309,14 @@ class BSONValueSpec extends Specification {
       key must beEqualTo("symbol")
       value.isInstanceOf[BSONSymbol] must beTrue
       val sym = value.asInstanceOf[BSONSymbol].value
-      sym must beEqualTo(Symbol("symbol"))
+      sym must beEqualTo("symbol")
     }
 
     "interpret scopedjscode correctly" in {
       val code = "function(x) { return x + 1; };"
       val bytes : ByteString = {
-        val builder = preamble(14+code.length+5+4+40+1, 15, "scopedjscode")
+        val builder = preamble(14+4+code.length+5+4+40+1, 15, "scopedjscode")
+        builder.putInt(code.length+5+4+40)
         string(builder, code)
         builder.putInt(8+8+8+15+1) // length of object
         field(builder, 1, "double")

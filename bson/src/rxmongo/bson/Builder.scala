@@ -35,7 +35,9 @@ case class Builder() {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
   val buffer : ByteStringBuilder = ByteString.newBuilder
 
-  def result : ByteString = Builder.finish(buffer.result)
+  def result : ByteString = Builder.finish(buffer.result())
+
+  def bsonObj : BSONObject = BSONObject(result)
 
   def double(key: String, value: Double) : Builder = {
     putPrefix(DoubleCode, key)
@@ -224,11 +226,11 @@ object Builder {
 
   def putCStr(bldr: ByteStringBuilder, s: String) : ByteStringBuilder = {
     val bytes = s.getBytes(utf8)
-    for (by <- bytes if by == 0.toByte) {
+    for (by <- bytes if by == 0) {
       throw new IllegalArgumentException("UTF-8 encoding of BSON keys must not contain a 0 byte")
     }
     bldr.putBytes(bytes)
-    bldr.putByte(0.toByte)
+    bldr.putByte(0)
     bldr
   }
 
@@ -237,7 +239,7 @@ object Builder {
     val length = bytes.length + 1
     bldr.putInt(bytes.length + 1)
     bldr.putBytes(bytes)
-    bldr.putByte(0.toByte)
+    bldr.putByte(0)
     bldr
   }
 

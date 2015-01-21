@@ -32,7 +32,7 @@ import scala.util.matching.Regex
 
 trait BSONValue {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
-  val buffer: ByteString
+  private[bson] val buffer: ByteString
   def value : Any
 
   protected def getCStr(itr: ByteIterator) : String = {
@@ -44,8 +44,9 @@ trait BSONValue {
   }
   protected def getStr(itr: ByteIterator) : String = {
     val len = itr.getInt - 1
+    require(len < 16*1024*1024)
     val buf = Array.ofDim[Byte](len)
-    itr.copyToArray(buf)
+    itr.getBytes(buf)
     require(itr.getByte == 0.toByte)
     new String(buf, utf8)
   }
@@ -65,6 +66,8 @@ trait BSONValue {
   }
 
   def code : TypeCode = TypeCode(this)
+
+  def length : Int = buffer.length
 }
 
 trait BSONDocument extends BSONValue {
@@ -127,13 +130,13 @@ trait BSONDocument extends BSONValue {
           case JavaScriptCode =>
             key -> BSONJsCode(save.slice(0, skipLength).toByteString)
           case ScopedJSCode =>
-            key -> BSONScopedJsCode(save.slice(0, skipLength + skipLength).toByteString)
+            key -> BSONScopedJsCode(save.slice(0, skipLength).toByteString)
           case DBPointerCode =>
             key -> BSONDBPointer(save.slice(0, skipLength + skipObjId).toByteString)
           case TimestampCode =>
             key -> BSONTimestamp(save.slice(0, skipLong).toByteString)
           case UndefinedCode =>
-            key -> BSONUndefined()
+            key -> BSONUndefined(ByteString.empty)
           case SymbolCode =>
             key -> BSONSymbol(save.slice(0, skipLength).toByteString)
           case x: TypeCode => throw new NoSuchElementException(s"Unrecognized: $x")
@@ -153,6 +156,7 @@ trait BSONDocument extends BSONValue {
     iterator.map { case (key,value) => value }
   }
 
+  def compact : BSONDocument
 }
 
 case class BSONDouble private[bson] (buffer: ByteString) extends BSONValue {
@@ -184,6 +188,8 @@ case class BSONObject private[bson] (buffer: ByteString) extends BSONDocument {
   def toMap : Map[String,BSONValue] = iterator.toMap
 
   def value : Map[String,BSONValue] = iterator.toMap
+
+  def compact : BSONObject = BSONObject(buffer.compact)
 }
 
 object BSONObject {
@@ -201,6 +207,7 @@ object BSONObject {
 
 case class BSONArray private[bson] (buffer: ByteString) extends BSONDocument {
   def value : Iterator[BSONValue] = valueIterator
+  def compact : BSONArray = BSONArray(buffer.compact)
 }
 
 object BSONArray {
@@ -269,18 +276,19 @@ object BSONBoolean {
 }
 
 case class BSONDate private[bson](buffer: ByteString) extends BSONValue {
-  def value : Date = {
-    val itr = buffer.iterator
-    new Date(itr.getLong)
+  def value : Long = {
+    buffer.iterator.getLong
   }
+  def toDate : Date = { new Date( buffer.iterator.getLong ) }
 }
 
 object BSONDate {
-  def apply(d: Date) : BSONDate = {
+  def apply(d: Long) : BSONDate = {
     val buffer = ByteString.newBuilder
-    buffer.putLong(d.getTime)(ByteOrder.LITTLE_ENDIAN)
+    buffer.putLong(d)(ByteOrder.LITTLE_ENDIAN)
     new BSONDate(buffer.result())
   }
+  def apply(d: Date) : BSONDate = apply(d.getTime)
 }
 
 case class BSONNull private[bson](buffer: ByteString) extends BSONValue {
@@ -373,15 +381,15 @@ object BSONJsCode {
 }
 
 case class BSONSymbol private[bson](buffer: ByteString) extends BSONValue {
-  def value : Symbol = {
-    Symbol(getStr(buffer.iterator))
+  def value : String = {
+    getStr(buffer.iterator)
   }
 }
 
 object BSONSymbol {
-  def apply(s: Symbol) : BSONSymbol = {
+  def apply(s: String) : BSONSymbol = {
     val buffer = ByteString.newBuilder
-    Builder.putStr(buffer, s.name)
+    Builder.putStr(buffer, s)
     new BSONSymbol(buffer.result())
   }
 }
@@ -389,6 +397,7 @@ object BSONSymbol {
 case class BSONScopedJsCode private[bson](buffer: ByteString) extends BSONValue {
   def value : (String, BSONObject) = {
     val itr = buffer.iterator
+    itr.getInt
     val code = getStr(itr)
     val obj = getObj(itr)
     code -> obj
