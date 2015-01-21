@@ -93,19 +93,12 @@ class BuilderSpec extends Specification {
       val expected: ByteString = {
         val builder = preamble(50, 3, "obj")
         builder.putInt(40)
-        builder.putByte(2) // string code
-        builder.putBytes("string".getBytes(utf8)) // c string
-        builder.putByte(0) // termination of c string
-        val str = "fourty-two".getBytes(utf8)
-        builder.putInt(str.length + 1) // length of string
-        builder.putBytes(str) // data string
-        builder.putByte(0) // string terminator
-        builder.putByte(1) // code
-        builder.putBytes("double".getBytes(utf8)) // c string
-        builder.putByte(0) // termination of c string
-        builder.putDouble(42.0) // double value
-        builder.putByte(0) // terminating null
-        builder.putByte(0) // terminating null
+        field(builder, 2, "string")
+        string(builder, "fourty-two")
+        field(builder, 1, "double")
+        builder.putDouble(42.0D)
+        builder.putByte(0) // terminating null of embedded obj
+        builder.putByte(0) // terminating null of whole obj
         builder.result()
       }
       val builder1 = Builder()

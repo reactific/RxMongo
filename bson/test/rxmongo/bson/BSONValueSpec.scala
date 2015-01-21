@@ -24,26 +24,47 @@ package rxmongo.bson
 
 import java.nio.ByteOrder
 
-import akka.util.ByteString
+import akka.util.{ByteStringBuilder, ByteString}
 import org.specs2.mutable.Specification
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
 /** BSON Document Test Suite */
-class DocumentSpec extends Specification {
+class BSONValueSpec extends Specification {
 
-  "Document" should {
+  implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
+
+  def cstring(bldr: ByteStringBuilder, str: String) : ByteStringBuilder = {
+    bldr.putBytes(str.getBytes(utf8)) // c string
+    bldr.putByte(0) // termination of c string
+    bldr
+  }
+
+  def string(bldr: ByteStringBuilder, str: String) : ByteStringBuilder = {
+    val bytes = str.getBytes(utf8)
+    bldr.putInt(bytes.length+1)
+    bldr.putBytes(bytes)
+    bldr.putByte(0)
+  }
+
+  def field(bldr: ByteStringBuilder, code: Byte, fieldName: String) : ByteStringBuilder = {
+    bldr.putByte(code) // code
+    cstring(bldr, fieldName)
+  }
+
+  def preamble(len: Int, code: Byte, fieldName: String) : ByteStringBuilder = {
+    val bldr: ByteStringBuilder = ByteString.newBuilder
+    bldr.putInt(len)
+    field(bldr, code, fieldName)
+  }
+
+  "BSONObject" should {
 
     "interpret double correctly" in {
       val data = 42.0D
       val bytes : ByteString = {
-        implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
-        val builder = ByteString.newBuilder
-        builder.putInt(17)        // length
-        builder.putByte(1.toByte) // code
-        builder.putBytes("double".getBytes(utf8)) // c string
-        builder.putByte(0.toByte) // termination of c string
+        val builder = preamble(17, 1, "double")
         builder.putDouble(data)   // double value
-        builder.putByte(0.toByte) // terminating null
+        builder.putByte(0) // terminating null
         builder.result()
       }
       val doc = BSONObject(bytes)
@@ -57,17 +78,9 @@ class DocumentSpec extends Specification {
     "interpret string correctly" in {
       val data = "fourty-two"
       val bytes : ByteString = {
-        implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
-        val builder = ByteString.newBuilder
-        builder.putInt(24)        // length
-        builder.putByte(2.toByte) // string code
-        builder.putBytes("string".getBytes(utf8)) // c string
-        builder.putByte(0.toByte) // termination of c string
-        val str = data.getBytes(utf8)
-        builder.putInt(str.length+1) // length of string
-        builder.putBytes(str)   // data string
-        builder.putByte(0.toByte) // string terminator
-        builder.putByte(0.toByte) // terminating null
+        val builder = preamble(24, 2, "string")
+        string(builder, data)
+        builder.putByte(0) // terminating null
         builder.result()
       }
       val doc = BSONObject(bytes)
@@ -79,17 +92,52 @@ class DocumentSpec extends Specification {
     }
 
     "interpret object correctly" in {
-      pending(": object not implemented yet")
+      val bytes : ByteString = {
+        val builder = preamble(5+4+41+1, 3, "obj")
+        builder.putInt(8+8+8+15+1) // length of object
+        field(builder, 1, "double")
+        builder.putDouble(42.0D)
+        field(builder, 2, "string")
+        string(builder, "fourty-two")
+        builder.putByte(0) // terminating null of embedded object
+        builder.putByte(0) // terminating null of outer object
+        builder.result()
+      }
+      val doc = BSONObject(bytes)
+      val itr = doc.iterator
+      itr.hasNext must beTrue
+      val (key, value) = itr.next()
+      key must beEqualTo("obj")
+      value.isInstanceOf[BSONObject] must beTrue
+      val obj = value.asInstanceOf[BSONObject]
+      obj.value must beEqualTo(Map[String,BSONValue]("double" -> BSONDouble(42.0D), "string" -> BSONString("fourty-two")))
     }
 
     "interpret array correctly" in {
-      pending(": array not implemented yet")
+      val bytes : ByteString = {
+        val builder = preamble(5+4+41+1, 4, "array")
+        builder.putInt(3+8+3+15+1) // length of object
+        field(builder, 1, "0")
+        builder.putDouble(42.0D)
+        field(builder, 2, "1")
+        string(builder, "fourty-two")
+        builder.putByte(0) // terminating null of embedded object
+        builder.putByte(0) // terminating null of outer object
+        builder.result()
+      }
+      val doc = BSONObject(bytes)
+      val itr = doc.iterator
+      itr.hasNext must beTrue
+      val (key, value) = itr.next()
+      key must beEqualTo("array")
+      value.isInstanceOf[BSONArray] must beTrue
+      val obj = value.asInstanceOf[BSONArray]
+      obj.value.toSeq must beEqualTo(Seq[BSONValue](BSONDouble(42.0D), BSONString("fourty-two")))
     }
 
     "interpret binary correctly" in {
       val data = "fourty-two"
       val bytes : ByteString = {
-        implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
         val builder = ByteString.newBuilder
         builder.putInt(24)        // length
         builder.putByte(5.toByte) // string code

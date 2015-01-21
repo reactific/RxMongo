@@ -77,7 +77,8 @@ package object bson {
         case 18 => LongCode
         case -1 => MinKey
         case 127 => MaxKey
-        case _ => throw new NoSuchElementException(s"BSON TypeCode($code)")
+        case _ =>
+          throw new NoSuchElementException(s"BSON TypeCode($code)")
       }
     }
     def apply(v: BSONValue) : TypeCode = {
