@@ -128,7 +128,7 @@ class BSONSpec extends Specification {
       val constructiontime = endtime - startime
       val compactiontime = compactend - endtime
       len must beEqualTo(compact_len)
-      constructiontime must beLessThan(1000000000L) // < 1 second for 10,000 nodes
+      constructiontime must beLessThan(2000000000L) // < 1 second for 10,000 nodes
       compactiontime must beLessThan(200000000L) // < 400ms for 5MB compaction
     }
   }
