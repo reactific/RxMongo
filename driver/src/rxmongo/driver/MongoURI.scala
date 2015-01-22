@@ -23,15 +23,12 @@
 package rxmongo.driver
 
 import akka.http.model.Uri
+import akka.http.model.Uri.Path.{ Segment, Slash, Empty }
+import akka.http.model.Uri.Path
 
-import java.net.{ InetAddress, InetSocketAddress }
+import java.net.InetSocketAddress
 
-import akka.http.model.Uri.Path.{ Segment, SlashOrEmpty, Slash, Empty }
-import akka.http.model.Uri.{ Path, Query }
-
-import scala.collection.script.End
 import scala.util.Try
-import scala.util.control.NonFatal
 
 /** MongoDB Connection URI format.
   *
@@ -85,27 +82,12 @@ case class MongoURI(
   credentials : Option[Credentials],
   options : ConnectionOptions)
 
-case class Credentials(user : String, password : String) {
-  override def toString = s"Credentials($user)"
-}
-
-object Credentials {
-  def apply(str : String) : Credentials = {
-    val parts = str.split(":")
-    parts.length match {
-      case 2 ⇒ Credentials(parts(0), parts(1))
-      case 1 ⇒ Credentials(parts(0), "")
-      case _ ⇒ throw RxMongoError("User credentials must contain a user name")
-    }
-  }
-}
-
 object MongoURI {
 
   val scheme = "mongodb://"
-  val MongoDBDefaultPort = 27017
+  val DefaultPort = 27017
 
-  def parse(uri_str : String) : Try[MongoURI] = Try {
+  def apply(uri_str : String) : Try[MongoURI] = Try {
     if (!uri_str.startsWith(scheme))
       throw RxMongoError(s"Mongo URI must start with '$scheme'")
     val parts = uri_str.substring(scheme.length).split("/")
@@ -135,14 +117,14 @@ object MongoURI {
       case _ ⇒ throw RxMongoError(s"Mongo URI path must only be one segment")
     }
     val creds = if (auth.userinfo.isEmpty) None else Some(Credentials(auth.userinfo))
-    val options = parseOptions(uri.query)
+    val options = ConnectionOptions(uri.query)
 
     val hostList : List[InetSocketAddress] = {
       hosts.map { h ⇒
         val parts = h.split(":")
         val (host, port) = parts.size match {
           case 2 ⇒ parts(0) -> parts(1).toInt
-          case 1 ⇒ parts(0) -> MongoDBDefaultPort
+          case 1 ⇒ parts(0) -> DefaultPort
           case _ ⇒ throw RxMongoError("Mongo URI host names must not be empty or contain more than one :")
         }
         InetSocketAddress.createUnresolved(host, port)
@@ -150,36 +132,20 @@ object MongoURI {
     }.toList
     MongoURI(hostList, database, creds, options)
   }
+}
 
-  def parseOptions(q : Query) : ConnectionOptions = {
-    var r = ConnectionOptions(replicaSet = q.get("replicaSet"))
+case class Credentials(user : String, password : String) {
+  override def toString = s"Credentials($user)"
+}
 
-      def addOption(name : String)(f : (String) ⇒ ConnectionOptions) = {
-        q.get(name) match { case Some(v) ⇒ f(v); case None ⇒ r }
-      }
-
-    r = addOption("ssl") { v ⇒ r.copy(ssl = v.toBoolean); }
-    r = addOption("connectTimeoutMS") { v ⇒ r.copy(connectTimeoutMS = v.toLong) }
-    r = addOption("socketTimeoutMS") { v ⇒ r.copy(socketTimeoutMS = v.toLong) }
-    r = addOption("maxPoolSize") { v ⇒ r.copy(maxPoolSize = v.toInt) }
-    r = addOption("minPoolSize") { v ⇒ r.copy(minPoolSize = v.toInt) }
-    r = addOption("maxIdleTimeMS") { v ⇒ r.copy(maxIdleTimeMS = v.toLong) }
-    r = addOption("waitQueueMultiple") { v ⇒ r.copy(waitQueueMultiple = v.toInt) }
-    r = addOption("waitQueueTimeoutMS") { v ⇒ r.copy(waitQueueTimeoutMS = v.toLong) }
-    r = addOption("w") { v ⇒ r.copy(w = WriteConcern(v)) }
-    r = addOption("wtimeoutMS") { v ⇒ r.copy(wtimeoutMS = v.toLong) }
-    r = addOption("journal") { v ⇒ r.copy(journal = v.toBoolean) }
-    r = addOption("readPreference") { v ⇒ r.copy(readPreference = ReadPreference(v)) }
-    r = r.copy(readPreferenceTags = q.getAll("readPreferenceTags").map { s ⇒ ReadPreference.tags(s).toList }.toList)
-    r = r.copy(authSource = q.get("authSource"))
-    r = addOption("authMechanism") { v ⇒ r.copy(authMechanism = AuthMechanism(v)) }
-    r = r.copy(gssapiServiceName = q.get("gssapiServiceName"))
-    r = addOption("tcpNoDelay") { v ⇒ r.copy(tcpNoDelay = v.toBoolean) }
-    r = addOption("tcpKeepAlive") { v ⇒ r.copy(tcpKeepAlive = v.toBoolean) }
-    r = addOption("tcpOOBInline") { v ⇒ r.copy(tcpOOBInline = v.toBoolean) }
-    r = r.copy (localIP = q.get("localIP").map { addr ⇒ InetAddress.getByName(addr) })
-    r = addOption("localPort") { v ⇒ r.copy(localPort = v.toInt) }
-    r
+object Credentials {
+  def apply(str : String) : Credentials = {
+    val parts = str.split(":")
+    parts.length match {
+      case 2 ⇒ Credentials(parts(0), parts(1))
+      case 1 ⇒ Credentials(parts(0), "")
+      case _ ⇒ throw RxMongoError("User credentials must contain a user name")
+    }
   }
 }
 

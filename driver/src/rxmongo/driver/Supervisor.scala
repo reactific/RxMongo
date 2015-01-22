@@ -25,7 +25,6 @@ package rxmongo.driver
 import akka.actor._
 
 import scala.collection.mutable
-import scala.concurrent.duration._
 
 object Supervisor {
   def props(driver : Driver) : Props = {
@@ -34,7 +33,7 @@ object Supervisor {
 
   sealed trait Request
   case class AddConnection(uri : MongoURI) extends Request
-  case class Terminate(timeout : FiniteDuration) extends Request
+  case object Terminate extends Request
   case object NumConnections extends Request
 
   sealed trait Reply
@@ -60,21 +59,21 @@ class Supervisor(driver : Driver) extends Actor with ActorLogging {
       sender ! connection
     case Terminated(actor) ⇒
       connections.remove(actor)
-    case Terminate(timeout) ⇒
+    case Terminate ⇒
       if (isEmpty) {
         context.stop(self)
       } else {
         connections.foreach { connection ⇒
           connection ! Connection.CloseConnection
         }
-        context.become(closing(timeout))
+        context.become(closing)
       }
   }
 
-  def closing(shutdownTimeout : FiniteDuration) : Receive = {
+  def closing : Receive = {
     case ac : AddConnection ⇒
       log.warning("Refusing to add connection while RxMongo Supervisor is closing.")
-    case Terminate(timeout) ⇒
+    case Terminate ⇒
       log.warning("Terminate ignored, already terminating.")
     case NumConnections ⇒
       sender ! NumConnectionsReply(numConnections)

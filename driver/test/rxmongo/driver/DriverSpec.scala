@@ -20,40 +20,20 @@
  * SOFTWARE.
  */
 
-import sbt._
-import sbt.Keys._
-import scala.language.postfixOps
+package rxmongo.driver
 
+import org.specs2.mutable.Specification
 
-object RxMongo extends Build {
+import scala.concurrent.duration.Duration
 
-  import BuildSettings._
+class DriverSpec extends Specification {
 
-  lazy val RxMongo =
-    Project(BuildSettings.name, file("."),
-      settings = buildSettings ++ Seq(
-        resolvers := Dependencies.resolvers,
-        libraryDependencies := Dependencies.client
-      )).
-      aggregate(bson, driver, client)
+  "Driver" should {
+    "mind its lifecycle" in {
+      val driver = Driver(None)
+      driver.close(Duration(1, "seconds"))
+      driver.system.isTerminated must beTrue
+    }
+  }
 
-  lazy val client = Project(s"${BuildSettings.name}-Client", file("./client"),
-      settings = buildSettings ++ Seq(
-        resolvers := Dependencies.resolvers,
-        libraryDependencies ++= Dependencies.client
-      )).
-      dependsOn(bson,driver)
-
-  lazy val driver = Project(s"${BuildSettings.name}-Driver", file("./driver"),
-    settings = buildSettings ++ Seq(
-      resolvers := Dependencies.resolvers,
-      libraryDependencies := Dependencies.driver
-    )).
-    dependsOn(bson)
-
-  lazy val bson = Project(s"${BuildSettings.name}-BSON", file("./bson"),
-    settings = buildSettings ++ Seq(
-      resolvers := Dependencies.resolvers,
-      libraryDependencies ++= Dependencies.bson
-    ))
 }

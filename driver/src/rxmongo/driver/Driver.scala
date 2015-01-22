@@ -25,7 +25,7 @@ package rxmongo.driver
 import java.util.concurrent.atomic.AtomicLong
 
 import akka.actor.{ ActorRef, ActorSystem }
-import com.typesafe.config.Config
+import com.typesafe.config.{ ConfigFactory, Config }
 
 import scala.concurrent.duration._
 import scala.util.{ Failure, Success }
@@ -34,27 +34,29 @@ import scala.util.{ Failure, Success }
   *
   * This provides the driver for interacting with a single Mongo ReplicaSet. A given client can instantiate multiple
   * Drivers to
-  * @param config
+  * @param cfg An optional configuration with which to configure the RxMongo driver. It defaults to the configuration
+  *        included with the RxMongo library as a resource (rxmongo.conf)
   */
-class Driver(config : Option[Config] = None) {
+case class Driver(cfg : Option[Config] = None, name : Option[String] = None) {
+
+  val config = cfg match { case Some(c) ⇒ c; case None ⇒ ConfigFactory.load("rxmongo") }
+
+  val namePrefix = "RxMongo-" + (name match { case Some(x) ⇒ x; case None ⇒ "" })
 
   // RxMongo's ActorSystem is configured here. We use a separate one so it doesn't interfere with the application.
-  val system = {
-    import com.typesafe.config.ConfigFactory
-    val cfg = config match { case Some(c) ⇒ c; case None ⇒ ConfigFactory.load() }
-    ActorSystem("RxMongo", cfg.getConfig("rxmongo.akka"))
-  }
+  val system = ActorSystem("RxMongo", config.getConfig("rxmongo.akka"))
 
-  private val supervisorActor = system.actorOf(Supervisor.props(this), "Supervisor")
+  private val supervisorActor = system.actorOf(Supervisor.props(this), namePrefix + "-Supervisor")
 
-  def close(timeout : FiniteDuration = 0.seconds) = {
+  def close(timeout : Duration = 0.seconds) = {
     // Tell the supervisor to close. It will shut down all the connections and then shut down the ActorSystem
     // as it is exiting.
+
     supervisorActor ! Supervisor.Terminate
 
     // When the actorSystem is shutdown, it means that supervisorActor has exited (run its postStop)
     // So, wait for that event.
-    system.awaitTermination(timeout)
+    system.awaitTermination(timeout.toMillis match { case 0 ⇒ Duration.Inf; case _ ⇒ timeout })
   }
 
   /** Creates a new MongoConnection from URI.
@@ -79,15 +81,14 @@ class Driver(config : Option[Config] = None) {
     *
     * @see [[http://docs.mongodb.org/manual/reference/connection-string/ the MongoDB URI documentation]]
     *
-    * @param uri A string that will be parsed with [[rxmongo.driver.MongoURI.parse]]
+    * @param uri A string that will be parsed with [[rxmongo.driver.MongoURI.apply]]
     */
   def connect(uri : String) : ActorRef = {
-    MongoURI.parse(uri) match {
+    MongoURI(uri) match {
       case Success(mongoURI) ⇒ connect(mongoURI)
       case Failure(xcptn)    ⇒ throw xcptn
     }
   }
-
 }
 
 object Driver {

@@ -20,40 +20,34 @@
  * SOFTWARE.
  */
 
-import sbt._
-import sbt.Keys._
-import scala.language.postfixOps
+package rxmongo.driver
 
+import org.specs2.mutable.Specification
 
-object RxMongo extends Build {
+class ConnectionOptionsSpec extends Specification {
 
-  import BuildSettings._
+  "WriteConcern" should {
+    "yield NoAcknowledgement for -1" in {
+      WriteConcern("-1") must beEqualTo(NoAcknowledgmentWC)
+    }
+    "yield ErrorsOnly for 0" in {
+      WriteConcern(" 0") must beEqualTo(ErrorsOnlyWC)
+    }
+    "yield BasicAcknowledgment for 1" in {
+      WriteConcern("1 ") must beEqualTo(BasicAcknowledgmentWC)
+    }
+    "yield WaitForMembers for > 1" in {
+      WriteConcern(" 2 ") must beEqualTo(WaitForMembersWC(2))
+    }
+    "yield Majority for 'majority'" in {
+      WriteConcern("majority") must beEqualTo(MajorityWC)
+    }
+    "yield MembersWithTag for other strings" in {
+      WriteConcern(" foo ") must beEqualTo(MembersWithTagWC("foo"))
+    }
+    "yield BasicAck for empty string" in {
+      WriteConcern("") must beEqualTo(BasicAcknowledgmentWC)
+    }
+  }
 
-  lazy val RxMongo =
-    Project(BuildSettings.name, file("."),
-      settings = buildSettings ++ Seq(
-        resolvers := Dependencies.resolvers,
-        libraryDependencies := Dependencies.client
-      )).
-      aggregate(bson, driver, client)
-
-  lazy val client = Project(s"${BuildSettings.name}-Client", file("./client"),
-      settings = buildSettings ++ Seq(
-        resolvers := Dependencies.resolvers,
-        libraryDependencies ++= Dependencies.client
-      )).
-      dependsOn(bson,driver)
-
-  lazy val driver = Project(s"${BuildSettings.name}-Driver", file("./driver"),
-    settings = buildSettings ++ Seq(
-      resolvers := Dependencies.resolvers,
-      libraryDependencies := Dependencies.driver
-    )).
-    dependsOn(bson)
-
-  lazy val bson = Project(s"${BuildSettings.name}-BSON", file("./bson"),
-    settings = buildSettings ++ Seq(
-      resolvers := Dependencies.resolvers,
-      libraryDependencies ++= Dependencies.bson
-    ))
 }
