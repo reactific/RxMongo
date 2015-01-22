@@ -26,126 +26,133 @@ import java.nio.ByteOrder
 
 import akka.util.{ ByteString, ByteStringBuilder }
 
-/**
- * Builder for BSON Object
- *
- * This uses the builder pattern to allow construction of a BSON.Object by using a ByteStringBuilder to construct
- * the corresponding ByteString and then instantiating BSON.Object with the immutable ByteString
- */
+/** Builder for BSON Object
+  *
+  * This uses the builder pattern to allow construction of a BSON.Object by using a ByteStringBuilder to construct
+  * the corresponding ByteString and then instantiating BSON.Object with the immutable ByteString
+  */
 case class Builder() {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
-  val buffer: ByteStringBuilder = ByteString.newBuilder
+  val buffer : ByteStringBuilder = ByteString.newBuilder
 
-  def result: ByteString = Builder.finish(buffer.result())
+  def result : ByteString = {
+    val content = buffer.result()
+    val result = ByteString.newBuilder
+    result.putInt(content.length + 1)
+    result ++= content
+    result.putByte(0)
+    result.result()
+  }
 
-  def bsonObj: BSONObject = BSONObject(result)
+  def bsonObj : BSONObject = BSONObject(result)
 
-  def double(key: String, value: Double): Builder = {
+  def double(key : String, value : Double) : Builder = {
     putPrefix(DoubleCode, key)
     buffer.putDouble(value)
     this
   }
 
-  def string(key: String, value: String): Builder = {
+  def string(key : String, value : String) : Builder = {
     putPrefix(StringCode, key)
     putStr(value)
   }
 
-  def obj(key: String, value: BSONObject): Builder = {
+  def obj(key : String, value : BSONObject) : Builder = {
     putPrefix(ObjectCode, key)
     putObj(value)
     this
   }
 
-  def array(key: String, values: Iterable[BSONValue]): Builder = {
+  def array(key : String, values : Iterable[BSONValue]) : Builder = {
     putPrefix(ArrayCode, key)
     array(values)
   }
 
-  def binary(key: String, blob: Array[Byte], subtype: BinarySubtype): Builder = {
+  def binary(key : String, blob : Array[Byte], subtype : BinarySubtype) : Builder = {
     putPrefix(BinaryCode, key)
     binary(blob, subtype)
   }
 
-  def undefined(key: String) = {
+  def undefined(key : String) = {
     putPrefix(UndefinedCode, key)
   }
 
-  def objectID(key: String, value: Array[Byte]): Builder = {
+  def objectID(key : String, value : Array[Byte]) : Builder = {
     putPrefix(ObjectIDCode, key)
     objectID(value)
   }
 
-  def boolean(key: String, value: Boolean): Builder = {
+  def boolean(key : String, value : Boolean) : Builder = {
     putPrefix(BooleanCode, key)
     boolean(value)
   }
 
-  def utcDate(key: String, time: Long): Builder = {
+  def utcDate(key : String, time : Long) : Builder = {
     putPrefix(DateCode, key)
     utcDate(time)
   }
 
-  def nil(key: String): Builder = {
+  def nil(key : String) : Builder = {
     putPrefix(NullCode, key)
   }
 
-  def regex(key: String, pattern: String, options: String = ""): Builder = {
+  def regex(key : String, pattern : String, options : String = "") : Builder = {
     require(options.matches("i?l?m?s?u?x?"))
     putPrefix(RegexCode, key)
     regex(pattern, options)
   }
 
-  def dbPointer(key: String, referent: String, id: Array[Byte]): Builder = {
+  def dbPointer(key : String, referent : String, id : Array[Byte]) : Builder = {
     putPrefix(DBPointerCode, key)
     dbPointer(referent, id)
   }
 
-  def jsCode(key: String, code: String): Builder = {
+  def jsCode(key : String, code : String) : Builder = {
     putPrefix(JavaScriptCode, key)
     putStr(code)
   }
 
-  def symbol(key: String, symbol: String): Builder = {
+  def symbol(key : String, symbol : String) : Builder = {
     putPrefix(SymbolCode, key)
     putStr(symbol)
   }
 
-  def scopedJsCode(key: String, code: String, scope: BSONObject): Builder = {
+  def scopedJsCode(key : String, code : String, scope : BSONObject) : Builder = {
     putPrefix(ScopedJSCode, key)
     scopedJsCode(code, scope)
   }
 
-  def integer(key: String, value: Int): Builder = {
+  def integer(key : String, value : Int) : Builder = {
     putPrefix(IntegerCode, key)
     buffer.putInt(value)
     this
   }
 
-  def timestamp(key: String, value: Long): Builder = {
+  def timestamp(key : String, value : Long) : Builder = {
     putPrefix(TimestampCode, key)
     buffer.putLong(value)
     this
   }
 
-  def long(key: String, value: Long): Builder = {
+  def long(key : String, value : Long) : Builder = {
     putPrefix(LongCode, key)
     buffer.putLong(value)
     this
   }
 
-  def value(key: String, value: BSONValue): Builder = {
+  def value(key : String, value : BSONValue) : Builder = {
     putPrefix(value.code, key)
     buffer ++= value.buffer
     this
   }
 
-  private[bson] def array(values: Iterable[BSONValue]): Builder = {
+  private[bson] def array(values : Iterable[BSONValue]) : Builder = {
     val array = ByteString.newBuilder
     values.zipWithIndex.foreach {
-      case (value, index) =>
-        array.putByte(value.code.code)
-        Builder.putCStr(array, index.toString)
+      case (value, index) ⇒
+        array.
+          putByte(value.code.code).
+          putCStr(index.toString)
         array ++= value.buffer
     }
     buffer.putInt(array.length + 1)
@@ -154,107 +161,74 @@ case class Builder() {
     this
   }
 
-  private[bson] def binary(blob: Array[Byte], subtype: BinarySubtype): Builder = {
-    buffer.putInt(blob.length)
-    buffer.putByte(subtype.code)
-    buffer.putBytes(blob)
+  private[bson] def binary(blob : Array[Byte], subtype : BinarySubtype) : Builder = {
+    buffer.
+      putInt(blob.length).
+      putByte(subtype.code).
+      putBytes(blob)
     this
   }
 
-  private[bson] def objectID(value: Array[Byte]): Builder = {
+  private[bson] def objectID(value : Array[Byte]) : Builder = {
     require(value.length == 12)
     buffer.putBytes(value)
     this
   }
 
-  private[bson] def boolean(value: Boolean): Builder = {
+  private[bson] def boolean(value : Boolean) : Builder = {
     buffer.putByte(if (value) 1.toByte else 0.toByte)
     this
   }
 
-  private[bson] def utcDate(time: Long): Builder = {
+  private[bson] def utcDate(time : Long) : Builder = {
     buffer.putLong(time)
     this
   }
 
-  private[bson] def dbPointer(referent: String, id: Array[Byte]): Builder = {
+  private[bson] def dbPointer(referent : String, id : Array[Byte]) : Builder = {
     require(id.length == 12)
-    putStr(referent)
-    buffer.putBytes(id)
+    buffer.
+      putStr(referent).
+      putBytes(id)
     this
   }
 
-  private[bson] def regex(pattern: String, options: String): Builder = {
+  private[bson] def regex(pattern : String, options : String) : Builder = {
     putCStr(pattern)
     putCStr(options)
     this
   }
 
-  private[bson] def scopedJsCode(code: String, scope: BSONObject): Builder = {
+  private[bson] def scopedJsCode(code : String, scope : BSONObject) : Builder = {
     val content = ByteString.newBuilder
-    Builder.putStr(content, code)
-    Builder.putObj(content, scope)
+    content.
+      putStr(code).
+      putObj(scope)
     val tmp = content.result()
     buffer.putInt(tmp.length)
     buffer ++= tmp
     this
   }
 
-  private[bson] def putCStr(s: String): Builder = {
-    Builder.putCStr(this.buffer, s)
+  private[bson] def putCStr(s : String) : Builder = {
+    buffer.putCStr(s)
     this
   }
 
-  private[bson] def putPrefix(code: TypeCode, key: String): Builder = {
-    buffer.putByte(code.code)
-    putCStr(key)
+  private[bson] def putPrefix(code : TypeCode, key : String) : Builder = {
+    buffer.
+      putByte(code.code).
+      putCStr(key)
     this
   }
 
-  private[bson] def putStr(value: String): Builder = {
-    Builder.putStr(buffer, value)
+  private[bson] def putStr(value : String) : Builder = {
+    buffer.putStr(value)
     this
   }
 
-  private[bson] def putObj(value: BSONObject): Builder = {
-    Builder.putObj(buffer, value)
+  private[bson] def putObj(value : BSONObject) : Builder = {
+    buffer.putDoc(value)
     this
-  }
-}
-
-object Builder {
-
-  implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
-
-  def putCStr(bldr: ByteStringBuilder, s: String): ByteStringBuilder = {
-    val bytes = s.getBytes(utf8)
-    for (by <- bytes if by == 0) {
-      throw new IllegalArgumentException("UTF-8 encoding of BSON keys must not contain a 0 byte")
-    }
-    bldr.putBytes(bytes)
-    bldr.putByte(0)
-    bldr
-  }
-
-  def putStr(bldr: ByteStringBuilder, value: String): ByteStringBuilder = {
-    val bytes = value.getBytes(utf8)
-    val length = bytes.length + 1
-    bldr.putInt(bytes.length + 1)
-    bldr.putBytes(bytes)
-    bldr.putByte(0)
-    bldr
-  }
-
-  def finish(content: ByteString): ByteString = {
-    val result = ByteString.newBuilder
-    result.putInt(content.length + 1)
-    result ++= content
-    result.putByte(0)
-    result.result()
-  }
-
-  def putObj(bldr: ByteStringBuilder, value: BSONObject): ByteStringBuilder = {
-    bldr ++= value.buffer
-    bldr
   }
 }
