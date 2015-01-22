@@ -35,7 +35,7 @@ trait BSONValue {
   private[bson] val buffer : ByteString
   def value : Any
 
-  def code : TypeCode = TypeCode(this)
+  def code : TypeCode
 
   def length : Int = buffer.length
 }
@@ -130,6 +130,7 @@ trait BSONDocument extends BSONValue {
 }
 
 case class BSONDouble private[bson] (buffer : ByteString) extends BSONValue {
+  def code = DoubleCode
   def value : Double = { buffer.iterator.getDouble }
 }
 
@@ -143,6 +144,7 @@ object BSONDouble {
 
 case class BSONString private[bson] (buffer : ByteString) extends BSONValue {
   def value : String = { buffer.iterator.getStr }
+  val code = StringCode
 }
 
 object BSONString {
@@ -154,6 +156,8 @@ object BSONString {
 }
 
 case class BSONObject private[bson] (buffer : ByteString) extends BSONDocument {
+
+  def code = ObjectCode
 
   def toMap : Map[String, BSONValue] = iterator.toMap
 
@@ -176,6 +180,7 @@ object BSONObject {
 }
 
 case class BSONArray private[bson] (buffer : ByteString) extends BSONDocument {
+  def code = ArrayCode
   def value : Iterator[BSONValue] = valueIterator
   def compact : BSONArray = BSONArray(buffer.compact)
 }
@@ -189,6 +194,8 @@ object BSONArray {
 }
 
 case class BSONBinary private[bson] (buffer : ByteString) extends BSONValue {
+  def code = BinaryCode
+
   def value : (BinarySubtype, Array[Byte]) = {
     val itr = buffer.iterator
     val len = itr.getInt
@@ -209,6 +216,7 @@ object BSONBinary {
 }
 
 case class BSONUndefined private[bson] (buffer : ByteString) extends BSONValue {
+  def code = UndefinedCode
   def value : Unit = {}
 }
 
@@ -217,6 +225,7 @@ object BSONUndefined {
 }
 
 case class BSONObjectID private[bson] (buffer : ByteString) extends BSONValue {
+  def code = ObjectIDCode
   def value : Array[Byte] = { buffer.iterator.getBytes(12) }
 }
 
@@ -229,6 +238,7 @@ object BSONObjectID {
 }
 
 case class BSONBoolean private[bson] (buffer : ByteString) extends BSONValue {
+  def code = BooleanCode
   def value : Boolean = {
     if (buffer.iterator.getByte == 0) false else true
   }
@@ -243,6 +253,7 @@ object BSONBoolean {
 }
 
 case class BSONDate private[bson] (buffer : ByteString) extends BSONValue {
+  def code = DateCode
   def value : Long = {
     buffer.iterator.getLong
   }
@@ -259,6 +270,7 @@ object BSONDate {
 }
 
 case class BSONNull private[bson] (buffer : ByteString) extends BSONValue {
+  def code = NullCode
   def value : Unit = {}
 }
 
@@ -267,6 +279,7 @@ object BSONNull {
 }
 
 case class BSONRegex private[bson] (buffer : ByteString) extends BSONValue {
+  def code = RegexCode
   def value : Regex = {
     val itr = buffer.iterator
     val pattern = itr.getCStr
@@ -320,6 +333,7 @@ object BSONRegex {
 }
 
 case class BSONDBPointer private[bson] (buffer : ByteString) extends BSONValue {
+  def code = DBPointerCode
   def value : (String, Array[Byte]) = {
     val itr = buffer.iterator
     itr.getStr -> itr.getBytes(12)
@@ -335,6 +349,7 @@ object BSONDBPointer {
 }
 
 case class BSONJsCode private[bson] (buffer : ByteString) extends BSONValue {
+  def code = JavaScriptCode
   def value : String = {
     buffer.iterator.getStr
   }
@@ -349,6 +364,7 @@ object BSONJsCode {
 }
 
 case class BSONSymbol private[bson] (buffer : ByteString) extends BSONValue {
+  def code = SymbolCode
   def value : String = {
     buffer.iterator.getStr
   }
@@ -363,6 +379,7 @@ object BSONSymbol {
 }
 
 case class BSONScopedJsCode private[bson] (buffer : ByteString) extends BSONValue {
+  def code = ScopedJSCode
   def value : (String, BSONObject) = {
     val itr = buffer.iterator
     itr.getInt
@@ -381,6 +398,7 @@ object BSONScopedJsCode {
 }
 
 case class BSONInteger private[bson] (buffer : ByteString) extends BSONValue {
+  def code = IntegerCode
   def value : Int = {
     buffer.iterator.getInt
   }
@@ -396,6 +414,7 @@ object BSONInteger {
 }
 
 case class BSONTimestamp private[bson] (buffer : ByteString) extends BSONValue {
+  def code = TimestampCode
   def value : Long = {
     buffer.iterator.getLong
   }
@@ -410,6 +429,7 @@ object BSONTimestamp {
 }
 
 case class BSONLong private[bson] (buffer : ByteString) extends BSONValue {
+  def code = LongCode
   def value : Long = {
     buffer.iterator.getLong
   }

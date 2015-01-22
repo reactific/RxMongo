@@ -87,16 +87,7 @@ package object bson {
           throw new NoSuchElementException(s"BSON TypeCode($code)")
       }
     }
-    def apply(v : BSONValue) : TypeCode = {
-      v match {
-        case x : BSONDouble ⇒ DoubleCode
-        case x : BSONString ⇒ StringCode
-        case x : BSONObject ⇒ ObjectCode
-        case x : BSONArray ⇒ ArrayCode
-        case x : BSONBinary ⇒ BinaryCode
-        case _ ⇒ throw new NoSuchElementException(s"BSON TypeCode($v)")
-      }
-    }
+    def apply(v : BSONValue) : TypeCode = v.code
   }
 
   val utf8 = Charset.forName("UTF-8")
