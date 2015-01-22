@@ -97,7 +97,7 @@ case class Builder() {
   }
 
   def regex(key : String, pattern : String, options : String = "") : Builder = {
-    require(options.matches("i?l?m?s?u?x?"))
+    require(options.matches("i?l?m?s?u?x?"), "Regex options allowed are: ilmsux")
     putPrefix(RegexCode, key)
     regex(pattern, options)
   }
@@ -170,7 +170,7 @@ case class Builder() {
   }
 
   private[bson] def objectID(value : Array[Byte]) : Builder = {
-    require(value.length == 12)
+    require(value.length == 12, "ObjectID must be exactly 12 bytes")
     buffer.putBytes(value)
     this
   }
@@ -186,7 +186,7 @@ case class Builder() {
   }
 
   private[bson] def dbPointer(referent : String, id : Array[Byte]) : Builder = {
-    require(id.length == 12)
+    require(id.length == 12, "ObjectID must be exactly 12 bytes")
     buffer.
       putStr(referent).
       putBytes(id)

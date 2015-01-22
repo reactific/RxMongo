@@ -28,18 +28,18 @@ import akka.util.ByteString
 import rxmongo.bson._
 
 object Message {
-  object OpCode extends Enumeration {
-    type Type = Value
-    val OP_REPLY = Value(1) //	Reply to a client request. responseTo is set
-    val OP_MSG = Value(1000) //	generic msg command followed by a string
-    val OP_UPDATE = Value(2001) // 	update document
-    val OP_INSERT = Value(2002) // insert new document
-    val RESERVED = Value(2003) // formerly used for OP_GET_BY_OID
-    val OP_QUERY = Value(2004) // query a collection
-    val OP_GET_MORE = Value(2005) // Get more data from a query. See Cursors
-    val OP_DELETE = Value(2006) // Delete documents
-    val OP_KILL_CURSORS = Value(2007) // Tell database client is done with a cursor
-  }
+
+  /** An enumeration of the op codes that Mongo defines for its messages. */
+  sealed trait OpCode { val id : Int }
+  case object OP_REPLY extends OpCode { val id = 1 }
+  case object OP_MSG extends OpCode { val id = 1000 }
+  case object OP_UPDATE extends OpCode { val id = 2001 }
+  case object OP_INSERT extends OpCode { val id = 2002 }
+  case object OP_RESERVED extends OpCode { val id = 2003 }
+  case object OP_QUERY extends OpCode { val id = 2004 }
+  case object OP_GET_MORE extends OpCode { val id = 2005 }
+  case object OP_DELETE extends OpCode { val id = 2006 }
+  case object OP_KILL_CURSORS extends OpCode { val id = 2007 }
 
   private val _requestId = new AtomicInteger(0)
   def nextRequestId : Int = _requestId.incrementAndGet()
@@ -49,17 +49,14 @@ object Message {
 }
 
 trait Message {
-  val opcode : Message.OpCode.Type
-}
-
-trait RequestMessage extends Message {
+  val opcode : Message.OpCode
 }
 
 /** MessageHeader
   *
   * This header is standard for all messages sent to MongoDB and so it is the base class of all mongo messages.
   */
-class RequestHeader(val opcode : Message.OpCode.Type) extends RequestMessage {
+class RequestMessage(val opcode : Message.OpCode) extends Message {
   protected val bldr = ByteString.newBuilder
   val requestId = Message.nextRequestId
 
@@ -74,7 +71,7 @@ class RequestHeader(val opcode : Message.OpCode.Type) extends RequestMessage {
     * }}}
     * @return
     */
-  def finish = {
+  lazy val finish : ByteString = {
     val content = bldr.result()
     val top = ByteString.newBuilder
     top.putInt(content.length)
@@ -89,13 +86,13 @@ class RequestHeader(val opcode : Message.OpCode.Type) extends RequestMessage {
 /** The Mongo Update Message
   * The OP_UPDATE message is used to update a document in a collection.
   * @param fullCollectionName The full name of the collection, including database name, like "dbName.collectionName".
-  *                         The full collection name is the concatenation of the database name with the collection
-  *                         name, using a . for the concatenation. For example, for the database foo and the
-  *                         collection bar, the full collection name is foo.bar.
+  *                        The full collection name is the concatenation of the database name with the collection
+  *                        name, using a . for the concatenation. For example, for the database foo and the
+  *                        collection bar, the full collection name is foo.bar.
   * @param selector The document selector used to match which documents will be updated
   * @param update The update to apply to the selected documents
   * @param upsert If set, the database will insert the supplied object into the collection if no matching
-  *             document is found
+  *            document is found
   * @param multiUpdate if set, the database will update all matching objects in the collection, not just the first one.
   */
 case class UpdateMessage(
@@ -103,7 +100,7 @@ case class UpdateMessage(
   selector : BSONObject,
   update : BSONObject,
   upsert : Boolean = false,
-  multiUpdate : Boolean = false) extends RequestHeader(Message.OpCode.OP_UPDATE) {
+  multiUpdate : Boolean = false) extends RequestMessage(Message.OP_UPDATE) {
 
   val flags : Int = 0 |
     (if (upsert) 1 else 0) |
@@ -128,19 +125,19 @@ case class UpdateMessage(
 /** The Mongo Insert Message
   * The OP_INSERT message is used to insert one or more documents into a collection.
   * @param fullCollectionName The full name of the collection, including database name, like "dbName.collectionName".
-  *                         The full collection name is the concatenation of the database name with the collection
-  *                         name, using a . for the concatenation. For example, for the database foo and the
-  *                         collection bar, the full collection name is foo.bar.
+  *                        The full collection name is the concatenation of the database name with the collection
+  *                        name, using a . for the concatenation. For example, for the database foo and the
+  *                        collection bar, the full collection name is foo.bar.
   * @param documents A sequence of documents to be inserted into the collection
   * @param continueOnError If set, the database will not stop processing a bulk insert if one fails (eg due to
-  *                      duplicate IDs). This makes bulk insert behave similarly to a series of single inserts,
-  *                      except lastError will be set if any insert fails, not just the last one. If multiple
-  *                      errors occur, only the most recent will be reported by getLastError. (new in 1.9.1)
+  *                     duplicate IDs). This makes bulk insert behave similarly to a series of single inserts,
+  *                     except lastError will be set if any insert fails, not just the last one. If multiple
+  *                     errors occur, only the most recent will be reported by getLastError. (new in 1.9.1)
   */
 case class InsertMessage(
   fullCollectionName : String,
   documents : Seq[BSONObject],
-  continueOnError : Boolean = false) extends RequestHeader(Message.OpCode.OP_INSERT) {
+  continueOnError : Boolean = false) extends RequestMessage(Message.OP_INSERT) {
 
   val flags : Int = 0 |
     (if (continueOnError) 1 else 0)
@@ -160,28 +157,28 @@ case class InsertMessage(
 /** The Mongo Query Message
   * The OP_QUERY message is used to query the database for documents in a collection.
   * @param fullCollectionName The full name of the collection, including database name, like "dbName.collectionName".
-  *                         The full collection name is the concatenation of the database name with the collection
-  *                         name, using a . for the concatenation. For example, for the database foo and the
-  *                         collection bar, the full collection name is foo.bar.
+  *                        The full collection name is the concatenation of the database name with the collection
+  *                        name, using a . for the concatenation. For example, for the database foo and the
+  *                        collection bar, the full collection name is foo.bar.
   * @param numberToSkip The number of documents to skip. Sets the number of documents to omit - starting from the first
-  *                   document in the resulting dataset - when returning the result of the query.
+  *                  document in the resulting dataset - when returning the result of the query.
   * @param numberToReturn The number of documents to return in the first OP_REPLY batch. Limits the number of documents
-  *                     in the first OP_REPLY message to the query. However, the database will still establish a
-  *                     cursor and return the cursorID to the client if there are more results than numberToReturn.
-  *                     If the client driver offers ‘limit’ functionality (like the SQL LIMIT keyword), then it is
-  *                     up to the client driver to ensure that no more than the specified number of documents are
-  *                     returned to the calling application. If numberToReturn is 0, the db will use the default
-  *                     return size. If the number is negative, then the database will return that number and
-  *                     close the cursor. No further results for that query can be fetched. If numberToReturn
-  *                     is 1 the server will treat it as -1 (closing the cursor automatically).
+  *                    in the first OP_REPLY message to the query. However, the database will still establish a
+  *                    cursor and return the cursorID to the client if there are more results than numberToReturn.
+  *                    If the client driver offers ‘limit’ functionality (like the SQL LIMIT keyword), then it is
+  *                    up to the client driver to ensure that no more than the specified number of documents are
+  *                    returned to the calling application. If numberToReturn is 0, the db will use the default
+  *                    return size. If the number is negative, then the database will return that number and
+  *                    close the cursor. No further results for that query can be fetched. If numberToReturn
+  *                    is 1 the server will treat it as -1 (closing the cursor automatically).
   * @param query The query object. BSON document that represents the query. The query will contain one or more
-  *            elements, all of which must match for a document to be included in the result set. Possible elements
-  *            include $query, $orderby, $hint, $explain, and $snapshot.
+  *           elements, all of which must match for a document to be included in the result set. Possible elements
+  *           include $query, $orderby, $hint, $explain, and $snapshot.
   * @param returnFieldsSelector Optional. Selector indicating the fields to return. BSON document that limits the
-  *                           fields in the returned documents. The returnFieldsSelector contains one or more
-  *                           elements, each of which is the name of a field that should be returned, and and the
-  *                           integer value 1. In JSON notation, a returnFieldsSelector to limit to the fields
-  *                           a, b and c would be: `{ a : 1, b : 1, c : 1}`.
+  *                          fields in the returned documents. The returnFieldsSelector contains one or more
+  *                          elements, each of which is the name of a field that should be returned, and and the
+  *                          integer value 1. In JSON notation, a returnFieldsSelector to limit to the fields
+  *                          a, b and c would be: `{ a : 1, b : 1, c : 1}`.
   *
   * The database will respond to an OP_QUERY message with an OP_REPLY message.
   */
@@ -196,7 +193,7 @@ case class QueryMessage(
   noCursorTimeout : Boolean = false,
   awaitData : Boolean = false,
   exhaust : Boolean = false,
-  partial : Boolean = false) extends RequestHeader(Message.OpCode.OP_QUERY) {
+  partial : Boolean = false) extends RequestMessage(Message.OP_QUERY) {
 
   //
   // Flags
@@ -248,24 +245,24 @@ case class QueryMessage(
 /** The Mongo GET MORE Message
   * The OP_GET_MORE message is used to query the database for documents in a collection. T
   * @param fullCollectionName The full name of the collection, including database name, like "dbName.collectionName".
-  *                         The full collection name is the concatenation of the database name with the collection
-  *                         name, using a . for the concatenation. For example, for the database foo and the
-  *                         collection bar, the full collection name is foo.bar.
+  *                        The full collection name is the concatenation of the database name with the collection
+  *                        name, using a . for the concatenation. For example, for the database foo and the
+  *                        collection bar, the full collection name is foo.bar.
   * @param numberToReturn Limits the number of documents in the first OP_REPLY message to the query. However, the
-  *                     database will still establish a cursor and return the cursorID to the client if there are
-  *                     more results than numberToReturn. If the client driver offers ‘limit’ functionality (like
-  *                     the SQL LIMIT keyword), then it is up to the client driver to ensure that no more than the
-  *                     specified number of document are returned to the calling application. If numberToReturn is 0,
-  *                     the db will used the default return size.
+  *                    database will still establish a cursor and return the cursorID to the client if there are
+  *                    more results than numberToReturn. If the client driver offers ‘limit’ functionality (like
+  *                    the SQL LIMIT keyword), then it is up to the client driver to ensure that no more than the
+  *                    specified number of document are returned to the calling application. If numberToReturn is 0,
+  *                    the db will used the default return size.
   * @param forReply The ReplyMessage for an OP_QUERY to which this GetMoreMessage is requesting more data. This is used
-  *               instead of a cursorID value so that it is not possible to mix up the cursorID. This means the
-  *               original reply message will stick around while we're still getting more messages. We're okay with
-  *               that.
+  *              instead of a cursorID value so that it is not possible to mix up the cursorID. This means the
+  *              original reply message will stick around while we're still getting more messages. We're okay with
+  *              that.
   */
 case class GetMoreMessage(
   fullCollectionName : String,
   numberToReturn : Int,
-  forReply : ReplyMessage) extends RequestHeader(Message.OpCode.OP_GET_MORE) {
+  forReply : ReplyMessage) extends RequestMessage(Message.OP_GET_MORE) {
 
   // struct {
   //   MsgHeader header;             // standard message header
@@ -286,20 +283,20 @@ case class GetMoreMessage(
   * The OP_DELETE message is used to remove one or more documents from a collection.
   *
   * @param fullCollectionName The full name of the collection, including database name, like "dbName.collectionName".
-  *                         The full collection name is the concatenation of the database name with the collection
-  *                         name, using a . for the concatenation. For example, for the database foo and the
-  *                         collection bar, the full collection name is foo.bar.
+  *                        The full collection name is the concatenation of the database name with the collection
+  *                        name, using a . for the concatenation. For example, for the database foo and the
+  *                        collection bar, the full collection name is foo.bar.
   * @param selector BSON document that represent the query used to select the documents to be removed. The selector
-  *               will contain one or more elements, all of which must match for a document to be removed from the
-  *               collection.
+  *              will contain one or more elements, all of which must match for a document to be removed from the
+  *              collection.
   * @param singleRemove If set, the database will remove only the first matching document in the collection.
-  *                   Otherwise all matching documents will be removed.
+  *                  Otherwise all matching documents will be removed.
   */
 
 case class DeleteMessage(
   fullCollectionName : String,
   selector : BSONObject,
-  singleRemove : Boolean = false) extends RequestHeader(Message.OpCode.OP_DELETE) {
+  singleRemove : Boolean = false) extends RequestMessage(Message.OP_DELETE) {
 
   /** {{{
     * bit 	  name	        description
@@ -334,7 +331,7 @@ case class DeleteMessage(
   * @param cursorIDs The cursorIDs to be removed from the mongo server (i.e. we're done fetching results for them)
   */
 case class KillCursorsMessage(
-  cursorIDs : Seq[Long]) extends RequestHeader(Message.OpCode.OP_KILL_CURSORS) {
+  cursorIDs : Seq[Long]) extends RequestMessage(Message.OP_KILL_CURSORS) {
 
   // struct {
   //   MsgHeader header;            // standard message header
@@ -354,7 +351,7 @@ case class KillCursorsMessage(
   * @param buffer The ByteString buffer received from mongo from which the values for this object are extracted
   */
 case class ReplyMessage private[driver] (private val buffer : ByteString) extends Message {
-  val opcode = Message.OpCode.OP_REPLY
+  val opcode = Message.OP_REPLY
 
   // struct {
   //   MsgHeader header;         // standard message header

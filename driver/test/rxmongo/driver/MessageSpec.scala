@@ -28,8 +28,8 @@ import rxmongo.bson._
 
 class MessageSpec extends Specification {
 
-  val selector: BSONObject = BSONObject("item" -> BSONString("MNO2"))
-  val update: BSONObject = BSONObject("$set" -> BSONObject("category" -> BSONString("apparel")))
+  val selector : BSONObject = BSONObject("item" -> BSONString("MNO2"))
+  val update : BSONObject = BSONObject("$set" -> BSONObject("category" -> BSONString("apparel")))
 
   "Message" should {
     "produce correct buffer for OP_UPDATE" in {
@@ -44,7 +44,7 @@ class MessageSpec extends Specification {
       //   document  update;             // specification of the update to perform
       // }
 
-      val expected: ByteString = {
+      val expected : ByteString = {
         val b = ByteString.newBuilder
         b.putInt(0)
         b.putCStr("db.coll")
@@ -56,7 +56,7 @@ class MessageSpec extends Specification {
         c.putInt(payload.length)
         c.putInt(msg.requestId)
         c.putInt(0)
-        c.putInt(Message.OpCode.OP_UPDATE.id)
+        c.putInt(Message.OP_UPDATE.id)
         c ++= payload
         c.result()
       }
@@ -66,7 +66,7 @@ class MessageSpec extends Specification {
     }
 
     "produce correct buffer for OP_INSERT" in {
-      val documents: Seq[BSONObject] = Seq(selector, update)
+      val documents : Seq[BSONObject] = Seq(selector, update)
       val msg = InsertMessage("db.coll", documents, continueOnError = true)
 
       // struct {
@@ -76,7 +76,7 @@ class MessageSpec extends Specification {
       //   document* documents;          // one or more documents to insert into the collection
       // }
 
-      val expected: ByteString = {
+      val expected : ByteString = {
         val b = ByteString.newBuilder
         b.putInt(1)
         b.putCStr("db.coll")
@@ -87,7 +87,7 @@ class MessageSpec extends Specification {
         c.putInt(payload.length)
         c.putInt(msg.requestId)
         c.putInt(0)
-        c.putInt(Message.OpCode.OP_INSERT.id)
+        c.putInt(Message.OP_INSERT.id)
         c ++= payload
         c.result()
       }
@@ -111,7 +111,7 @@ class MessageSpec extends Specification {
       //   [ document  returnFieldsSelector; ] // Optional. Selector indicating the fields to return.
       // }
 
-      val expected: ByteString = {
+      val expected : ByteString = {
         val b = ByteString.newBuilder
         b.putInt(2 + 4 + 16 + 32 + 64 + 128)
         b.putCStr("db.coll")
@@ -123,7 +123,7 @@ class MessageSpec extends Specification {
         c.putInt(payload.length)
         c.putInt(msg.requestId)
         c.putInt(0)
-        c.putInt(Message.OpCode.OP_QUERY.id)
+        c.putInt(Message.OP_QUERY.id)
         c ++= payload
         c.result()
       }
@@ -132,7 +132,7 @@ class MessageSpec extends Specification {
     }
 
     "produce correct buffer for OP_GET_MORE" in {
-      val replyBuff: ByteString = {
+      val replyBuff : ByteString = {
         // struct {
         //   MsgHeader header;         // standard message header
         //   int32     responseFlags;  // bit vector - see details below
@@ -159,7 +159,7 @@ class MessageSpec extends Specification {
       //   int32     numberToReturn;     // number of documents to return
       //   int64     cursorID;           // cursorID from the OP_REPLY
       // }
-      val expected: ByteString = {
+      val expected : ByteString = {
         val b = ByteString.newBuilder
         b.putInt(0)
         b.putCStr("db.coll")
@@ -170,7 +170,7 @@ class MessageSpec extends Specification {
         c.putInt(payload.length)
         c.putInt(msg.requestId)
         c.putInt(0)
-        c.putInt(Message.OpCode.OP_GET_MORE.id)
+        c.putInt(Message.OP_GET_MORE.id)
         c ++= payload
         c.result()
       }
@@ -190,7 +190,7 @@ class MessageSpec extends Specification {
       //   document  selector;           // query object.  See below for details.
       // }
 
-      val expected: ByteString = {
+      val expected : ByteString = {
         val b = ByteString.newBuilder
         b.putInt(0)
         b.putCStr("db.coll")
@@ -201,7 +201,7 @@ class MessageSpec extends Specification {
         c.putInt(payload.length)
         c.putInt(msg.requestId)
         c.putInt(0)
-        c.putInt(Message.OpCode.OP_DELETE.id)
+        c.putInt(Message.OP_DELETE.id)
         c ++= payload
         c.result()
       }
@@ -219,7 +219,7 @@ class MessageSpec extends Specification {
       //   int64*    cursorIDs;         // sequence of cursorIDs to close
       // }
 
-      val expected: ByteString = {
+      val expected : ByteString = {
         val b = ByteString.newBuilder
         b.putInt(0)
         b.putInt(3)
@@ -231,7 +231,7 @@ class MessageSpec extends Specification {
         c.putInt(payload.length)
         c.putInt(msg.requestId)
         c.putInt(0)
-        c.putInt(Message.OpCode.OP_KILL_CURSORS.id)
+        c.putInt(Message.OP_KILL_CURSORS.id)
         c ++= payload
         c.result()
       }

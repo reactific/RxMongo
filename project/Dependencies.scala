@@ -30,17 +30,23 @@ object Dependencies {
     "Typesafe repository releases" at "http://repo.typesafe.com/typesafe/releases/"
   )
 
-  val akka_actor      = "com.typesafe.akka"   %% "akka-actor"                 % "2.3.8"
-  val akka_streams    = "com.typesafe.akka"   %% "akka-stream-experimental"   % "1.0-M2"
-  val grizzled_slf4j  = "org.clapper"         %% "grizzled-slf4j"             % "1.0.2"
-  val logback_classic = "ch.qos.logback"       % "logback-classic"            % "1.1.2"      % "test"
-  val specs           = "org.specs2"          %% "specs2-core"                % "2.3.11"     % "test"
+  // Akka Stuff
+  val akkaV = "2.3.9"
+  val akka_actor      = "com.typesafe.akka"   %% "akka-actor"                   % akkaV
+  val akka_slf4j      = "com.typesafe.akka"   %% "akka-slf4j"                   % akkaV
+  val akka_streams    = "com.typesafe.akka"   %% "akka-stream-experimental"     % "1.0-M2"
+  val akka_http_core  = "com.typesafe.akka"   %% "akka-http-core-experimental"  % "1.0-M2"
+  val akka_http       = "com.typesafe.akka"   %% "akka-http-experimental"       % "1.0-M2"
+
+  val grizzled_slf4j  = "org.clapper"         %% "grizzled-slf4j"               % "1.0.2"
+  val logback_classic = "ch.qos.logback"       % "logback-classic"              % "1.1.2"      % "test"
+  val specs           = "org.specs2"          %% "specs2-core"                  % "2.3.11"     % "test"
 
   val common = Seq(specs, grizzled_slf4j, logback_classic)
 
   val bson = common ++ Seq( akka_actor )
 
-  val driver = common ++ Seq( akka_streams, akka_actor )
+  val driver = common ++ Seq( akka_streams, akka_actor,  akka_slf4j, akka_http_core )
 
-  val client = common ++ Seq( akka_streams, akka_actor )
+  val client = common ++ Seq( )
 }

@@ -22,82 +22,55 @@
 
 package rxmongo.driver
 
-import java.net.InetSocketAddress
+import akka.actor.{ Actor, ActorLogging, Props, ActorRef }
 
-import akka.actor.{ Actor, Props, ActorRef }
-import akka.io.Tcp.Connect
-import akka.io.{ IO, Tcp }
-import akka.util.ByteString
-import rxmongo.driver.Connection.ConnectionFailed
+import scala.collection.mutable
 
 object Connection {
-  def props(remote: InetSocketAddress, replies: ActorRef) =
-    Props(classOf[Connection], remote, replies)
+  def props(uri : MongoURI) = Props(classOf[Connection], uri)
 
-  sealed trait ConnectionRequest
-  case class MongoCommand() extends ConnectionRequest
-  case class MongoQuery() extends ConnectionRequest
-
-  sealed trait ConnectionResponse
-  case class ConnectionFailed(conn: Connect) extends ConnectionResponse
+  sealed trait ConnectionCommand
+  case object CloseConnection extends ConnectionCommand
+  case class ChannelClosed(chan : ActorRef) extends ConnectionCommand
+  case object OpenChannel extends ConnectionCommand
 }
 
-class Connection(remote: InetSocketAddress, listener: ActorRef) extends Actor {
+/** Connection To MongoDB Replica Set
+  *
+  * This represents RxMongo's connection to a replica set.
+  */
+class Connection(uri : MongoURI) extends Actor with ActorLogging {
 
-  import Tcp._
-  import context.system
+  import rxmongo.driver.Connection._
 
-  IO(Tcp) ! Connect(remote)
+  val channels : mutable.HashSet[ActorRef] = mutable.HashSet.empty[ActorRef]
 
-  def receive = {
-    case CommandFailed(conn: Connect) =>
-      listener ! ConnectionFailed(conn)
-      context stop self
-
-    case c @ Connected(remote_addr, local_addr) =>
-      listener ! c
-      val connection = sender()
-      connection ! Register(self)
-      context become connected(connection)
+  override def preStart() = {
+    super.preStart()
+    identifyReplicaSet
+    for (i ← 1 to uri.options.minPoolSize) { addChannel }
   }
 
-  def connected(connection: ActorRef): Receive = {
-    case data: ByteString =>
-      connection ! Write(data)
-    case Received(data: ByteString) =>
-      listener ! data
-    case CommandFailed(w: Write) =>
-      // O/S buffer was full
-      listener ! "write failed"
+  def receive = {
+    case CloseConnection ⇒
+      for (chan ← channels) { chan ! Channel.CloseWithAck(ChannelClosed(chan)) }
+      context become closing
+  }
 
-    case Closed =>
-      /**
-       * The connection has been closed normally in response to a [[Close]] command.
-       */
-      context stop self
-    case Aborted =>
-      /**
-       * The connection has been aborted in response to an [[Abort]] command.
-       */
-      context stop self
-    case ConfirmedClosed =>
-      /**
-       * The connection has been half-closed by us and then half-close by the peer
-       * in response to a [[ConfirmedClose]] command.
-       */
-      context stop self
-    case PeerClosed =>
-      /**
-       * The peer has closed its writing half of the connection.
-       */
-      context stop self
-    case ErrorClosed(cause: String) =>
-      /**
-       * The connection has been closed due to an IO error.
-       */
-      context stop self
-    case _: ConnectionClosed =>
-      listener ! "connection closed"
-      context stop self
+  def closing : Receive = {
+    case OpenChannel ⇒
+      log.warning("Ignoring OpenChannel command while closing connection")
+    case ChannelClosed(channel : ActorRef) ⇒
+      channels.remove(channel)
+      if (channels.isEmpty)
+        context.stop(self)
+  }
+
+  def identifyReplicaSet = {
+
+  }
+
+  def addChannel = {
+
   }
 }

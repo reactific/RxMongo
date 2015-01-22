@@ -148,10 +148,14 @@ package object bson {
 
   }
 
-  implicit class ByteInteratorPimps(itr : ByteIterator) {
+  // Use Mongo's maximum doc size to ensure that we're having sane reading of length fields and we don't OOM
+  // by trying to allocate all memory.
+
+  final val maxDocSize = 16 * 1024 * 1024
+  implicit class ByteIteratorPimps(itr : ByteIterator) {
 
     def getCStr : String = {
-      val s = itr.clone.takeWhile { p ⇒ p != 0 }
+      val s = itr.clone().takeWhile { p ⇒ p != 0 }
       itr.drop(s.len + 1)
       val buf = Array.ofDim[Byte](s.len)
       s.copyToArray(buf)
@@ -160,10 +164,10 @@ package object bson {
 
     def getStr : String = {
       val len = itr.getInt - 1
-      require(len < 16 * 1024 * 1024)
+      require(len < 16 * 1024 * 1024, s"Maximum string size is $maxDocSize bytes")
       val buf = Array.ofDim[Byte](len)
       itr.getBytes(buf)
-      require(itr.getByte == 0.toByte)
+      require(itr.getByte == 0.toByte, "Failed to read terminating null in String")
       new String(buf, utf8)
     }
 
@@ -176,6 +180,7 @@ package object bson {
     def getObj : BSONObject = {
       val save = itr.clone()
       val len = itr.getInt
+      require(len < 16 * 1024 * 1024, s"Maximum object size is $maxDocSize bytes")
       itr.drop(len)
       val buffer = save.slice(0, len + 4).toByteString
       new BSONObject(buffer)

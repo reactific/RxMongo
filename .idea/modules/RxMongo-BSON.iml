@@ -20,7 +20,6 @@
     <orderEntry type="library" scope="TEST" name="SBT: ch.qos.logback:logback-classic:1.1.2:jar" level="project" />
     <orderEntry type="library" scope="TEST" name="SBT: ch.qos.logback:logback-core:1.1.2:jar" level="project" />
     <orderEntry type="library" name="SBT: com.typesafe:config:1.2.1:jar" level="project" />
-    <orderEntry type="library" name="SBT: com.typesafe.akka:akka-actor_2.11:2.3.8:jar" level="project" />
     <orderEntry type="library" name="SBT: org.clapper:grizzled-slf4j_2.11:1.0.2:jar" level="project" />
     <orderEntry type="library" name="SBT: org.scala-lang:scala-library:2.11.4:jar" level="project" />
     <orderEntry type="library" scope="TEST" name="SBT: org.scala-lang:scala-reflect:2.11.4:jar" level="project" />
@@ -33,5 +32,6 @@
     <orderEntry type="library" scope="TEST" name="SBT: org.specs2:specs2-common_2.11:2.3.11:jar" level="project" />
     <orderEntry type="library" scope="TEST" name="SBT: org.specs2:specs2-core_2.11:2.3.11:jar" level="project" />
     <orderEntry type="library" scope="TEST" name="SBT: org.specs2:specs2-matcher_2.11:2.3.11:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.typesafe.akka:akka-actor_2.11:2.3.9:jar" level="project" />
   </component>
 </module>
