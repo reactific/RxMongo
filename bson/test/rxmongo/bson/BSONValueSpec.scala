@@ -75,7 +75,6 @@ class BSONValueSpec extends Specification {
       val (key, value) = itr.next()
       key must beEqualTo("double")
       value.value must beEqualTo(data)
-      BSONDouble.unapply(value.asInstanceOf[BSONDouble]) must beEqualTo(data)
     }
 
     "interpret string correctly" in {

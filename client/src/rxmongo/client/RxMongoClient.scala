@@ -24,7 +24,7 @@ package rxmongo.client
 
 import com.typesafe.config.Config
 
-/** Primary Interface To RxMongo
+/** Primary Application Interface To RxMongo
   *
   * Each RxMongoClient instance provides a separate interface to MongoDB. It can manage connections to multiple
   * replica sets and coordinate the activity between them. Your application must instantiate an RxMongoClient in order
@@ -33,6 +33,6 @@ import com.typesafe.config.Config
   * useful in testing but is unlikely to be useful in an application unless you wish to keep replica set traffic very
   * separate.
   */
-case class RxMongoClient(config: Config) {
+case class RxMongoClient(config : Config) {
 
 }

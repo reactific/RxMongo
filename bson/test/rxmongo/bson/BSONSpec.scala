@@ -131,7 +131,7 @@ class BSONSpec extends Specification {
       len must beEqualTo(compact_len)
       if (Helper.suitableForTimingTests) {
         constructiontime must beLessThan(2000000000L) // < 2 seconds for 10,000 nodes
-        compactiontime must beLessThan(200000000L) // < 400ms for 5MB compaction
+        compactiontime must beLessThan(300000000L) // < 400ms for 5MB compaction
         success
       } else {
         skipped(": machine too busy for timing tests")
@@ -145,7 +145,7 @@ object Helper {
   val data = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
 
-  def makeObj: Builder = {
+  def makeObj : Builder = {
     val b = Builder()
     b.double("double", 42.0D).
       string("string", "fourty-two").
@@ -168,12 +168,12 @@ object Helper {
     b
   }
 
-  def makeObject: BSONObject = makeObj.bsonObj
+  def makeObject : BSONObject = makeObj.bsonObj
 
-  def makeObject(width: Int, depth: Int): BSONObject = {
+  def makeObject(width : Int, depth : Int) : BSONObject = {
     val bldr = makeObj
     if (depth > 0) {
-      val kids = for (i <- 1 to width) yield {
+      val kids = for (i ← 1 to width) yield {
         makeObject(width, depth - 1)
       }
       bldr.array("kids", kids.toSeq)
@@ -181,7 +181,7 @@ object Helper {
     bldr.bsonObj
   }
 
-  val suitableForTimingTests: Boolean = {
+  val suitableForTimingTests : Boolean = {
     val os = ManagementFactory.getOperatingSystemMXBean
     val processors = os.getAvailableProcessors
     val avg = os.getSystemLoadAverage
