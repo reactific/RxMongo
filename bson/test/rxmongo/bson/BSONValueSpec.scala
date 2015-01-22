@@ -26,7 +26,7 @@ import java.nio.ByteOrder
 import java.util.Date
 import java.util.regex.Pattern
 
-import akka.util.{ByteStringBuilder, ByteString}
+import akka.util.{ ByteStringBuilder, ByteString }
 import org.specs2.mutable.Specification
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
@@ -35,25 +35,25 @@ class BSONValueSpec extends Specification {
 
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
 
-  def cstring(bldr: ByteStringBuilder, str: String) : ByteStringBuilder = {
+  def cstring(bldr: ByteStringBuilder, str: String): ByteStringBuilder = {
     bldr.putBytes(str.getBytes(utf8)) // c string
     bldr.putByte(0) // termination of c string
     bldr
   }
 
-  def string(bldr: ByteStringBuilder, str: String) : ByteStringBuilder = {
+  def string(bldr: ByteStringBuilder, str: String): ByteStringBuilder = {
     val bytes = str.getBytes(utf8)
-    bldr.putInt(bytes.length+1)
+    bldr.putInt(bytes.length + 1)
     bldr.putBytes(bytes)
     bldr.putByte(0)
   }
 
-  def field(bldr: ByteStringBuilder, code: Byte, fieldName: String) : ByteStringBuilder = {
+  def field(bldr: ByteStringBuilder, code: Byte, fieldName: String): ByteStringBuilder = {
     bldr.putByte(code) // code
     cstring(bldr, fieldName)
   }
 
-  def preamble(len: Int, code: Byte, fieldName: String) : ByteStringBuilder = {
+  def preamble(len: Int, code: Byte, fieldName: String): ByteStringBuilder = {
     val bldr: ByteStringBuilder = ByteString.newBuilder
     bldr.putInt(len)
     field(bldr, code, fieldName)
@@ -63,9 +63,9 @@ class BSONValueSpec extends Specification {
 
     "interpret double correctly" in {
       val data = 42.0D
-      val bytes : ByteString = {
+      val bytes: ByteString = {
         val builder = preamble(17, 1, "double")
-        builder.putDouble(data)   // double value
+        builder.putDouble(data) // double value
         builder.putByte(0) // terminating null
         builder.result()
       }
@@ -75,11 +75,12 @@ class BSONValueSpec extends Specification {
       val (key, value) = itr.next()
       key must beEqualTo("double")
       value.value must beEqualTo(data)
+      BSONDouble.unapply(value.asInstanceOf[BSONDouble]) must beEqualTo(data)
     }
 
     "interpret string correctly" in {
       val data = "fourty-two"
-      val bytes : ByteString = {
+      val bytes: ByteString = {
         val builder = preamble(24, 2, "string")
         string(builder, data)
         builder.putByte(0) // terminating null
@@ -94,9 +95,9 @@ class BSONValueSpec extends Specification {
     }
 
     "interpret object correctly" in {
-      val bytes : ByteString = {
-        val builder = preamble(5+4+41+1, 3, "obj")
-        builder.putInt(8+8+8+15+1) // length of object
+      val bytes: ByteString = {
+        val builder = preamble(5 + 4 + 41 + 1, 3, "obj")
+        builder.putInt(8 + 8 + 8 + 15 + 1) // length of object
         field(builder, 1, "double")
         builder.putDouble(42.0D)
         field(builder, 2, "string")
@@ -112,13 +113,13 @@ class BSONValueSpec extends Specification {
       key must beEqualTo("obj")
       value.isInstanceOf[BSONObject] must beTrue
       val obj = value.asInstanceOf[BSONObject]
-      obj.value must beEqualTo(Map[String,BSONValue]("double" -> BSONDouble(42.0D), "string" -> BSONString("fourty-two")))
+      obj.value must beEqualTo(Map[String, BSONValue]("double" -> BSONDouble(42.0D), "string" -> BSONString("fourty-two")))
     }
 
     "interpret array correctly" in {
-      val bytes : ByteString = {
-        val builder = preamble(5+4+41+1, 4, "array")
-        builder.putInt(3+8+3+15+1) // length of object
+      val bytes: ByteString = {
+        val builder = preamble(5 + 4 + 41 + 1, 4, "array")
+        builder.putInt(3 + 8 + 3 + 15 + 1) // length of object
         field(builder, 1, "0")
         builder.putDouble(42.0D)
         field(builder, 2, "1")
@@ -139,12 +140,12 @@ class BSONValueSpec extends Specification {
 
     "interpret binary correctly" in {
       val data = "fourty-two"
-      val bytes : ByteString = {
+      val bytes: ByteString = {
         val builder = preamble(24, 5, "binary")
         val str = data.getBytes(utf8)
         builder.putInt(str.length) // length of string
         builder.putByte(0x80.toByte) // user defined code
-        builder.putBytes(str)   // data string
+        builder.putBytes(str) // data string
         builder.putByte(0) // terminating null
         builder.result()
       }
@@ -153,14 +154,14 @@ class BSONValueSpec extends Specification {
       itr.hasNext must beTrue
       val (key, value) = itr.next()
       key must beEqualTo("binary")
-      val (subtype,arr) = value.value
+      val (subtype, arr) = value.value
       subtype must beEqualTo(UserDefinedBinary)
       arr must beEqualTo(data.getBytes(utf8))
     }
 
     "interpret undefined correctly" in {
-      val bytes : ByteString = {
-        val builder = preamble(11+1, 6, "undefined")
+      val bytes: ByteString = {
+        val builder = preamble(11 + 1, 6, "undefined")
         builder.putByte(0) // terminating null
         builder.result()
       }
@@ -173,9 +174,9 @@ class BSONValueSpec extends Specification {
     }
 
     "interpret objectID correctly" in {
-      val data = Array[Byte](0,1,2,3,4,5,6,7,8,9,10,11)
-      val bytes : ByteString = {
-        val builder = preamble(10+12+1, 7, "objectID")
+      val data = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+      val bytes: ByteString = {
+        val builder = preamble(10 + 12 + 1, 7, "objectID")
         builder.putBytes(data)
         builder.putByte(0) // terminating null
         builder.result()
@@ -191,8 +192,8 @@ class BSONValueSpec extends Specification {
     }
 
     "interpret boolean correctly" in {
-      val bytes : ByteString = {
-        val builder = preamble(6+1+1, 8, "true")
+      val bytes: ByteString = {
+        val builder = preamble(6 + 1 + 1, 8, "true")
         builder.putByte(1)
         builder.putByte(0) // terminating null
         builder.result()
@@ -209,8 +210,8 @@ class BSONValueSpec extends Specification {
 
     "interpret date correctly" in {
       val data = System.currentTimeMillis()
-      val bytes : ByteString = {
-        val builder = preamble(6+8+1, 9, "date")
+      val bytes: ByteString = {
+        val builder = preamble(6 + 8 + 1, 9, "date")
         builder.putLong(data)
         builder.putByte(0) // terminating null
         builder.result()
@@ -226,8 +227,8 @@ class BSONValueSpec extends Specification {
     }
 
     "interpret null correctly" in {
-      val bytes : ByteString = {
-        val builder = preamble(6+1, 10, "null")
+      val bytes: ByteString = {
+        val builder = preamble(6 + 1, 10, "null")
         builder.putByte(0) // terminating null
         builder.result()
       }
@@ -240,8 +241,8 @@ class BSONValueSpec extends Specification {
     }
 
     "interpret regex correctly" in {
-      val bytes : ByteString = {
-        val builder = preamble(7+8+6+1, 11, "regex")
+      val bytes: ByteString = {
+        val builder = preamble(7 + 8 + 6 + 1, 11, "regex")
         cstring(builder, "pattern")
         cstring(builder, "imsux")
         builder.putByte(0) // terminating null
@@ -258,9 +259,9 @@ class BSONValueSpec extends Specification {
     }
 
     "interpret dbpointer correctly" in {
-      val data = Array[Byte](0,1,2,3,4,5,6,7,8,9,10,11)
-      val bytes : ByteString = {
-        val builder = preamble(11+13+12+1, 12, "dbpointer")
+      val data = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+      val bytes: ByteString = {
+        val builder = preamble(11 + 13 + 12 + 1, 12, "dbpointer")
         string(builder, "referent")
         builder.putBytes(data)
         builder.putByte(0) // terminating null
@@ -272,15 +273,15 @@ class BSONValueSpec extends Specification {
       val (key, value) = itr.next()
       key must beEqualTo("dbpointer")
       value.isInstanceOf[BSONDBPointer] must beTrue
-      val (referent,objid) = value.asInstanceOf[BSONDBPointer].value
+      val (referent, objid) = value.asInstanceOf[BSONDBPointer].value
       referent must beEqualTo("referent")
       objid must beEqualTo(data)
     }
 
     "interpret javascriptcode correctly" in {
       val data = "function(x) { return x + 1; };"
-      val bytes : ByteString = {
-        val builder = preamble(8+data.length+5+1, 13, "jscode")
+      val bytes: ByteString = {
+        val builder = preamble(8 + data.length + 5 + 1, 13, "jscode")
         string(builder, data)
         builder.putByte(0) // terminating null
         builder.result()
@@ -296,8 +297,8 @@ class BSONValueSpec extends Specification {
     }
 
     "interpret symbol correctly" in {
-      val bytes : ByteString = {
-        val builder = preamble(8+11+1, 14, "symbol")
+      val bytes: ByteString = {
+        val builder = preamble(8 + 11 + 1, 14, "symbol")
         string(builder, "symbol")
         builder.putByte(0) // terminating null
         builder.result()
@@ -314,11 +315,11 @@ class BSONValueSpec extends Specification {
 
     "interpret scopedjscode correctly" in {
       val code = "function(x) { return x + 1; };"
-      val bytes : ByteString = {
-        val builder = preamble(14+4+code.length+5+4+40+1, 15, "scopedjscode")
-        builder.putInt(code.length+5+4+40)
+      val bytes: ByteString = {
+        val builder = preamble(14 + 4 + code.length + 5 + 4 + 40 + 1, 15, "scopedjscode")
+        builder.putInt(code.length + 5 + 4 + 40)
         string(builder, code)
-        builder.putInt(8+8+8+15+1) // length of object
+        builder.putInt(8 + 8 + 8 + 15 + 1) // length of object
         field(builder, 1, "double")
         builder.putDouble(42.0D)
         field(builder, 2, "string")
@@ -333,15 +334,15 @@ class BSONValueSpec extends Specification {
       val (key, value) = itr.next()
       key must beEqualTo("scopedjscode")
       value.isInstanceOf[BSONScopedJsCode] must beTrue
-      val (js,obj) = value.asInstanceOf[BSONScopedJsCode].value
+      val (js, obj) = value.asInstanceOf[BSONScopedJsCode].value
       js must beEqualTo(code)
       obj.value must beEqualTo(Map("double" -> BSONDouble(42.0D), "string" -> BSONString("fourty-two")))
     }
 
     "interpret integer correctly" in {
       val data = 42
-      val bytes : ByteString = {
-        val builder = preamble(5+4+1, 16, "int")
+      val bytes: ByteString = {
+        val builder = preamble(5 + 4 + 1, 16, "int")
         builder.putInt(data)
         builder.putByte(0) // terminating null
         builder.result()
@@ -358,8 +359,8 @@ class BSONValueSpec extends Specification {
 
     "interpret timestamp correctly" in {
       val data = System.currentTimeMillis()
-      val bytes : ByteString = {
-        val builder = preamble(11+8+1, 17, "timestamp")
+      val bytes: ByteString = {
+        val builder = preamble(11 + 8 + 1, 17, "timestamp")
         builder.putLong(data)
         builder.putByte(0) // terminating null
         builder.result()
@@ -376,8 +377,8 @@ class BSONValueSpec extends Specification {
 
     "interpret long correctly" in {
       val data = 42L
-      val bytes : ByteString = {
-        val builder = preamble(6+8+1, 18, "long")
+      val bytes: ByteString = {
+        val builder = preamble(6 + 8 + 1, 18, "long")
         builder.putLong(data)
         builder.putByte(0) // terminating null
         builder.result()

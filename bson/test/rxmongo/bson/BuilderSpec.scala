@@ -24,36 +24,37 @@ package rxmongo.bson
 
 import java.nio.ByteOrder
 
-import akka.util.{ByteStringBuilder, ByteString}
+import akka.util.{ ByteStringBuilder, ByteString }
 import org.specs2.mutable.Specification
 
-/** Title Of Thing.
-  *
-  * Description of thing
-  */
+/**
+ * Title Of Thing.
+ *
+ * Description of thing
+ */
 class BuilderSpec extends Specification {
 
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
 
-  def cstring(bldr: ByteStringBuilder, str: String) : ByteStringBuilder = {
+  def cstring(bldr: ByteStringBuilder, str: String): ByteStringBuilder = {
     bldr.putBytes(str.getBytes(utf8)) // c string
     bldr.putByte(0) // termination of c string
     bldr
   }
 
-  def string(bldr: ByteStringBuilder, str: String) : ByteStringBuilder = {
+  def string(bldr: ByteStringBuilder, str: String): ByteStringBuilder = {
     val bytes = str.getBytes(utf8)
-    bldr.putInt(bytes.length+1)
+    bldr.putInt(bytes.length + 1)
     bldr.putBytes(bytes)
     bldr.putByte(0)
   }
 
-  def field(bldr: ByteStringBuilder, code: Byte, fieldName: String) : ByteStringBuilder = {
+  def field(bldr: ByteStringBuilder, code: Byte, fieldName: String): ByteStringBuilder = {
     bldr.putByte(code) // code
     cstring(bldr, fieldName)
   }
 
-  def preamble(len: Int, code: Byte, fieldName: String) : ByteStringBuilder = {
+  def preamble(len: Int, code: Byte, fieldName: String): ByteStringBuilder = {
     val bldr: ByteStringBuilder = ByteString.newBuilder
     bldr.putInt(len)
     field(bldr, code, fieldName)
@@ -224,7 +225,7 @@ class BuilderSpec extends Specification {
         builder.result()
       }
       val builder = Builder()
-      builder.regex("regex","pattern","ilmsux")
+      builder.regex("regex", "pattern", "ilmsux")
       builder.result must beEqualTo(expected)
     }
 
@@ -238,14 +239,14 @@ class BuilderSpec extends Specification {
         builder.result()
       }
       val builder = Builder()
-      builder.dbPointer("dbpointer","referent", data)
+      builder.dbPointer("dbpointer", "referent", data)
       builder.result must beEqualTo(expected)
     }
 
     "build jsCode correctly" in {
       val code = "function(x) { return 0; };"
       val expected: ByteString = {
-        val builder = preamble(code.length+5+8+1, 13, "jscode")
+        val builder = preamble(code.length + 5 + 8 + 1, 13, "jscode")
         string(builder, code)
         builder.putByte(0)
         builder.result()
@@ -258,7 +259,7 @@ class BuilderSpec extends Specification {
     "build symbol correctly" in {
       val symbol = "symbol"
       val expected: ByteString = {
-        val builder = preamble(symbol.length+5+8+1, 14, "symbol")
+        val builder = preamble(symbol.length + 5 + 8 + 1, 14, "symbol")
         string(builder, symbol)
         builder.putByte(0)
         builder.result()
@@ -271,8 +272,8 @@ class BuilderSpec extends Specification {
     "build scopedJsCode correctly" in {
       val code = "function(x) { return 0; };"
       val expected: ByteString = {
-        val builder = preamble(48+code.length+5+14+1, 15, "scopedJsCode")
-        builder.putInt(44+code.length+5)
+        val builder = preamble(48 + code.length + 5 + 14 + 1, 15, "scopedJsCode")
+        builder.putInt(44 + code.length + 5)
         string(builder, code)
         builder.putInt(40)
         builder.putByte(2) // string code
@@ -300,7 +301,7 @@ class BuilderSpec extends Specification {
     "build integer correctly" in {
       val data = 42
       val expected: ByteString = {
-        val builder = preamble(5+9, 16, "integer")
+        val builder = preamble(5 + 9, 16, "integer")
         builder.putInt(data)
         builder.putByte(0)
         builder.result()
@@ -313,7 +314,7 @@ class BuilderSpec extends Specification {
     "build timestamp correctly" in {
       val data = System.currentTimeMillis()
       val expected: ByteString = {
-        val builder = preamble(9+11, 17, "timestamp")
+        val builder = preamble(9 + 11, 17, "timestamp")
         builder.putLong(data)
         builder.putByte(0)
         builder.result()
@@ -326,7 +327,7 @@ class BuilderSpec extends Specification {
     "build long correctly" in {
       val data = 42L
       val expected: ByteString = {
-        val builder = preamble(9+6, 18, "long")
+        val builder = preamble(9 + 6, 18, "long")
         builder.putLong(data)
         builder.putByte(0)
         builder.result()

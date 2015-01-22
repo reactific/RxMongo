@@ -26,73 +26,73 @@ import java.nio.ByteOrder
 import java.util.Date
 import java.util.regex.Pattern
 
-import akka.util.{ByteIterator, ByteString}
+import akka.util.{ ByteIterator, ByteString }
 
 import scala.util.matching.Regex
 
 trait BSONValue {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
   private[bson] val buffer: ByteString
-  def value : Any
+  def value: Any
 
-  protected def getCStr(itr: ByteIterator) : String = {
+  protected def getCStr(itr: ByteIterator): String = {
     val s = itr.clone.takeWhile { p => p != 0 }
     itr.drop(s.len + 1)
     val buf = Array.ofDim[Byte](s.len)
     s.copyToArray(buf)
     new String(buf, utf8)
   }
-  protected def getStr(itr: ByteIterator) : String = {
+  protected def getStr(itr: ByteIterator): String = {
     val len = itr.getInt - 1
-    require(len < 16*1024*1024)
+    require(len < 16 * 1024 * 1024)
     val buf = Array.ofDim[Byte](len)
     itr.getBytes(buf)
     require(itr.getByte == 0.toByte)
     new String(buf, utf8)
   }
 
-  protected def getBytes(itr: ByteIterator, len: Int) : Array[Byte] = {
+  protected def getBytes(itr: ByteIterator, len: Int): Array[Byte] = {
     val res = Array.ofDim[Byte](len)
     itr.copyToArray(res)
     res
   }
 
-  protected def getObj(itr: ByteIterator) : BSONObject = {
+  protected def getObj(itr: ByteIterator): BSONObject = {
     val save = itr.clone()
     val len = itr.getInt
     itr.drop(len)
-    val buffer = save.slice(0, len+4).toByteString
+    val buffer = save.slice(0, len + 4).toByteString
     new BSONObject(buffer)
   }
 
-  def code : TypeCode = TypeCode(this)
+  def code: TypeCode = TypeCode(this)
 
-  def length : Int = buffer.length
+  def length: Int = buffer.length
 }
 
 trait BSONDocument extends BSONValue {
 
-  case class DocumentIterator private[bson] (itr: ByteIterator) extends Iterator[(String,BSONValue)] {
+  case class DocumentIterator private[bson] (itr: ByteIterator) extends Iterator[(String, BSONValue)] {
     private def getKey: String = { getCStr(itr) }
 
-    private def skipLength : Int = {
+    private def skipLength: Int = {
       val len = itr.getInt
       itr.drop(len)
       len + 4
     }
 
-    private def skipCStr : Int = {
+    private def skipCStr: Int = {
       var count = 0
-      itr.dropWhile { ch => count +=1 ; ch != 0 }
+      itr.dropWhile { ch => count += 1; ch != 0 }
       itr.drop(1)
       count
     }
 
-    private def skipLong : Int = { itr.drop(8) ; 8 }
-    private def skipDouble : Int = skipLong
-    private def skipInt : Int = { itr.drop(4) ; 4 }
-    private def skipObjId : Int = { itr.drop(12) ; 12 }
-    private def skipByte : Int = { itr.drop(1); 1 }
+    private def skipLong: Int = { itr.drop(8); 8 }
+    private def skipDouble: Int = skipLong
+    private def skipInt: Int = { itr.drop(4); 4 }
+    private def skipObjId: Int = { itr.drop(12); 12 }
+    private def skipByte: Int = { itr.drop(1); 1 }
 
     def hasNext: Boolean = itr.hasNext
     def next(): (String, BSONValue) = {
@@ -108,21 +108,21 @@ trait BSONDocument extends BSONValue {
           case DoubleCode =>
             key -> BSONDouble(save.slice(0, skipDouble).toByteString)
           case StringCode =>
-            key -> BSONString(save.slice(0,skipLength).toByteString)
+            key -> BSONString(save.slice(0, skipLength).toByteString)
           case ObjectCode =>
-            key -> BSONObject(save.slice(0,skipLength).toByteString)
-          case ArrayCode  =>
-            key -> BSONArray(save.slice(0,skipLength).toByteString)
+            key -> BSONObject(save.slice(0, skipLength).toByteString)
+          case ArrayCode =>
+            key -> BSONArray(save.slice(0, skipLength).toByteString)
           case BinaryCode =>
             val len = skipLength + 1
             itr.drop(1)
-            key -> BSONBinary(save.slice(0,len).toByteString)
+            key -> BSONBinary(save.slice(0, len).toByteString)
           case ObjectIDCode =>
-            key -> BSONObjectID(save.slice(0,skipObjId).toByteString)
+            key -> BSONObjectID(save.slice(0, skipObjId).toByteString)
           case BooleanCode =>
-            key -> BSONBoolean(save.slice(0,skipByte).toByteString)
+            key -> BSONBoolean(save.slice(0, skipByte).toByteString)
           case DateCode =>
-            key -> BSONDate(save.slice(0,skipLong).toByteString)
+            key -> BSONDate(save.slice(0, skipLong).toByteString)
           case NullCode =>
             key -> BSONNull(ByteString.empty)
           case RegexCode =>
@@ -146,21 +146,21 @@ trait BSONDocument extends BSONValue {
     }
   }
 
-  def iterator : Iterator[(String,BSONValue)] = {
+  def iterator: Iterator[(String, BSONValue)] = {
     val itr = buffer.iterator
     val length = itr.getInt
-    DocumentIterator(itr.slice(0,length-1))
+    DocumentIterator(itr.slice(0, length - 1))
   }
 
-  def valueIterator : Iterator[BSONValue] = {
-    iterator.map { case (key,value) => value }
+  def valueIterator: Iterator[BSONValue] = {
+    iterator.map { case (key, value) => value }
   }
 
-  def compact : BSONDocument
+  def compact: BSONDocument
 }
 
 case class BSONDouble private[bson] (buffer: ByteString) extends BSONValue {
-  def value : Double = { buffer.iterator.getDouble }
+  def value: Double = { buffer.iterator.getDouble }
 }
 
 object BSONDouble {
@@ -172,7 +172,7 @@ object BSONDouble {
 }
 
 case class BSONString private[bson] (buffer: ByteString) extends BSONValue {
-  def value : String = { getStr(buffer.iterator) }
+  def value: String = { getStr(buffer.iterator) }
 }
 
 object BSONString {
@@ -185,19 +185,19 @@ object BSONString {
 
 case class BSONObject private[bson] (buffer: ByteString) extends BSONDocument {
 
-  def toMap : Map[String,BSONValue] = iterator.toMap
+  def toMap: Map[String, BSONValue] = iterator.toMap
 
-  def value : Map[String,BSONValue] = iterator.toMap
+  def value: Map[String, BSONValue] = iterator.toMap
 
-  def compact : BSONObject = BSONObject(buffer.compact)
+  def compact: BSONObject = BSONObject(buffer.compact)
 }
 
 object BSONObject {
 
-  def apply(data: (String,BSONValue)*) : BSONObject = from(data.toSeq)
-  def apply(data: Map[String,BSONValue]) : BSONObject = from(data.toSeq)
+  def apply(data: (String, BSONValue)*): BSONObject = from(data.toSeq)
+  def apply(data: Map[String, BSONValue]): BSONObject = from(data.toSeq)
 
-  def from(data: Seq[(String, BSONValue)]) : BSONObject = {
+  def from(data: Seq[(String, BSONValue)]): BSONObject = {
     val bldr = Builder()
     data.foreach { case (key, value) => bldr.value(key, value) }
     new BSONObject(bldr.result)
@@ -206,12 +206,12 @@ object BSONObject {
 }
 
 case class BSONArray private[bson] (buffer: ByteString) extends BSONDocument {
-  def value : Iterator[BSONValue] = valueIterator
-  def compact : BSONArray = BSONArray(buffer.compact)
+  def value: Iterator[BSONValue] = valueIterator
+  def compact: BSONArray = BSONArray(buffer.compact)
 }
 
 object BSONArray {
-  def apply(data: Iterable[BSONValue]) : BSONArray = {
+  def apply(data: Iterable[BSONValue]): BSONArray = {
     val bldr = Builder()
     bldr.array(data)
     new BSONArray(bldr.buffer.result())
@@ -219,7 +219,7 @@ object BSONArray {
 }
 
 case class BSONBinary private[bson] (buffer: ByteString) extends BSONValue {
-  def value : (BinarySubtype, Array[Byte]) = {
+  def value: (BinarySubtype, Array[Byte]) = {
     val itr = buffer.iterator
     val len = itr.getInt
     val subtype = itr.getByte
@@ -227,93 +227,94 @@ case class BSONBinary private[bson] (buffer: ByteString) extends BSONValue {
     BinarySubtype(subtype) -> result
   }
 
-  def subtype : BinarySubtype = { BinarySubtype(buffer.iterator.drop(4).getByte) }
+  def subtype: BinarySubtype = { BinarySubtype(buffer.iterator.drop(4).getByte) }
 }
 
 object BSONBinary {
-  def apply(array: Array[Byte], subtype: BinarySubtype) : BSONBinary = {
+  def apply(array: Array[Byte], subtype: BinarySubtype): BSONBinary = {
     val bldr = Builder()
     bldr.binary(array, subtype)
-    new BSONBinary( bldr.buffer.result() )
+    new BSONBinary(bldr.buffer.result())
   }
 }
 
-case class BSONUndefined private[bson](buffer: ByteString) extends BSONValue {
-  def value : Unit = {}
+case class BSONUndefined private[bson] (buffer: ByteString) extends BSONValue {
+  def value: Unit = {}
 }
 
 object BSONUndefined {
-  def apply() : BSONUndefined = new BSONUndefined(ByteString.empty)
+  def apply(): BSONUndefined = new BSONUndefined(ByteString.empty)
 }
 
-case class BSONObjectID private[bson](buffer: ByteString) extends BSONValue {
-  def value : Array[Byte] = {
+case class BSONObjectID private[bson] (buffer: ByteString) extends BSONValue {
+  def value: Array[Byte] = {
     val itr = buffer.iterator
     getBytes(itr, 12)
   }
 }
 
 object BSONObjectID {
-  def apply(bytes: Array[Byte]) : BSONObjectID = {
+  def apply(bytes: Array[Byte]): BSONObjectID = {
     val bldr = Builder()
     bldr.objectID(bytes)
     new BSONObjectID(bldr.buffer.result)
   }
 }
 
-case class BSONBoolean private[bson](buffer: ByteString) extends BSONValue {
-  def value : Boolean = {
+case class BSONBoolean private[bson] (buffer: ByteString) extends BSONValue {
+  def value: Boolean = {
     if (buffer.iterator.getByte == 0) false else true
   }
 }
 
 object BSONBoolean {
-  def apply(b: Boolean) : BSONBoolean = {
+  def apply(b: Boolean): BSONBoolean = {
     val bldr = Builder()
     bldr.boolean(b)
     new BSONBoolean(bldr.buffer.result)
   }
 }
 
-case class BSONDate private[bson](buffer: ByteString) extends BSONValue {
-  def value : Long = {
+case class BSONDate private[bson] (buffer: ByteString) extends BSONValue {
+  def value: Long = {
     buffer.iterator.getLong
   }
-  def toDate : Date = { new Date( buffer.iterator.getLong ) }
+  def toDate: Date = { new Date(buffer.iterator.getLong) }
 }
 
 object BSONDate {
-  def apply(d: Long) : BSONDate = {
+  def apply(d: Long): BSONDate = {
     val buffer = ByteString.newBuilder
     buffer.putLong(d)(ByteOrder.LITTLE_ENDIAN)
     new BSONDate(buffer.result())
   }
-  def apply(d: Date) : BSONDate = apply(d.getTime)
+  def apply(d: Date): BSONDate = apply(d.getTime)
 }
 
-case class BSONNull private[bson](buffer: ByteString) extends BSONValue {
-  def value : Unit = {}
+case class BSONNull private[bson] (buffer: ByteString) extends BSONValue {
+  def value: Unit = {}
 }
 
 object BSONNull {
-  def apply() : BSONNull = { new BSONNull(ByteString.empty) }
+  def apply(): BSONNull = { new BSONNull(ByteString.empty) }
 }
 
-case class BSONRegex private[bson](buffer: ByteString) extends BSONValue {
-  def value : Regex = {
+case class BSONRegex private[bson] (buffer: ByteString) extends BSONValue {
+  def value: Regex = {
     val itr = buffer.iterator
     val pattern = getCStr(itr)
     val options = getCStr(itr)
     val regex_options = {
-      options.map { case ch: Char =>
-        ch match {
-          case 'i' => "i"
-          case 'l' => ""
-          case 'm' => "m"
-          case 's' => "s"
-          case 'u' => "U"
-          case 'x' => "x"
-        }
+      options.map {
+        case ch: Char =>
+          ch match {
+            case 'i' => "i"
+            case 'l' => ""
+            case 'm' => "m"
+            case 's' => "s"
+            case 'u' => "U"
+            case 'x' => "x"
+          }
       }
     }.mkString
     new Regex("(?" + regex_options + ")" + pattern)
@@ -321,7 +322,7 @@ case class BSONRegex private[bson](buffer: ByteString) extends BSONValue {
 }
 
 object BSONRegex {
-  def apply(r: Regex) : BSONRegex = {
+  def apply(r: Regex): BSONRegex = {
     val pattern: String = r.pattern.pattern()
     val options: String = {
       //
@@ -351,51 +352,51 @@ object BSONRegex {
   }
 }
 
-case class BSONDBPointer private[bson](buffer: ByteString) extends BSONValue {
-  def value : (String,Array[Byte]) = {
+case class BSONDBPointer private[bson] (buffer: ByteString) extends BSONValue {
+  def value: (String, Array[Byte]) = {
     val itr = buffer.iterator
     getStr(itr) -> getBytes(itr, 12)
   }
 }
 
 object BSONDBPointer {
-  def apply(referent: String, objectID: Array[Byte]) : BSONDBPointer = {
+  def apply(referent: String, objectID: Array[Byte]): BSONDBPointer = {
     val bldr = Builder()
     bldr.dbPointer(referent, objectID)
     new BSONDBPointer(bldr.buffer.result())
   }
 }
 
-case class BSONJsCode private[bson](buffer: ByteString) extends BSONValue {
-  def value : String = {
+case class BSONJsCode private[bson] (buffer: ByteString) extends BSONValue {
+  def value: String = {
     getStr(buffer.iterator)
   }
 }
 
 object BSONJsCode {
-  def apply(s: String) : BSONJsCode = {
+  def apply(s: String): BSONJsCode = {
     val buffer = ByteString.newBuilder
     Builder.putStr(buffer, s)
     new BSONJsCode(buffer.result)
   }
 }
 
-case class BSONSymbol private[bson](buffer: ByteString) extends BSONValue {
-  def value : String = {
+case class BSONSymbol private[bson] (buffer: ByteString) extends BSONValue {
+  def value: String = {
     getStr(buffer.iterator)
   }
 }
 
 object BSONSymbol {
-  def apply(s: String) : BSONSymbol = {
+  def apply(s: String): BSONSymbol = {
     val buffer = ByteString.newBuilder
     Builder.putStr(buffer, s)
     new BSONSymbol(buffer.result())
   }
 }
 
-case class BSONScopedJsCode private[bson](buffer: ByteString) extends BSONValue {
-  def value : (String, BSONObject) = {
+case class BSONScopedJsCode private[bson] (buffer: ByteString) extends BSONValue {
+  def value: (String, BSONObject) = {
     val itr = buffer.iterator
     itr.getInt
     val code = getStr(itr)
@@ -405,21 +406,21 @@ case class BSONScopedJsCode private[bson](buffer: ByteString) extends BSONValue 
 }
 
 object BSONScopedJsCode {
-  def apply(code: String, scope: BSONObject) : BSONScopedJsCode = {
+  def apply(code: String, scope: BSONObject): BSONScopedJsCode = {
     val bldr = Builder()
     bldr.scopedJsCode(code, scope)
     new BSONScopedJsCode(bldr.buffer.result())
   }
 }
 
-case class BSONInteger private[bson](buffer: ByteString) extends BSONValue {
-  def value : Int = {
+case class BSONInteger private[bson] (buffer: ByteString) extends BSONValue {
+  def value: Int = {
     buffer.iterator.getInt
   }
 }
 
 object BSONInteger {
-  def apply(i: Int) : BSONInteger = {
+  def apply(i: Int): BSONInteger = {
     val buffer = ByteString.newBuilder
     buffer.putInt(i)(ByteOrder.LITTLE_ENDIAN)
     new BSONInteger(buffer.result())
@@ -427,28 +428,28 @@ object BSONInteger {
   }
 }
 
-case class BSONTimestamp private[bson](buffer: ByteString) extends BSONValue {
-  def value : Long = {
+case class BSONTimestamp private[bson] (buffer: ByteString) extends BSONValue {
+  def value: Long = {
     buffer.iterator.getLong
   }
 }
 
 object BSONTimestamp {
-  def apply(t: Long) : BSONTimestamp = {
+  def apply(t: Long): BSONTimestamp = {
     val buffer = ByteString.newBuilder
     buffer.putLong(t)(ByteOrder.LITTLE_ENDIAN)
     new BSONTimestamp(buffer.result())
   }
 }
 
-case class BSONLong private[bson](buffer: ByteString) extends BSONValue {
-  def value : Long = {
+case class BSONLong private[bson] (buffer: ByteString) extends BSONValue {
+  def value: Long = {
     buffer.iterator.getLong
   }
 }
 
 object BSONLong {
-  def apply(l: Long) : BSONLong = {
+  def apply(l: Long): BSONLong = {
     val buffer = ByteString.newBuilder
     buffer.putLong(l)(ByteOrder.LITTLE_ENDIAN)
     new BSONLong(buffer.result())

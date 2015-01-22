@@ -30,20 +30,20 @@ trait BinarySubtype {
 
 object BinarySubtype {
   case object GenericBinary extends { val code = 0.toByte } with BinarySubtype
-  case object FunctionBinary extends { val code = 1.toByte }  with BinarySubtype
-  case object DeprecatedGenericBinary extends { val code = 2.toByte }  with BinarySubtype
-  case object DeprecatedUUIDBinary extends { val code = 3.toByte }  with BinarySubtype
-  case object UUIDBinary extends { val code = 4.toByte }  with BinarySubtype
-  case object MD5SumBinary extends { val code = 5.toByte }  with BinarySubtype
-  case object UserDefinedBinary extends  { val code : Byte = -128 } with BinarySubtype
+  case object FunctionBinary extends { val code = 1.toByte } with BinarySubtype
+  case object DeprecatedGenericBinary extends { val code = 2.toByte } with BinarySubtype
+  case object DeprecatedUUIDBinary extends { val code = 3.toByte } with BinarySubtype
+  case object UUIDBinary extends { val code = 4.toByte } with BinarySubtype
+  case object MD5SumBinary extends { val code = 5.toByte } with BinarySubtype
+  case object UserDefinedBinary extends { val code: Byte = -128 } with BinarySubtype
 
   def apply(code: Byte) = code match {
-    case 0 => GenericBinary
-    case 1 => FunctionBinary
-    case 2 => DeprecatedGenericBinary
-    case 3 => DeprecatedUUIDBinary
-    case 4 => UUIDBinary
-    case 5 => MD5SumBinary
+    case 0    => GenericBinary
+    case 1    => FunctionBinary
+    case 2    => DeprecatedGenericBinary
+    case 3    => DeprecatedUUIDBinary
+    case 4    => UUIDBinary
+    case 5    => MD5SumBinary
     case -128 => UserDefinedBinary
     case _    => throw new NoSuchElementException(s"BinarySubtype($code)")
   }

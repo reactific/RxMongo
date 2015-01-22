@@ -12,6 +12,8 @@
             <option value="$PROJECT_DIR$/bson/project" />
             <option value="$PROJECT_DIR$/client" />
             <option value="$PROJECT_DIR$/client/project" />
+            <option value="$PROJECT_DIR$/driver" />
+            <option value="$PROJECT_DIR$/driver/project" />
             <option value="$PROJECT_DIR$/project" />
           </set>
         </option>

@@ -22,76 +22,138 @@
 
 package rxmongo
 
+import java.nio.ByteOrder
 import java.nio.charset.Charset
 
-/** The bson package object.
-  *
-  * This just contains values that are used throughout the bson package.
-  */
+import akka.util.{ ByteIterator, ByteStringBuilder }
+
+/**
+ * The bson package object.
+ *
+ * This just contains values that are used throughout the bson package.
+ */
 package object bson {
 
-  // Byte code identifiers from here: http://docs.mongodb.org/manual/reference/bson-types/
-  sealed trait TypeCode { val code : Byte }
+  // Everything in Mongo is Little Endian
+  implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
 
-  case object DoubleCode    extends { val code : Byte =  1 } with TypeCode
-  case object StringCode    extends { val code : Byte =  2 } with TypeCode
-  case object ObjectCode    extends { val code : Byte =  3 } with TypeCode
-  case object ArrayCode     extends { val code : Byte =  4 } with TypeCode
-  case object BinaryCode    extends { val code : Byte =  5 } with TypeCode
-  case object UndefinedCode extends { val code : Byte =  6 } with TypeCode   // Note: Value 6 is deprecated
-  case object ObjectIDCode  extends { val code : Byte =  7 } with TypeCode
-  case object BooleanCode   extends { val code : Byte =  8 } with TypeCode
-  case object DateCode      extends { val code : Byte =  9 } with TypeCode
-  case object NullCode      extends { val code : Byte = 10 } with TypeCode
-  case object RegexCode     extends { val code : Byte = 11 } with TypeCode
-  case object DBPointerCode extends { val code : Byte = 12 } with TypeCode  // Note: Value 12 is deprecated
-  case object JavaScriptCode extends{ val code : Byte = 13 } with TypeCode
-  case object SymbolCode    extends { val code : Byte = 14 } with TypeCode  // Note: Value 14 is deprecated
-  case object ScopedJSCode  extends { val code : Byte = 15 } with TypeCode
-  case object IntegerCode   extends { val code : Byte = 16 } with TypeCode
-  case object TimestampCode extends { val code : Byte = 17 } with TypeCode
-  case object LongCode      extends { val code : Byte = 18 } with TypeCode
-  case object MinKey        extends { val code : Byte = 255.toByte } with TypeCode
-  case object MaxKey        extends { val code : Byte = 127 } with TypeCode
+  // Byte code identifiers from here: http://docs.mongodb.org/manual/reference/bson-types/
+  sealed trait TypeCode { val code: Byte }
+
+  case object DoubleCode extends { val code: Byte = 1 } with TypeCode
+  case object StringCode extends { val code: Byte = 2 } with TypeCode
+  case object ObjectCode extends { val code: Byte = 3 } with TypeCode
+  case object ArrayCode extends { val code: Byte = 4 } with TypeCode
+  case object BinaryCode extends { val code: Byte = 5 } with TypeCode
+  case object UndefinedCode extends { val code: Byte = 6 } with TypeCode // Note: Value 6 is deprecated
+  case object ObjectIDCode extends { val code: Byte = 7 } with TypeCode
+  case object BooleanCode extends { val code: Byte = 8 } with TypeCode
+  case object DateCode extends { val code: Byte = 9 } with TypeCode
+  case object NullCode extends { val code: Byte = 10 } with TypeCode
+  case object RegexCode extends { val code: Byte = 11 } with TypeCode
+  case object DBPointerCode extends { val code: Byte = 12 } with TypeCode // Note: Value 12 is deprecated
+  case object JavaScriptCode extends { val code: Byte = 13 } with TypeCode
+  case object SymbolCode extends { val code: Byte = 14 } with TypeCode // Note: Value 14 is deprecated
+  case object ScopedJSCode extends { val code: Byte = 15 } with TypeCode
+  case object IntegerCode extends { val code: Byte = 16 } with TypeCode
+  case object TimestampCode extends { val code: Byte = 17 } with TypeCode
+  case object LongCode extends { val code: Byte = 18 } with TypeCode
+  case object MinKey extends { val code: Byte = 255.toByte } with TypeCode
+  case object MaxKey extends { val code: Byte = 127 } with TypeCode
 
   object TypeCode {
-    def apply(code: Byte) : TypeCode = {
+    def apply(code: Byte): TypeCode = {
       code match {
-        case 1 => DoubleCode
-        case 2 => StringCode
-        case 3 => ObjectCode
-        case 4 => ArrayCode
-        case 5 => BinaryCode
-        case 6 => UndefinedCode
-        case 7 => ObjectIDCode
-        case 8 => BooleanCode
-        case 9 => DateCode
-        case 10 => NullCode
-        case 11 => RegexCode
-        case 12 => DBPointerCode
-        case 13 => JavaScriptCode
-        case 14 => SymbolCode
-        case 15 => ScopedJSCode
-        case 16 => IntegerCode
-        case 17 => TimestampCode
-        case 18 => LongCode
-        case -1 => MinKey
+        case 1   => DoubleCode
+        case 2   => StringCode
+        case 3   => ObjectCode
+        case 4   => ArrayCode
+        case 5   => BinaryCode
+        case 6   => UndefinedCode
+        case 7   => ObjectIDCode
+        case 8   => BooleanCode
+        case 9   => DateCode
+        case 10  => NullCode
+        case 11  => RegexCode
+        case 12  => DBPointerCode
+        case 13  => JavaScriptCode
+        case 14  => SymbolCode
+        case 15  => ScopedJSCode
+        case 16  => IntegerCode
+        case 17  => TimestampCode
+        case 18  => LongCode
+        case -1  => MinKey
         case 127 => MaxKey
         case _ =>
           throw new NoSuchElementException(s"BSON TypeCode($code)")
       }
     }
-    def apply(v: BSONValue) : TypeCode = {
+    def apply(v: BSONValue): TypeCode = {
       v match {
         case x: BSONDouble => DoubleCode
         case x: BSONString => StringCode
         case x: BSONObject => ObjectCode
         case x: BSONArray  => ArrayCode
         case x: BSONBinary => BinaryCode
-        case _ => throw new NoSuchElementException(s"BSON TypeCode($v)")
+        case _             => throw new NoSuchElementException(s"BSON TypeCode($v)")
       }
     }
   }
 
   val utf8 = Charset.forName("UTF-8")
+
+  implicit class ByteStringBuilderPimps(bldr: ByteStringBuilder) {
+
+    def putCStr(s: String): ByteStringBuilder = {
+      val bytes = s.getBytes(utf8)
+      for (by <- bytes if by == 0) {
+        throw new IllegalArgumentException("UTF-8 encoding of BSON keys must not contain a 0 byte")
+      }
+      bldr.putBytes(bytes)
+      bldr.putByte(0)
+      bldr
+    }
+
+    def putStr(value: String): ByteStringBuilder = {
+      val bytes = value.getBytes(utf8)
+      val length = bytes.length + 1
+      bldr.putInt(bytes.length + 1)
+      bldr.putBytes(bytes)
+      bldr.putByte(0)
+      bldr
+    }
+
+    def putDoc(value: BSONDocument): ByteStringBuilder = {
+      bldr ++= value.buffer
+      bldr
+    }
+
+    def putDoc(value: Option[BSONDocument]): ByteStringBuilder = {
+      value match {
+        case Some(doc) =>
+          bldr ++= doc.buffer; bldr
+        case None => bldr
+      }
+    }
+
+    def putDocs(docs: Seq[BSONDocument]): ByteStringBuilder = {
+      for (doc <- docs) { bldr ++= doc.buffer }
+      bldr
+    }
+  }
+
+  implicit class ByteInteratorPimps(itr: ByteIterator) {
+
+    def getDoc: BSONDocument = {
+      val save = itr.clone()
+      val len = itr.getInt
+      itr.drop(len)
+      val buffer = save.slice(0, len + 4).toByteString
+      new BSONObject(buffer)
+    }
+
+    def getDocs(count: Int): Seq[BSONDocument] = {
+      for (x <- 1 to count) yield { getDoc }
+    }
+  }
 }

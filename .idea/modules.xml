@@ -12,6 +12,8 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/RxMongo-Client.iml" filepath="$PROJECT_DIR$/.idea/modules/RxMongo-Client.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/RxMongo-Client-build.iml" filepath="$PROJECT_DIR$/.idea/modules/RxMongo-Client-build.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/RxMongo-Client-build.iml" filepath="$PROJECT_DIR$/.idea/modules/RxMongo-Client-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/RxMongo-Driver.iml" filepath="$PROJECT_DIR$/.idea/modules/RxMongo-Driver.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/RxMongo-Driver-build.iml" filepath="$PROJECT_DIR$/.idea/modules/RxMongo-Driver-build.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/RxMongo-build.iml" filepath="$PROJECT_DIR$/.idea/modules/RxMongo-build.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/RxMongo-build.iml" filepath="$PROJECT_DIR$/.idea/modules/RxMongo-build.iml" />
     </modules>

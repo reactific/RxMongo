@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-import sbt._
-import sbt.Keys._
 import scala.language.postfixOps
 import com.typesafe.sbt.SbtScalariform._
 import sbtunidoc.{ Plugin => UnidocPlugin }
+
+import scalariform.formatter.preferences.AlignSingleLineCaseStatements.MaxArrowIndent
 
 object Docs {
 
@@ -36,20 +36,24 @@ object Docs {
   lazy val formattingPreferences = {
     import scalariform.formatter.preferences._
     FormattingPreferences().
-      setPreference(AlignParameters, true).
+      setPreference(AlignParameters, false).
       setPreference(AlignSingleLineCaseStatements, true).
       setPreference(CompactControlReadability, false).
       setPreference(CompactStringConcatenation, false).
-      setPreference(DoubleIndentClassDeclaration, true).
+      setPreference(DoubleIndentClassDeclaration, false).
       setPreference(FormatXml, true).
-      setPreference(IndentLocalDefs, false).
+      setPreference(IndentLocalDefs, true).
       setPreference(IndentPackageBlocks, true).
       setPreference(IndentSpaces, 2).
-      setPreference(MultilineScaladocCommentsStartOnFirstLine, false).
-      setPreference(PreserveSpaceBeforeArguments, false).
-      setPreference(PreserveDanglingCloseParenthesis, false).
-      setPreference(RewriteArrowSymbols, false).
-      setPreference(SpaceBeforeColon, false).
+      setPreference(IndentWithTabs, false).
+      setPreference(MaxArrowIndent, 4).
+      setPreference(MultilineScaladocCommentsStartOnFirstLine, true).
+      setPreference(PlaceScaladocAsterisksBeneathSecondAsterisk, true).
+      setPreference(PreserveSpaceBeforeArguments, true).
+      setPreference(PreserveDanglingCloseParenthesis, true).
+      setPreference(RewriteArrowSymbols, true).
+      setPreference(SpaceBeforeColon, true).
+      setPreference(SpaceInsideParentheses, false).
       setPreference(SpaceInsideBrackets, false).
       setPreference(SpacesWithinPatternBinders, true)
   }

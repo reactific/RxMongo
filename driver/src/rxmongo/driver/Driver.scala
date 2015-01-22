@@ -20,27 +20,8 @@
  * SOFTWARE.
  */
 
-import sbt._
-import scala.language.postfixOps
+package rxmongo.driver
 
-object Dependencies {
+class Driver {
 
-  val resolvers = Seq(
-    "Typesafe repository snapshots" at "http://repo.typesafe.com/typesafe/snapshots/",
-    "Typesafe repository releases" at "http://repo.typesafe.com/typesafe/releases/"
-  )
-
-  val akka_actor      = "com.typesafe.akka"   %% "akka-actor"                 % "2.3.8"
-  val akka_streams    = "com.typesafe.akka"   %% "akka-stream-experimental"   % "1.0-M2"
-  val grizzled_slf4j  = "org.clapper"         %% "grizzled-slf4j"             % "1.0.2"
-  val logback_classic = "ch.qos.logback"       % "logback-classic"            % "1.1.2"      % "test"
-  val specs           = "org.specs2"          %% "specs2-core"                % "2.3.11"     % "test"
-
-  val common = Seq(specs, grizzled_slf4j, logback_classic)
-
-  val bson = common ++ Seq( akka_actor )
-
-  val driver = common ++ Seq( akka_streams, akka_actor )
-
-  val client = common ++ Seq( akka_streams, akka_actor )
 }

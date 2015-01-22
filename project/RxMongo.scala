@@ -24,9 +24,47 @@ import sbt._
 import sbt.Keys._
 import scala.language.postfixOps
 
-object BuildInfo {
+object BuildSettings {
   val name = "RxMongo"
-  val version = "0.1.0-SNAPSHOT"
+  val rxmongo_version = "0.1.0-SNAPSHOT"
+
+  val filter = { (ms: Seq[(File, String)]) =>
+    ms filter {
+      case (file, path) =>
+        path != "logback.xml" && !path.startsWith("toignore") && !path.startsWith("samples")
+    }
+  }
+
+  val buildSettings: Seq[sbt.Def.Setting[_]] = Defaults.coreDefaultSettings ++
+    Seq(
+      organization := "org.rxmongo",
+      version := rxmongo_version,
+      scalaVersion := "2.11.4",
+      javaOptions in test ++= Seq("-Xmx512m", "-XX:MaxPermSize=512m"),
+      scalacOptions ++= Seq("-feature", "-unchecked", "-deprecation", "-target:jvm-1.7"),
+      scalacOptions in(Compile, doc) ++=
+        Seq("-feature", "-unchecked", "-deprecation", "-diagrams", "-implicits", "-skip-packages", "samples"),
+      scalacOptions in(Compile, doc) ++= Opts.doc.title("RxMongo API"),
+      scalacOptions in(Compile, doc) ++= Opts.doc.version(rxmongo_version),
+      sourceDirectories in Compile := Seq(baseDirectory.value / "src"),
+      sourceDirectories in Test := Seq(baseDirectory.value / "test"),
+      unmanagedSourceDirectories in Compile := Seq(baseDirectory.value / "src"),
+      unmanagedSourceDirectories in Test := Seq(baseDirectory.value / "test"),
+      scalaSource in Compile := baseDirectory.value / "src",
+      scalaSource in Test := baseDirectory.value / "test",
+      javaSource in Compile := baseDirectory.value / "src",
+      javaSource in Test := baseDirectory.value / "test",
+      resourceDirectory in Compile := baseDirectory.value / "src/resources",
+      resourceDirectory in Test := baseDirectory.value / "test/resources",
+      fork in Test := false,
+      parallelExecution in Test := false,
+      logBuffered in Test := false,
+      ivyScala := ivyScala.value map {_.copy(overrideScalaVersion = true)},
+      shellPrompt := ShellPrompt.buildShellPrompt,
+      mappings in(Compile, packageBin) ~= filter,
+      mappings in(Compile, packageSrc) ~= filter,
+      mappings in(Compile, packageDoc) ~= filter
+    ) ++ Publish.settings ++ Docs.settings
 }
 
 // Shell prompt which show the current project,
@@ -49,64 +87,40 @@ object ShellPrompt {
       {
         val currProject = Project.extract(state).currentProject.id
         "%s:%s:%s> ".format(
-          currProject, currBranch, BuildInfo.version)
+          currProject, currBranch, BuildSettings.rxmongo_version)
       }
   }
 }
 
 object RxMongo extends Build {
 
-  val filter = { (ms: Seq[(File, String)]) =>
-    ms filter {
-      case (file, path) =>
-        path != "logback.xml" && !path.startsWith("toignore") && !path.startsWith("samples")
-    }
-  }
-
-  val buildSettings : Seq[sbt.Def.Setting[_]] = Defaults.coreDefaultSettings ++ Seq(
-    organization := "org.rxmongo",
-    version := BuildInfo.version,
-    scalaVersion := "2.11.4",
-    javaOptions in test ++= Seq("-Xmx512m", "-XX:MaxPermSize=512m"),
-    scalacOptions ++= Seq("-feature", "-unchecked", "-deprecation", "-target:jvm-1.7"),
-    scalacOptions in (Compile, doc) ++= Seq("-feature", "-unchecked", "-deprecation", "-diagrams", "-implicits", "-skip-packages", "samples"),
-    scalacOptions in (Compile, doc) ++= Opts.doc.title("RxMongo API"),
-    scalacOptions in (Compile, doc) ++= Opts.doc.version(BuildInfo.version),
-    sourceDirectories in Compile := Seq(baseDirectory.value / "src"),
-    sourceDirectories in Test := Seq(baseDirectory.value / "test"),
-    unmanagedSourceDirectories in Compile := Seq(baseDirectory.value / "src"),
-    unmanagedSourceDirectories in Test := Seq(baseDirectory.value / "test"),
-    scalaSource in Compile := baseDirectory.value / "src",
-    scalaSource in Test := baseDirectory.value / "test",
-    javaSource in Compile := baseDirectory.value / "src",
-    javaSource in Test := baseDirectory.value / "test",
-    resourceDirectory in Compile := baseDirectory.value / "src/resources",
-    resourceDirectory in Test := baseDirectory.value / "test/resources",
-    fork in Test  := false,
-    parallelExecution in Test := false,
-    logBuffered in Test := false,
-    ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
-    shellPrompt := ShellPrompt.buildShellPrompt,
-    mappings in (Compile, packageBin) ~= filter,
-    mappings in (Compile, packageSrc) ~= filter,
-    mappings in (Compile, packageDoc) ~= filter)
+  import BuildSettings._
 
   lazy val RxMongo =
-    Project(BuildInfo.name, file("."),
-      settings = buildSettings ++ Publish.settings ++ Docs.settings ++ Seq(
-        libraryDependencies := Dependencies.client,
-        resolvers := Dependencies.resolvers)).
-      aggregate(bson, client)
+    Project(BuildSettings.name, file("."),
+      settings = buildSettings ++ Seq(
+        resolvers := Dependencies.resolvers,
+        libraryDependencies := Dependencies.client
+      )).
+      aggregate(bson, driver, client)
 
-  lazy val client = Project(s"${BuildInfo.name}-Client", file("./client"),
+  lazy val client = Project(s"${BuildSettings.name}-Client", file("./client"),
       settings = buildSettings ++ Seq(
         resolvers := Dependencies.resolvers,
         libraryDependencies ++= Dependencies.client
       )).
-      dependsOn(bson)
+      dependsOn(bson,driver)
 
-  lazy val bson = Project(s"${BuildInfo.name}-BSON", file("./bson"),
+  lazy val driver = Project(s"${BuildSettings.name}-Driver", file("./driver"),
     settings = buildSettings ++ Seq(
-      libraryDependencies ++= Dependencies.bson)
-    )
+      resolvers := Dependencies.resolvers,
+      libraryDependencies := Dependencies.driver
+    )).
+    dependsOn(bson)
+
+  lazy val bson = Project(s"${BuildSettings.name}-BSON", file("./bson"),
+    settings = buildSettings ++ Seq(
+      resolvers := Dependencies.resolvers,
+      libraryDependencies ++= Dependencies.bson
+    ))
 }
