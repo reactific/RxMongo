@@ -23,6 +23,7 @@
 package rxmongo.bson
 
 import java.lang.management.{ ManagementFactory }
+import java.util.Date
 
 import org.specs2.mutable.Specification
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
@@ -131,11 +132,45 @@ class BSONSpec extends Specification {
       len must beEqualTo(compact_len)
       if (Helper.suitableForTimingTests) {
         constructiontime must beLessThan(2000000000L) // < 2 seconds for 10,000 nodes
-        compactiontime must beLessThan(300000000L) // < 400ms for 5MB compaction
+        compactiontime must beLessThan(400000000L) // < 400ms for 5MB compaction
         success
       } else {
         skipped(": machine too busy for timing tests")
       }
+    }
+  }
+
+  "BSONObject" should {
+    "construct from a variety of Any values" in {
+      val date = new Date()
+      val regex = new Regex("(?imsux)pattern")
+      val map = Map("foo" -> 84, "bar" -> true, "roo" -> "fourty-two")
+      val b = BSONObject(
+        "double" -> 42.0D,
+        "string" -> "fourty-two",
+        "obj" -> Helper.anObject,
+        "array" -> Helper.anArray,
+        "map" -> map,
+        "binary" -> Helper.data,
+        "undefined" -> null,
+        "boolean" -> true,
+        "date" -> date,
+        "regex" -> regex,
+        "integer" -> 42,
+        "long" -> 42L
+      )
+      b.get("double") must beEqualTo(Some(BSONDouble(42.0D)))
+      b.get("string") must beEqualTo(Some(BSONString("fourty-two")))
+      b.get("obj") must beEqualTo(Some(Helper.anObject))
+      b.get("array") must beEqualTo(Some(Helper.anArrayBSON))
+      b.get("map") must beEqualTo(Some(BSONObject(map)))
+      b.get("binary") must beEqualTo(Some(BSONBinary(Helper.data, UserDefinedBinary)))
+      b.get("undefined") must beEqualTo(Some(BSONNull))
+      b.get("boolean") must beEqualTo(Some(BSONBoolean(value = true)))
+      b.get("date") must beEqualTo(Some(BSONDate(date)))
+      b.get("regex") must beEqualTo(Some(BSONRegex(regex)))
+      b.get("integer") must beEqualTo(Some(BSONInteger(42)))
+      b.get("long") must beEqualTo(Some(BSONLong(42L)))
     }
   }
 }
@@ -143,6 +178,9 @@ class BSONSpec extends Specification {
 object Helper {
 
   val data = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+  val anArray = Seq(42.0D, "fourty-two")
+  val anArraySeq = Seq(BSONDouble(42.0D), BSONString("fourty-two"))
+  val anArrayBSON : BSONArray = BSONArray(anArraySeq)
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
 
   def makeObj : Builder = {
@@ -150,7 +188,7 @@ object Helper {
     b.double("double", 42.0D).
       string("string", "fourty-two").
       obj("obj", anObject).
-      array("array", Seq(BSONDouble(42.0D), BSONString("fourty-two"))).
+      array("array", anArraySeq).
       binary("binary", data, UserDefinedBinary).
       undefined("undefined").
       objectID("objectid", data).

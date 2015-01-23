@@ -24,8 +24,11 @@ package rxmongo
 
 import java.nio.ByteOrder
 import java.nio.charset.Charset
+import java.util.regex.Pattern
 
 import akka.util.{ ByteIterator, ByteStringBuilder }
+
+import scala.util.matching.Regex
 
 /** The bson package object.
   *
@@ -33,65 +36,31 @@ import akka.util.{ ByteIterator, ByteStringBuilder }
   */
 package object bson {
 
+  case class RxMongoError(message : String, cause : Option[Throwable] = None) extends Exception {
+    override def getMessage = message
+    override def getCause = cause.orNull
+  }
+
   // Everything in Mongo is Little Endian
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
 
-  // Byte code identifiers from here: http://docs.mongodb.org/manual/reference/bson-types/
-  sealed trait TypeCode { val code : Byte }
-
-  case object DoubleCode extends { val code : Byte = 1 } with TypeCode
-  case object StringCode extends { val code : Byte = 2 } with TypeCode
-  case object ObjectCode extends { val code : Byte = 3 } with TypeCode
-  case object ArrayCode extends { val code : Byte = 4 } with TypeCode
-  case object BinaryCode extends { val code : Byte = 5 } with TypeCode
-  case object UndefinedCode extends { val code : Byte = 6 } with TypeCode // Note: Value 6 is deprecated
-  case object ObjectIDCode extends { val code : Byte = 7 } with TypeCode
-  case object BooleanCode extends { val code : Byte = 8 } with TypeCode
-  case object DateCode extends { val code : Byte = 9 } with TypeCode
-  case object NullCode extends { val code : Byte = 10 } with TypeCode
-  case object RegexCode extends { val code : Byte = 11 } with TypeCode
-  case object DBPointerCode extends { val code : Byte = 12 } with TypeCode // Note: Value 12 is deprecated
-  case object JavaScriptCode extends { val code : Byte = 13 } with TypeCode
-  case object SymbolCode extends { val code : Byte = 14 } with TypeCode // Note: Value 14 is deprecated
-  case object ScopedJSCode extends { val code : Byte = 15 } with TypeCode
-  case object IntegerCode extends { val code : Byte = 16 } with TypeCode
-  case object TimestampCode extends { val code : Byte = 17 } with TypeCode
-  case object LongCode extends { val code : Byte = 18 } with TypeCode
-  case object MinKey extends { val code : Byte = 255.toByte } with TypeCode
-  case object MaxKey extends { val code : Byte = 127 } with TypeCode
-
-  object TypeCode {
-    def apply(code : Byte) : TypeCode = {
-      code match {
-        case 1   ⇒ DoubleCode
-        case 2   ⇒ StringCode
-        case 3   ⇒ ObjectCode
-        case 4   ⇒ ArrayCode
-        case 5   ⇒ BinaryCode
-        case 6   ⇒ UndefinedCode
-        case 7   ⇒ ObjectIDCode
-        case 8   ⇒ BooleanCode
-        case 9   ⇒ DateCode
-        case 10  ⇒ NullCode
-        case 11  ⇒ RegexCode
-        case 12  ⇒ DBPointerCode
-        case 13  ⇒ JavaScriptCode
-        case 14  ⇒ SymbolCode
-        case 15  ⇒ ScopedJSCode
-        case 16  ⇒ IntegerCode
-        case 17  ⇒ TimestampCode
-        case 18  ⇒ LongCode
-        case -1  ⇒ MinKey
-        case 127 ⇒ MaxKey
-        case _ ⇒
-          throw new NoSuchElementException(s"BSON TypeCode($code)")
-      }
-    }
-    def apply(v : BSONValue) : TypeCode = v.code
-  }
-
   val utf8 = Charset.forName("UTF-8")
 
+  /** Maximum Document Size.
+    *
+    * Use Mongo's maximum doc size to ensure that we're having sane reading of length fields and we don't OOM
+    * by trying to allocate all memory.
+    * @see [[http://docs.mongodb.org/manual/reference/command/isMaster/#dbcmd.isMaster]]
+    *
+    */
+  final val maxDocSize = 16 * 1024 * 1024
+
+  /** Implicit Extensions to ByteStringBuilder
+    *
+    * This makes using a ByteStringBuilder with BSON easier by providing functions that build BSON data structures.
+    *
+    * @param bldr The builder we are extending
+    */
   implicit class ByteStringBuilderPimps(bldr : ByteStringBuilder) {
 
     def putCStr(s : String) : ByteStringBuilder = {
@@ -113,36 +82,74 @@ package object bson {
       bldr
     }
 
+    def putRegex(pattern : String, options : String) : ByteStringBuilder = {
+      require(options.matches("i?l?m?s?u?x?"), "Regex options allowed are: ilmsux")
+      putCStr(pattern)
+      putCStr(options)
+      bldr
+    }
+
+    def putRegex(r : Regex) : ByteStringBuilder = {
+      val pattern : String = r.pattern.pattern()
+      val options : String = {
+        //
+        // 'i' for case insensitive matching,
+        // 'l' to make \w, \W, etc. locale dependent,
+        // 'm' for multiline matching,
+        // 's' for dotall mode ('.' matches everything),
+        // and 'u' to make \w, \W, etc. match unicode.
+        // 'x' for verbose mode,
+        val flags = r.pattern.flags()
+        var result = ""
+        if ((flags & Pattern.CASE_INSENSITIVE) != 0)
+          result += "i"
+        if ((flags & Pattern.MULTILINE) != 0)
+          result += "m"
+        if ((flags & Pattern.DOTALL) != 0)
+          result += "s"
+        if ((flags & Pattern.UNICODE_CHARACTER_CLASS) != 0)
+          result += "u"
+        if ((flags & Pattern.COMMENTS) != 0)
+          result += "x"
+        result
+      }
+      putRegex(pattern, options)
+    }
+
     def putDoc(value : BSONDocument) : ByteStringBuilder = {
+      require(bldr.length + value.buffer.length <= maxDocSize, s"Document size exceeds maximum of $maxDocSize")
       bldr ++= value.buffer
       bldr
     }
 
-    def putObj(value : BSONObject) : ByteStringBuilder = putDoc(value)
-
     def putDoc(value : Option[BSONDocument]) : ByteStringBuilder = {
       value match {
-        case Some(doc) ⇒
-          bldr ++= doc.buffer; bldr
+        case Some(doc) ⇒ putDoc(doc)
         case None ⇒ bldr
       }
     }
 
-    def putObj(value : Option[BSONObject]) : ByteStringBuilder = putDoc(value)
-
-    def putDocs(docs : Seq[BSONDocument]) : ByteStringBuilder = {
-      for (doc ← docs) { bldr ++= doc.buffer }
+    def putDocs(values : Seq[BSONDocument]) : ByteStringBuilder = {
+      for (doc ← values) { putDoc(doc) }
       bldr
     }
 
-    def putObjs(objs : Seq[BSONObject]) : ByteStringBuilder = putDocs(objs)
+    def putObj(value : BSONObject) : ByteStringBuilder = putDoc(value)
+    def putObj(value : Option[BSONObject]) : ByteStringBuilder = putDoc(value)
+    def putObjs(value : Seq[BSONObject]) : ByteStringBuilder = putDocs(value)
+
+    def putArr(value : BSONArray) : ByteStringBuilder = putDoc(value)
+    def putArr(value : Option[BSONArray]) : ByteStringBuilder = putDoc(value)
+    def putArrs(value : Seq[BSONArray]) : ByteStringBuilder = putDocs(value)
 
   }
 
-  // Use Mongo's maximum doc size to ensure that we're having sane reading of length fields and we don't OOM
-  // by trying to allocate all memory.
-
-  final val maxDocSize = 16 * 1024 * 1024
+  /** Implicit Extensions To ByteIterator
+    *
+    * This makes it easier to use a ByteIterator with MongoDB. The extensions implement recognition of various
+    * data types that BSON encoding requires.
+    * @param itr The wrapped iterator
+    */
   implicit class ByteIteratorPimps(itr : ByteIterator) {
 
     def getCStr : String = {
@@ -155,7 +162,7 @@ package object bson {
 
     def getStr : String = {
       val len = itr.getInt - 1
-      require(len < 16 * 1024 * 1024, s"Maximum string size is $maxDocSize bytes")
+      require(len < maxDocSize, s"Maximum string size is $maxDocSize bytes")
       val buf = Array.ofDim[Byte](len)
       itr.getBytes(buf)
       require(itr.getByte == 0.toByte, "Failed to read terminating null in String")
@@ -171,7 +178,7 @@ package object bson {
     def getObj : BSONObject = {
       val save = itr.clone()
       val len = itr.getInt
-      require(len < 16 * 1024 * 1024, s"Maximum object size is $maxDocSize bytes")
+      require(len < maxDocSize, s"Maximum object size is $maxDocSize bytes")
       itr.drop(len)
       val buffer = save.slice(0, len + 4).toByteString
       new BSONObject(buffer)
@@ -179,6 +186,25 @@ package object bson {
 
     def getObjs(count : Int) : Seq[BSONObject] = {
       for (x ← 1 to count) yield { getObj }
+    }
+
+    def getRegex : Regex = {
+      val pattern = itr.getCStr
+      val options = itr.getCStr
+      val regex_options = {
+        options.map {
+          case ch : Char ⇒
+            ch match {
+              case 'i' ⇒ "i"
+              case 'l' ⇒ ""
+              case 'm' ⇒ "m"
+              case 's' ⇒ "s"
+              case 'u' ⇒ "U"
+              case 'x' ⇒ "x"
+            }
+        }
+      }.mkString
+      new Regex("(?" + regex_options + ")" + pattern)
     }
   }
 }

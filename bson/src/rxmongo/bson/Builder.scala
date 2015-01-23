@@ -23,8 +23,12 @@
 package rxmongo.bson
 
 import java.nio.ByteOrder
+import java.util.Date
 
 import akka.util.{ ByteString, ByteStringBuilder }
+import rxmongo.bson.BinarySubtype.UserDefinedBinary
+
+import scala.util.matching.Regex
 
 /** Builder for BSON Object
   *
@@ -73,6 +77,11 @@ case class Builder() {
     binary(blob, subtype)
   }
 
+  def binary(key : String, blob : ByteString, subtype : BinarySubtype) : Builder = {
+    putPrefix(BinaryCode, key)
+    binary(blob, subtype)
+  }
+
   def undefined(key : String) = {
     putPrefix(UndefinedCode, key)
   }
@@ -97,9 +106,15 @@ case class Builder() {
   }
 
   def regex(key : String, pattern : String, options : String = "") : Builder = {
-    require(options.matches("i?l?m?s?u?x?"), "Regex options allowed are: ilmsux")
     putPrefix(RegexCode, key)
-    regex(pattern, options)
+    buffer.putRegex(pattern, options)
+    this
+  }
+
+  def regex(key : String, regex : Regex) : Builder = {
+    putPrefix(RegexCode, key)
+    buffer.putRegex(regex)
+    this
   }
 
   def dbPointer(key : String, referent : String, id : Array[Byte]) : Builder = {
@@ -146,6 +161,47 @@ case class Builder() {
     this
   }
 
+  private[bson] def value(key : String, anyVal : Any) : Builder = {
+    anyVal match {
+      case BSONNull ⇒ putPrefix(NullCode, key)
+      case BSONUndefined ⇒ putPrefix(UndefinedCode, key)
+      case v : BSONValue ⇒
+        putPrefix(v.code, key); buffer ++= v.buffer
+      case i : Int     ⇒ integer(key, i)
+      case l : Long    ⇒ long(key, l)
+      case d : Double  ⇒ double(key, d)
+      case f : Float   ⇒ double(key, f)
+      case b : Boolean ⇒ boolean(key, b)
+      case s : Short   ⇒ integer(key, s)
+      case s : String  ⇒ string(key, s)
+      case d : Date    ⇒ utcDate(key, d.getTime)
+      case m : Map[String, Any] @unchecked ⇒ {
+        putPrefix(ObjectCode, key)
+        val docBuilder = Builder()
+        for ((key : String, any) ← m) {
+          docBuilder.value(key, any)
+        }
+        buffer ++= docBuilder.result
+      }
+      case b : ByteString ⇒ binary(key, b, UserDefinedBinary)
+      case r : Regex ⇒ regex(key, r)
+      case n : Unit ⇒ nil(key)
+      case null ⇒ nil(key)
+      case a : Array[Byte] ⇒ binary(key, a, UserDefinedBinary)
+      case i : Iterable[Any] ⇒ {
+        putPrefix(ArrayCode, key)
+        val docBuilder = Builder()
+        for ((xVal : Any, j : Int) ← i.zipWithIndex) {
+          docBuilder.value(j.toString, xVal)
+        }
+        buffer ++= docBuilder.result
+      }
+      case x : Any ⇒
+        throw RxMongoError(s"Unable to convert $x into a BSONValue")
+    }
+    this
+  }
+
   private[bson] def array(values : Iterable[BSONValue]) : Builder = {
     val array = ByteString.newBuilder
     values.zipWithIndex.foreach {
@@ -166,6 +222,14 @@ case class Builder() {
       putInt(blob.length).
       putByte(subtype.code).
       putBytes(blob)
+    this
+  }
+
+  private[bson] def binary(blob : ByteString, subtype : BinarySubtype) : Builder = {
+    buffer.
+      putInt(blob.length).
+      putByte(subtype.code).
+      append(blob)
     this
   }
 
@@ -190,12 +254,6 @@ case class Builder() {
     buffer.
       putStr(referent).
       putBytes(id)
-    this
-  }
-
-  private[bson] def regex(pattern : String, options : String) : Builder = {
-    putCStr(pattern)
-    putCStr(options)
     this
   }
 

@@ -24,10 +24,10 @@ package rxmongo.bson
 
 import java.nio.ByteOrder
 import java.util.Date
-import java.util.regex.Pattern
 
 import akka.util.{ ByteIterator, ByteString }
 
+import scala.collection.{ Map, MapLike }
 import scala.util.matching.Regex
 
 trait BSONValue {
@@ -94,7 +94,7 @@ trait BSONDocument extends BSONValue {
           case DateCode ⇒
             key -> BSONDate(save.slice(0, skipLong).toByteString)
           case NullCode ⇒
-            key -> BSONNull(ByteString.empty)
+            key -> BSONNull
           case RegexCode ⇒
             key -> BSONRegex(save.slice(0, skipCStr + skipCStr).toByteString)
           case JavaScriptCode ⇒
@@ -106,7 +106,7 @@ trait BSONDocument extends BSONValue {
           case TimestampCode ⇒
             key -> BSONTimestamp(save.slice(0, skipLong).toByteString)
           case UndefinedCode ⇒
-            key -> BSONUndefined(ByteString.empty)
+            key -> BSONUndefined
           case SymbolCode ⇒
             key -> BSONSymbol(save.slice(0, skipLength).toByteString)
           case x : TypeCode ⇒ throw new NoSuchElementException(s"Unrecognized: $x")
@@ -114,16 +114,6 @@ trait BSONDocument extends BSONValue {
       } else
         Iterator.empty.next()
     }
-  }
-
-  def iterator : Iterator[(String, BSONValue)] = {
-    val itr = buffer.iterator
-    val length = itr.getInt
-    DocumentIterator(itr.slice(0, length - 1))
-  }
-
-  def valueIterator : Iterator[BSONValue] = {
-    iterator.map { case (key, value) ⇒ value }
   }
 
   def compact : BSONDocument
@@ -155,11 +145,50 @@ object BSONString {
   }
 }
 
-case class BSONObject private[bson] (buffer : ByteString) extends BSONDocument {
+case class BSONObject private[bson] (buffer : ByteString)
+  extends BSONDocument with MapLike[String, BSONValue, Map[String, BSONValue]] with Map[String, BSONValue] {
+
+  def -(key : String) : BSONObject = ???
+
+  def +[B1 >: BSONValue](kv : (String, B1)) : BSONObject = {
+    val itr = buffer.iterator
+    val len = itr.getInt
+    val content = itr.slice(0, len - 1).toByteString
+    val bldr = Builder()
+    bldr.buffer ++= content
+    bldr.value(kv._1, kv._2.asInstanceOf[BSONValue])
+    new BSONObject(bldr.result)
+  }
+
+  def iterator : Iterator[(String, BSONValue)] = {
+    val itr = buffer.iterator
+    val length = itr.getInt
+    DocumentIterator(itr.slice(0, length - 1))
+  }
+
+  override def foreach[U](f : ((String, BSONValue)) ⇒ U) : Unit = {
+    iterator.foreach[U](f)
+  }
+
+  override def size : Int = {
+    // FIXME: This is horribly inefficient
+    iterator.size
+  }
+
+  def get(key : String) : Option[BSONValue] = {
+    // FIXME: This is horribly inefficient
+    toMap.get(key)
+  }
+
+  override def empty : BSONObject = BSONObject.empty
+
+  override def seq : Map[String, BSONValue] = iterator.toMap
 
   def code = ObjectCode
 
   def toMap : Map[String, BSONValue] = iterator.toMap
+
+  override def toSeq : Seq[(String, BSONValue)] = iterator.toSeq
 
   def value : Map[String, BSONValue] = iterator.toMap
 
@@ -168,21 +197,31 @@ case class BSONObject private[bson] (buffer : ByteString) extends BSONDocument {
 
 object BSONObject {
 
-  def apply(data : (String, BSONValue)*) : BSONObject = from(data.toSeq)
-  def apply(data : Map[String, BSONValue]) : BSONObject = from(data.toSeq)
+  object empty extends BSONObject(ByteString.empty)
 
-  def from(data : Seq[(String, BSONValue)]) : BSONObject = {
+  def apply(data : Map[String, Any]) : BSONObject = from(data.toSeq)
+  def apply(data : (String, Any)*) : BSONObject = from(data.toSeq)
+
+  def from(data : Seq[(String, Any)]) : BSONObject = {
     val bldr = Builder()
-    data.foreach { case (key, value) ⇒ bldr.value(key, value) }
+    data.foreach {
+      case (key, value) ⇒ bldr.value(key, value)
+    }
     new BSONObject(bldr.result)
   }
-
 }
 
 case class BSONArray private[bson] (buffer : ByteString) extends BSONDocument {
   def code = ArrayCode
-  def value : Iterator[BSONValue] = valueIterator
+  def value : Iterator[BSONValue] = iterator
   def compact : BSONArray = BSONArray(buffer.compact)
+
+  def iterator : Iterator[BSONValue] = {
+    val itr = buffer.iterator
+    val length = itr.getInt
+    val docItr = DocumentIterator(itr.slice(0, length - 1))
+    docItr.map { case (key, value) ⇒ value }
+  }
 }
 
 object BSONArray {
@@ -213,15 +252,17 @@ object BSONBinary {
     bldr.binary(array, subtype)
     new BSONBinary(bldr.buffer.result())
   }
+  def apply(array : ByteString, subtype : BinarySubtype) : BSONBinary = {
+    val bldr = Builder()
+    bldr.binary(array, subtype)
+    new BSONBinary(bldr.buffer.result())
+  }
 }
 
-case class BSONUndefined private[bson] (buffer : ByteString) extends BSONValue {
+case object BSONUndefined extends BSONValue {
+  val buffer = ByteString.empty
   def code = UndefinedCode
   def value : Unit = {}
-}
-
-object BSONUndefined {
-  def apply() : BSONUndefined = new BSONUndefined(ByteString.empty)
 }
 
 case class BSONObjectID private[bson] (buffer : ByteString) extends BSONValue {
@@ -245,9 +286,9 @@ case class BSONBoolean private[bson] (buffer : ByteString) extends BSONValue {
 }
 
 object BSONBoolean {
-  def apply(b : Boolean) : BSONBoolean = {
+  def apply(value : Boolean) : BSONBoolean = {
     val bldr = Builder()
-    bldr.boolean(b)
+    bldr.boolean(value)
     new BSONBoolean(bldr.buffer.result)
   }
 }
@@ -269,66 +310,24 @@ object BSONDate {
   def apply(d : Date) : BSONDate = apply(d.getTime)
 }
 
-case class BSONNull private[bson] (buffer : ByteString) extends BSONValue {
+case object BSONNull extends BSONValue {
+  val buffer = ByteString.empty
   def code = NullCode
   def value : Unit = {}
-}
-
-object BSONNull {
-  def apply() : BSONNull = { new BSONNull(ByteString.empty) }
 }
 
 case class BSONRegex private[bson] (buffer : ByteString) extends BSONValue {
   def code = RegexCode
   def value : Regex = {
-    val itr = buffer.iterator
-    val pattern = itr.getCStr
-    val options = itr.getCStr
-    val regex_options = {
-      options.map {
-        case ch : Char ⇒
-          ch match {
-            case 'i' ⇒ "i"
-            case 'l' ⇒ ""
-            case 'm' ⇒ "m"
-            case 's' ⇒ "s"
-            case 'u' ⇒ "U"
-            case 'x' ⇒ "x"
-          }
-      }
-    }.mkString
-    new Regex("(?" + regex_options + ")" + pattern)
+    buffer.iterator.getRegex
   }
 }
 
 object BSONRegex {
   def apply(r : Regex) : BSONRegex = {
-    val pattern : String = r.pattern.pattern()
-    val options : String = {
-      //
-      // 'i' for case insensitive matching,
-      // 'l' to make \w, \W, etc. locale dependent,
-      // 'm' for multiline matching,
-      // 's' for dotall mode ('.' matches everything),
-      // and 'u' to make \w, \W, etc. match unicode.
-      // 'x' for verbose mode,
-      val flags = r.pattern.flags()
-      var result = ""
-      if ((flags & Pattern.CASE_INSENSITIVE) != 0)
-        result += "i"
-      if ((flags & Pattern.MULTILINE) != 0)
-        result += "m"
-      if ((flags & Pattern.DOTALL) != 0)
-        result += "s"
-      if ((flags & Pattern.UNICODE_CHARACTER_CLASS) != 0)
-        result += "u"
-      if ((flags & Pattern.COMMENTS) != 0)
-        result += "x"
-      result
-    }
-    val bldr = Builder()
-    bldr.regex(pattern, options)
-    new BSONRegex(bldr.buffer.result())
+    val bldr = ByteString.newBuilder
+    bldr.putRegex(r)
+    BSONRegex(bldr.result())
   }
 }
 
