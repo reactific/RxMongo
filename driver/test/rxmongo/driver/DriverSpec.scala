@@ -22,18 +22,58 @@
 
 package rxmongo.driver
 
+import java.net.{ Socket, InetSocketAddress, InetAddress }
+import javax.net.SocketFactory
+
+import akka.actor.ActorRef
+import org.specs2.execute.Result
 import org.specs2.mutable.Specification
 
+import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 class DriverSpec extends Specification {
 
-  "Driver" should {
-    "mind its lifecycle" in {
-      val driver = Driver(None)
-      driver.close(Duration(1, "seconds"))
-      driver.system.isTerminated must beTrue
+  def mongoTest(f : () ⇒ Result) : Result = {
+    if (Helper.haveLocalMongo) {
+      f()
+    } else {
+      skipped(": no local mongo")
     }
   }
 
+  "Driver" should {
+    "mind its lifecycle" in {
+      val driver = Driver(None, Some("One"))
+      driver.close(Duration(1, "seconds"))
+      driver.system.isTerminated must beTrue
+    }
+
+    "make a simple connection" in mongoTest { () ⇒
+      val driver = Driver(None, Some("Thing"))
+      val future = driver.connect("mongodb://localhost/", Some("TestConnection"))
+      val conn = Await.result(future, Duration(1, "s"))
+      conn.isInstanceOf[ActorRef] must beTrue
+      driver.close(Duration(500, "ms"))
+      success
+    }
+  }
+
+}
+
+object Helper {
+
+  lazy val haveLocalMongo : Boolean = {
+    val addr = InetAddress.getLoopbackAddress
+    val port = 27017
+    val socketAddress = new InetSocketAddress(addr, port)
+    try {
+      val socket : Socket = SocketFactory.getDefault.createSocket
+      socket.connect(socketAddress, 1000)
+      socket.close()
+      true
+    } catch {
+      case x : Throwable ⇒ false
+    }
+  }
 }

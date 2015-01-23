@@ -22,17 +22,21 @@
 
 package rxmongo.driver
 
-import akka.actor.{ Actor, ActorLogging, Props, ActorRef }
+import java.net.{ InetAddress, InetSocketAddress }
 
-import scala.collection.mutable
+import akka.actor.SupervisorStrategy._
+import akka.actor._
+import akka.routing.{ Broadcast, DefaultResizer, SmallestMailboxPool }
+
+import scala.concurrent.duration.Duration
 
 object Connection {
   def props(uri : MongoURI) = Props(classOf[Connection], uri)
 
-  sealed trait ConnectionCommand
-  case object CloseConnection extends ConnectionCommand
-  case class ChannelClosed(chan : ActorRef) extends ConnectionCommand
-  case object OpenChannel extends ConnectionCommand
+  sealed trait ConnectionRequest
+  case class ChannelClosed(chan : ActorRef) extends ConnectionRequest
+  case object OpenChannel extends ConnectionRequest
+  case class RunCommand(command : Command) extends ConnectionRequest
 }
 
 /** Connection To MongoDB Replica Set
@@ -43,34 +47,84 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
 
   import rxmongo.driver.Connection._
 
-  val channels : mutable.HashSet[ActorRef] = mutable.HashSet.empty[ActorRef]
+  /** Supervision Strategy Decider
+    * This "Decider" determines what to do for a given exception type. For now, all exceptions cause restart of the
+    * actor.
+    * @return An Akka Decider object
+    */
+  final def decider : Decider = { case t : Throwable ⇒ SupervisorStrategy.Restart }
+
+  /** Supervision Object
+    * We use a OneForOneStrategy so that failure decisions are done on an actor-by-actor basis.
+    */
+  val supervisionStrategy = OneForOneStrategy(
+    maxNrOfRetries = -1,
+    withinTimeRange = Duration.Inf,
+    loggingEnabled = true)(decider = decider)
+
+  val poolResizer =
+    DefaultResizer(
+      lowerBound = uri.options.minPoolSize,
+      upperBound = uri.options.maxPoolSize,
+      pressureThreshold = 1, // Considered "busy" if 1 message in the mailbox
+      rampupRate = uri.options.rampupRate,
+      backoffThreshold = uri.options.backoffThreshold,
+      backoffRate = uri.options.backoffRate,
+      messagesPerResize = uri.options.messagesPerResize
+    )
+
+  /** The Channel pool configuration.
+    *
+    * This provides the configuration details for the router(s) the
+    */
+  val routerConfig = SmallestMailboxPool(
+    nrOfInstances = uri.options.minPoolSize,
+    supervisorStrategy = supervisionStrategy,
+    resizer = Some(poolResizer)
+  )
+
+  lazy val primary_addr : InetSocketAddress = {
+    // FIXME: need to negotiate with the servers for the primary
+    new InetSocketAddress(InetAddress.getLocalHost, 27017)
+  }
+
+  /** Primary Router
+    * This is the router that manages a pool of Channels to the MongoDB Primary server. It is configured according
+    * to the ConnectionOptions in the MongoURI. All messages sent to this connection are distributed across the
+    * Channels in this router. The router is lazy instantiated so there is no cost of pool set up if this connection
+    * is never used.
+    */
+  lazy val primary_router = context.actorOf(
+    Channel.
+      props(primary_addr, uri.options, self, isPrimary = true).
+      withRouter(routerConfig),
+    Driver.actorName("PrimaryChannel")
+  )
 
   override def preStart() = {
     super.preStart()
-    identifyReplicaSet
-    for (i ← 1 to uri.options.minPoolSize) { addChannel }
   }
 
   def receive = {
-    case CloseConnection ⇒
-      for (chan ← channels) { chan ! Channel.CloseWithAck(ChannelClosed(chan)) }
+    case PoisonPill ⇒
+      primary_router ! Broadcast(PoisonPill)
+      primary_router ! PoisonPill
       context become closing
+
+    case OpenChannel ⇒
+
+    case RunCommand(command) ⇒
+      primary_router ! command
   }
 
   def closing : Receive = {
     case OpenChannel ⇒
-      log.warning("Ignoring OpenChannel command while closing connection")
-    case ChannelClosed(channel : ActorRef) ⇒
-      channels.remove(channel)
-      if (channels.isEmpty)
+      log.warning("Ignoring OpenChannel request while closing connection")
+    case RunCommand ⇒
+      log.warning("Ignoring RunCommand request while closing connection")
+    case Terminated(actor : ActorRef) ⇒
+      if (actor == primary_router) {
         context.stop(self)
-  }
-
-  def identifyReplicaSet = {
-
-  }
-
-  def addChannel = {
-
+      }
   }
 }

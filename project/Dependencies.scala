@@ -34,6 +34,7 @@ object Dependencies {
   val akkaV = "2.3.9"
   val akka_actor      = "com.typesafe.akka"   %% "akka-actor"                   % akkaV
   val akka_slf4j      = "com.typesafe.akka"   %% "akka-slf4j"                   % akkaV
+  val akka_testkit    = "com.typesafe.akka"   %% "akka-testkit"                 % akkaV
   val akka_streams    = "com.typesafe.akka"   %% "akka-stream-experimental"     % "1.0-M2"
   val akka_http_core  = "com.typesafe.akka"   %% "akka-http-core-experimental"  % "1.0-M2"
   val akka_http       = "com.typesafe.akka"   %% "akka-http-experimental"       % "1.0-M2"
@@ -46,7 +47,7 @@ object Dependencies {
 
   val bson = common ++ Seq( akka_actor )
 
-  val driver = common ++ Seq( akka_streams, akka_actor,  akka_slf4j, akka_http_core )
+  val driver = common ++ Seq( akka_streams, akka_actor, akka_testkit, akka_slf4j, akka_http_core )
 
   val client = common ++ Seq( )
 }

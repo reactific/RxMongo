@@ -28,6 +28,7 @@ import java.util.Date
 import akka.util.{ ByteIterator, ByteString }
 
 import scala.collection.{ Map, MapLike }
+import scala.util.Try
 import scala.util.matching.Regex
 
 trait BSONValue {
@@ -178,6 +179,24 @@ case class BSONObject private[bson] (buffer : ByteString)
   def get(key : String) : Option[BSONValue] = {
     // FIXME: This is horribly inefficient
     toMap.get(key)
+  }
+
+  /** Get with conversion to another type
+    *
+    * Gets the BSONValue associated with the provided `key`, and converts it to `T` via the BSONCodec[T].
+    *
+    * @tparam T The type to which the call wishes the BSONValue to be decoded.
+    * @param key The key to look up in the object to obtain the value
+    * @return Success(None) if the key is not found, Success(Some(T)) if the key is found and converted successfully,
+    *        Failure(Throwable) if the conversion failed
+    *
+    * If there is no matching value, or the value could not be deserialized or converted, returns a `None`.
+    */
+  def getAs[T](key : String)(implicit codec : BSONCodec[T]) : Try[Option[T]] = Try {
+    get(key) match {
+      case Some(value) ⇒ Some(codec.read(value))
+      case None ⇒ None
+    }
   }
 
   override def empty : BSONObject = BSONObject.empty

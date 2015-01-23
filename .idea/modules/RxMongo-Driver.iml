@@ -39,5 +39,6 @@
     <orderEntry type="library" name="SBT: com.typesafe.akka:akka-http-core-experimental_2.11:1.0-M2:jar" level="project" />
     <orderEntry type="library" name="SBT: com.typesafe.akka:akka-parsing-experimental_2.11:1.0-M2:jar" level="project" />
     <orderEntry type="library" name="SBT: org.scala-lang:scala-reflect:2.11.4:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.typesafe.akka:akka-testkit_2.11:2.3.9:jar" level="project" />
   </component>
 </module>

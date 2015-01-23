@@ -34,7 +34,7 @@ import rxmongo.driver.Channel.{ Ack, ConnectionFailed }
 import scala.concurrent.duration.Duration
 
 object Channel {
-  def props(remote : InetSocketAddress, options : ConnectionOptions, replies : ActorRef) =
+  def props(remote : InetSocketAddress, options : ConnectionOptions, replies : ActorRef, isPrimary : Boolean) =
     Props(classOf[Channel], remote, options, replies)
 
   case object Ack extends Event

@@ -23,11 +23,17 @@
 package rxmongo.driver
 
 import java.io.Closeable
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
-import akka.actor.{ ActorRef, ActorSystem }
+import akka.actor.{ Terminated, Inbox, ActorRef, ActorSystem }
+import akka.pattern.ask
+import akka.util.Timeout
 import com.typesafe.config.{ ConfigFactory, Config }
+import org.slf4j.LoggerFactory
+import rxmongo.driver.Supervisor.AddConnection
 
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration._
 import scala.util.{ Failure, Success }
 
@@ -50,11 +56,13 @@ import scala.util.{ Failure, Success }
   *
   * @see [[rxmongo.driver.Connection]]
   * @param cfg An optional configuration with which to configure the RxMongo driver. It defaults to the configuration
-  *       included with the RxMongo library as a resource (rxmongo.conf)
+  * included with the RxMongo library as a resource (rxmongo.conf)
   * @param name An optional name for this instance of the Driver. In situations where more than one driver is
-  *            instantiated, this may become necessary in order to distinguish the various driver's actors by name.
+  * instantiated, this may become necessary in order to distinguish the various driver's actors by name.
   */
 case class Driver(cfg : Option[Config] = None, name : Option[String] = None) extends Closeable {
+
+  val log = LoggerFactory.getLogger(classOf[Driver])
 
   val config = cfg match { case Some(c) ⇒ c; case None ⇒ ConfigFactory.load("rxmongo") }
 
@@ -63,19 +71,48 @@ case class Driver(cfg : Option[Config] = None, name : Option[String] = None) ext
   // RxMongo's ActorSystem is configured here. We use a separate one so it doesn't interfere with the application.
   val system = ActorSystem("RxMongo", config.getConfig("rxmongo.akka"))
 
-  private val supervisorActor = system.actorOf(Supervisor.props(this), namePrefix + "-Supervisor")
+  implicit val executionContext : ExecutionContext = system.dispatcher
+
+  private val supervisorActor = system.actorOf(Supervisor.props(), namePrefix + "-Supervisor")
+
+  private val supervisorInbox = Inbox.create(system)
+
+  supervisorInbox.watch(supervisorActor)
+
+  private def supervisorHasTerminated(timeout : FiniteDuration = Duration(0, TimeUnit.SECONDS)) = {
+    try {
+      supervisorInbox.receive(timeout) match {
+        case Terminated(actor) ⇒ actor == supervisorActor
+        case _ ⇒ false
+      }
+    } catch {
+      case x : Throwable ⇒ false
+    }
+  }
 
   def close() : Unit = close(0.seconds)
 
-  def close(timeout : Duration) = {
+  def close(timeout : FiniteDuration) = {
     // Tell the supervisor to close. It will shut down all the connections and then shut down the ActorSystem
     // as it is exiting.
+    if (!supervisorHasTerminated()) {
+      supervisorActor ! Supervisor.Shutdown
 
-    supervisorActor ! Supervisor.Terminate
+      // Wait for the supervisor to shut down the RxMong actors in an orderly fashion, hopefully within the callers
+      // timeout. If not, we just force the ActorSystem to shut down. Either way, after this, the ActorSystem is down.
+      if (!supervisorHasTerminated(timeout)) {
+        log.warn(s"RxMongo Supervisor failed to terminate within $timeout, forcing ActorSystem shutdown")
+      }
 
-    // When the actorSystem is shutdown, it means that supervisorActor has exited (run its postStop)
-    // So, wait for that event.
-    system.awaitTermination(timeout.toMillis match { case 0 ⇒ Duration.Inf; case _ ⇒ timeout })
+      system.shutdown()
+
+      // When the actorSystem is shutdown, it means that supervisorActor has exited (run its postStop). Even if that
+      // hasn't happened, the shutdown() method is asynchronous and this close method is synchronous so make sure
+      // we wait for the system to be actually down.
+      system.awaitTermination(timeout.toMillis match { case 0 ⇒ Duration.Inf; case _ ⇒ timeout })
+    }
+    // Validate that the ActorSystem is shut down.
+    require(system.isTerminated)
   }
 
   /** Creates a new MongoConnection from URI.
@@ -84,12 +121,12 @@ case class Driver(cfg : Option[Config] = None, name : Option[String] = None) ext
     *
     * @param uri The MongoURI object that contains the connection details
     */
-  def connect(uri : MongoURI, name : Option[String] = None) : ActorRef = {
-    val props = Connection.props(uri)
-    name match {
-      case Some(nm) ⇒ system.actorOf(props, nm);
-      case None     ⇒ system.actorOf(props, "Connection-" + Driver.nextCounter)
+  def connect(uri : MongoURI, name : Option[String])(implicit timeout : Timeout) : Future[ActorRef] = {
+    val final_name = name match {
+      case Some(nm) ⇒ nm
+      case None     ⇒ "Connection-" + Driver.nextCounter
     }
+    (supervisorActor ? AddConnection(uri, final_name)).map { x ⇒ x.asInstanceOf[ActorRef] }
   }
 
   /** Connect From A URI String
@@ -102,15 +139,17 @@ case class Driver(cfg : Option[Config] = None, name : Option[String] = None) ext
     *
     * @param uri A string that will be parsed with [[rxmongo.driver.MongoURI.apply]]
     */
-  def connect(uri : String) : ActorRef = {
+  def connect(uri : String, name : Option[String] = None)(implicit timeout : Timeout = Driver.defaultTimeout) : Future[ActorRef] = {
     MongoURI(uri) match {
-      case Success(mongoURI) ⇒ connect(mongoURI)
+      case Success(mongoURI) ⇒ connect(mongoURI, name)
       case Failure(xcptn)    ⇒ throw xcptn
     }
   }
 }
 
 object Driver {
+
+  implicit val defaultTimeout : Timeout = Timeout(10000, TimeUnit.MILLISECONDS)
 
   /** Creates a new MongoDriver with a new ActorSystem. */
   def apply() = new Driver
@@ -119,5 +158,13 @@ object Driver {
 
   private[driver] val _counter = new AtomicLong(0)
   private[driver] def nextCounter : Long = _counter.incrementAndGet()
+  /** A method to generate a unique name for each actor that meets Akka's naming requirements.
+    *
+    * @param name The name of the type of the actor
+    * @return The unique name generated for the actor instance
+    */
+  private[driver] def actorName(name : String) : String = {
+    name.replaceAll("[^A-Za-z0-9]", "-") + "-" + nextCounter
+  }
 }
 

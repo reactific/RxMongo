@@ -22,23 +22,14 @@
 
 package rxmongo.driver
 
-import rxmongo.bson.{ BSONObject }
+import akka.actor.ActorSystem
+import akka.testkit.{ ImplicitSender, TestKit }
+import org.specs2.matcher.Matchers
+import org.specs2.mutable.SpecificationLike
+import org.specs2.specification.Scope
+import org.specs2.time.NoTimeConversions
 
-class Command(db : String, val query : BSONObject) extends GenericQueryMessage {
-  val fullCollectionName = s"$db.$$cmd"
-  val numberToSkip = 0
-  val numberToReturn = 1
-  val returnFieldsSelector : Option[BSONObject] = None
-  val tailableCursor = false
-  val slaveOk : Boolean = false
-  val noCursorTimeout = true
-  val awaitData : Boolean = false
-  val exhaust : Boolean = true
-  val partial : Boolean = false
+abstract class AkkaTest(_actorSystem : ActorSystem) extends TestKit(ActorSystem("SupervisorTest"))
+  with SpecificationLike with ImplicitSender with Matchers with NoTimeConversions with Scope {
+
 }
-
-class AdminCommand(query : BSONObject) extends Command("admin", query)
-
-case class IsMasterCmd(db : String) extends Command(db, BSONObject("isMaster" -> 1))
-case class GetLastErrorCmd(db : String) extends Command(db, BSONObject("getLastError" -> 1))
-case class DBStatsCmd(db : String) extends Command(db, BSONObject("dbStats" -> 1))

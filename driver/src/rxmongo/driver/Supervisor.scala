@@ -27,44 +27,71 @@ import akka.actor._
 import scala.collection.mutable
 
 object Supervisor {
-  def props(driver : Driver) : Props = {
-    Props(classOf[Supervisor], driver)
+  def props() : Props = {
+    Props(classOf[Supervisor])
   }
 
   sealed trait Request
-  case class AddConnection(uri : MongoURI) extends Request
-  case object Terminate extends Request
-  case object NumConnections extends Request
+  case class AddConnection(uri : MongoURI, name : String) extends Request // reply with Connection actor
+  case class DropConnection(uri : MongoURI) extends Request // no reply on success, NoSuchConnection if not found
+  case object Shutdown extends Request // no reply, Supervisor shuts down
+  case object NumConnections extends Request // reply with NumConnectionsReply
 
   sealed trait Reply
   case class NumConnectionsReply(num : Int) extends Reply
+  case class NoSuchConnection(uri : MongoURI) extends Reply
 }
 
-class Supervisor(driver : Driver) extends Actor with ActorLogging {
+class Supervisor extends Actor with ActorLogging {
 
   import Supervisor._
 
   /** Keep a list of all connections so that we can terminate the actors */
-  val connections = mutable.HashSet.empty[ActorRef]
+  val connections = mutable.HashMap.empty[MongoURI, ActorRef]
 
   def numConnections : Int = connections.size
 
-  def isEmpty = connections.isEmpty
+  def removeConnection(connection : ActorRef) : Unit = {
+    connections.find { case (uri, conn) ⇒ conn == connection } match {
+      case Some((uri, actor)) ⇒ connections.remove(uri)
+      case None ⇒ // do nothing
+    }
+  }
+
+  def exit = {
+    log.debug("RxMongo Supervisor has terminated connections and is stopping")
+    context stop self
+  }
 
   override def receive = {
-    case AddConnection(uri : MongoURI) ⇒
-      val connection = driver.system.actorOf(Connection.props(uri))
-      connections.add(connection)
+    case AddConnection(uri : MongoURI, name : String) ⇒
+      log.debug(s"AddConnection($uri,$name)")
+      val connection = context.actorOf(Connection.props(uri), name)
       context.watch(connection)
+      connections.put(uri, connection)
       sender ! connection
+
+    case DropConnection(uri : MongoURI) ⇒
+      log.debug(s"DropConnection($uri)")
+      connections.get(uri) match {
+        case Some(connection) ⇒ connection ! PoisonPill
+        case None ⇒ sender() ! NoSuchConnection(uri)
+      }
+
+    case NumConnections ⇒
+      sender() ! NumConnectionsReply(numConnections)
+
     case Terminated(actor) ⇒
-      connections.remove(actor)
-    case Terminate ⇒
-      if (isEmpty) {
-        context.stop(self)
+      removeConnection(actor)
+
+    case Shutdown ⇒
+      log.debug("RxMongo Supervisor is terminating connections")
+      if (connections.isEmpty) {
+        exit
       } else {
-        connections.foreach { connection ⇒
-          connection ! Connection.CloseConnection
+        connections.foreach {
+          case (uri, connection) ⇒
+            connection ! PoisonPill
         }
         context.become(closing)
       }
@@ -73,18 +100,20 @@ class Supervisor(driver : Driver) extends Actor with ActorLogging {
   def closing : Receive = {
     case ac : AddConnection ⇒
       log.warning("Refusing to add connection while RxMongo Supervisor is closing.")
-    case Terminate ⇒
+
+    case dc : DropConnection ⇒
+      log.warning("Refusing to drop connection while RxMongo Supervisor is closing.")
+
+    case Shutdown ⇒
       log.warning("Terminate ignored, already terminating.")
+
     case NumConnections ⇒
       sender ! NumConnectionsReply(numConnections)
-    case Terminated(actor) ⇒
-      connections.remove(actor)
-      if (isEmpty) {
-        context.stop(self)
-      }
-  }
 
-  override def postStop {
-    driver.system.shutdown()
+    case Terminated(actor) ⇒
+      removeConnection(actor)
+      if (connections.isEmpty) {
+        exit
+      }
   }
 }

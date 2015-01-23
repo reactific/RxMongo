@@ -22,23 +22,23 @@
 
 package rxmongo.driver
 
-import rxmongo.bson.{ BSONObject }
+import akka.actor._
+import akka.testkit.TestProbe
 
-class Command(db : String, val query : BSONObject) extends GenericQueryMessage {
-  val fullCollectionName = s"$db.$$cmd"
-  val numberToSkip = 0
-  val numberToReturn = 1
-  val returnFieldsSelector : Option[BSONObject] = None
-  val tailableCursor = false
-  val slaveOk : Boolean = false
-  val noCursorTimeout = true
-  val awaitData : Boolean = false
-  val exhaust : Boolean = true
-  val partial : Boolean = false
+import scala.concurrent.duration._
+
+class SupervisorSpec extends AkkaTest(ActorSystem("SupervisorTest")) {
+
+  "Supervisor" should {
+    "handle Shutdown" in {
+      val s = system.actorOf(Supervisor.props())
+      s ! Supervisor.Shutdown
+      val probe = TestProbe()
+      probe watch s
+      within(100.millis) {
+        probe.expectTerminated(s)
+      }
+      success
+    }
+  }
 }
-
-class AdminCommand(query : BSONObject) extends Command("admin", query)
-
-case class IsMasterCmd(db : String) extends Command(db, BSONObject("isMaster" -> 1))
-case class GetLastErrorCmd(db : String) extends Command(db, BSONObject("getLastError" -> 1))
-case class DBStatsCmd(db : String) extends Command(db, BSONObject("dbStats" -> 1))

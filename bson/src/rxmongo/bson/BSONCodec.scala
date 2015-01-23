@@ -20,25 +20,17 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.bson
 
-import rxmongo.bson.{ BSONObject }
+/** BSON Coder/Decoder (Codec) between BSONValue and type T
+  *
+  * @tparam T The type from which this Codec encodes and to which it decodes
+  */
+trait BSONCodec[T] {
 
-class Command(db : String, val query : BSONObject) extends GenericQueryMessage {
-  val fullCollectionName = s"$db.$$cmd"
-  val numberToSkip = 0
-  val numberToReturn = 1
-  val returnFieldsSelector : Option[BSONObject] = None
-  val tailableCursor = false
-  val slaveOk : Boolean = false
-  val noCursorTimeout = true
-  val awaitData : Boolean = false
-  val exhaust : Boolean = true
-  val partial : Boolean = false
+  def read(value : BSONValue) : T
+  def readOption(value : BSONValue) : Option[T]
+  def write(value : T) : BSONValue
+  def writeOption(value : T) : Option[BSONValue]
+
 }
-
-class AdminCommand(query : BSONObject) extends Command("admin", query)
-
-case class IsMasterCmd(db : String) extends Command(db, BSONObject("isMaster" -> 1))
-case class GetLastErrorCmd(db : String) extends Command(db, BSONObject("getLastError" -> 1))
-case class DBStatsCmd(db : String) extends Command(db, BSONObject("dbStats" -> 1))
