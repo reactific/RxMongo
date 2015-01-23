@@ -22,6 +22,7 @@
 
 package rxmongo.driver
 
+import java.io.Closeable
 import java.util.concurrent.atomic.AtomicLong
 
 import akka.actor.{ ActorRef, ActorSystem }
@@ -32,12 +33,28 @@ import scala.util.{ Failure, Success }
 
 /** RxMongo Driver
   *
-  * This provides the driver for interacting with a single Mongo ReplicaSet. A given client can instantiate multiple
-  * Drivers to
+  * This provides the driver for interacting with any group of Replica Sets. A given client can instantiate multiple
+  * Drivers or (typically) just use a single instance. The Driver manages, through its Supervisor, a set of Connection
+  * actors. A Connection here is not the same as a TCP network connection to a single MongoD or MongoS. In RxMongo, a
+  * Connection is an actor that actively stays connected to a replica set, according to its configured values, even
+  * through failover and failback. The user may connect in this way to as many replica sets as is needed.
+  *
+  * The Driver provides a very low level interface to MongoDB. It allows messages to be sent to a replica set and
+  * responses returned. No higher level facilities for making interaction with the driver are provided. For that,
+  * use the [[rxmongo.client.RxMongoClient]] class. To send messages to a replica set, you must send requests to
+  * the Connection actor returned by the connect() methods.
+  *
+  * Each Driver contains an Akka ActorSystem that is used to manage the concurrent non-blocking communication with
+  * MongoDB. Since a Driver is a [[java.io.Closeable]], it is important to `close()` the driver when you're done with
+  * it so the Akka resources are released.
+  *
+  * @see [[rxmongo.driver.Connection]]
   * @param cfg An optional configuration with which to configure the RxMongo driver. It defaults to the configuration
-  *        included with the RxMongo library as a resource (rxmongo.conf)
+  *       included with the RxMongo library as a resource (rxmongo.conf)
+  * @param name An optional name for this instance of the Driver. In situations where more than one driver is
+  *            instantiated, this may become necessary in order to distinguish the various driver's actors by name.
   */
-case class Driver(cfg : Option[Config] = None, name : Option[String] = None) {
+case class Driver(cfg : Option[Config] = None, name : Option[String] = None) extends Closeable {
 
   val config = cfg match { case Some(c) ⇒ c; case None ⇒ ConfigFactory.load("rxmongo") }
 
@@ -48,7 +65,9 @@ case class Driver(cfg : Option[Config] = None, name : Option[String] = None) {
 
   private val supervisorActor = system.actorOf(Supervisor.props(this), namePrefix + "-Supervisor")
 
-  def close(timeout : Duration = 0.seconds) = {
+  def close() : Unit = close(0.seconds)
+
+  def close(timeout : Duration) = {
     // Tell the supervisor to close. It will shut down all the connections and then shut down the ActorSystem
     // as it is exiting.
 
@@ -102,7 +121,3 @@ object Driver {
   private[driver] def nextCounter : Long = _counter.incrementAndGet()
 }
 
-case class RxMongoError(message : String, cause : Option[Throwable] = None) extends Exception {
-  override def getMessage = message
-  override def getCause = cause.orNull
-}

@@ -22,6 +22,8 @@
 
 package rxmongo.driver
 
+import rxmongo.bson.RxMongoError
+
 import akka.http.model.Uri
 import akka.http.model.Uri.Path.{ Segment, Slash, Empty }
 import akka.http.model.Uri.Path
@@ -73,8 +75,8 @@ import scala.util.Try
   * @param credentials The (optional) credentials for authentication
   * @param options The options parsed from the URI or defaulted
   *
-  * @see [[http://docs.mongodb.org/manual/reference/connection-string/ the MongoDB URI documentation]] for
-  * more information.
+  * @see [[http://docs.mongodb.org/master/reference/connection-string/]]
+  *
   */
 case class MongoURI(
   hosts : List[InetSocketAddress],
