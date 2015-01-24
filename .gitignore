@@ -2,7 +2,6 @@
 *.log
 .idea/libraries
 .idea/workspace.xml
-.idea/shelf
 .idea/rebel_project.xml
 .idea/uiDesigner.xml
 # sbt specific
