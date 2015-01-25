@@ -1,9 +1,6 @@
 *.class
 *.log
-.idea/libraries
-.idea/workspace.xml
-.idea/rebel_project.xml
-.idea/uiDesigner.xml
+.idea/
 # sbt specific
 .cache/
 .history/
