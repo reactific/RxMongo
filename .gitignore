@@ -1,9 +1,9 @@
 *.class
 *.log
-.idea/
 # sbt specific
 .cache/
 .history/
+.idea/
 .lib/
 */old/*
 dist/*
