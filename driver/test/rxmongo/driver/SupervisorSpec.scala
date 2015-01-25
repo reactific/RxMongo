@@ -24,6 +24,7 @@ package rxmongo.driver
 
 import akka.actor._
 import akka.testkit.TestProbe
+import rxmongo.driver.Supervisor.NumConnectionsReply
 
 import scala.concurrent.duration._
 
@@ -35,9 +36,24 @@ class SupervisorSpec extends AkkaTest(ActorSystem("SupervisorTest")) {
       s ! Supervisor.Shutdown
       val probe = TestProbe()
       probe watch s
-      within(100.millis) {
+      within(500.millis) {
         probe.expectTerminated(s)
       }
+      success
+    }
+
+    "return 0 for NumChannels at startup" in {
+      val s = system.actorOf(Supervisor.props())
+      s ! Supervisor.NumConnections
+      expectMsg(500.millis, NumConnectionsReply(0))
+      success
+    }
+
+    "add a connection" in {
+      val s = system.actorOf(Supervisor.props())
+      val uri = MongoURI("mongodb://localhost/").get
+      s ! Supervisor.AddConnection(uri, "MyConnection")
+      expectMsgType[ActorRef](500.millis)
       success
     }
   }

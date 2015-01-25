@@ -31,6 +31,7 @@ import akka.io.{ Inet, IO, Tcp }
 import akka.util.ByteString
 import rxmongo.driver.Channel.{ Ack, ConnectionFailed }
 
+import scala.collection.mutable
 import scala.concurrent.duration.Duration
 
 object Channel {
@@ -39,9 +40,11 @@ object Channel {
 
   case object Ack extends Event
   case class CloseWithAck(ack : Any)
+  case class SendMessage(msg : RequestMessage, replyTo : ActorRef)
 
-  sealed trait ConnectionResponse
-  case class ConnectionFailed(conn : Connect) extends ConnectionResponse
+  sealed trait ChannelResponse
+  case class ConnectionFailed(conn : Connect) extends ChannelResponse
+  case class UnsolicitedReply(reply : ReplyMessage) extends ChannelResponse
 }
 
 class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener : ActorRef)
@@ -63,6 +66,8 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
     timeout = options.connectTimeoutMS match { case 0 ⇒ None; case x : Long ⇒ Some(Duration(x, "ms")) },
     pullMode = true)
 
+  val pendingResponses = mutable.HashMap.empty[Int, ActorRef]
+
   def receive = {
     case CommandFailed(conn : Connect) ⇒
       listener ! ConnectionFailed(conn)
@@ -77,16 +82,22 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
   }
 
   def connected(connection : ActorRef) : Receive = {
-
     case message : RequestMessage ⇒ // Send a message to Mongo via connection actor
       connection ! Write(message.finish, Channel.Ack)
+      if (message.requiresResponse)
+        pendingResponses.put(message.requestId, sender())
 
     case Ack ⇒ // Receive Write Ack from connection actor
       connection ! ResumeReading // Tell connection actor we can read more now
 
     case Received(data : ByteString) ⇒ // Receive a reply from Mongo
       val reply = ReplyMessage(data) // Encapsulate that in a ReplyMessage
-      listener ! reply // Pass the buck
+      pendingResponses.get(reply.responseTo) match {
+        case Some(actor) ⇒ actor ! reply
+        case None ⇒
+          log.warning(s"Received reply ($reply) but matching request was not found")
+          listener ! Channel.UnsolicitedReply(reply)
+      }
 
     case CommandFailed(w : Write) ⇒ // A write has failed
       // O/S buffer was full

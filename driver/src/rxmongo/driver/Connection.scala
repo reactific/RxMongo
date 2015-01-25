@@ -22,12 +22,15 @@
 
 package rxmongo.driver
 
-import java.net.{ InetAddress, InetSocketAddress }
+import java.net.{ InetSocketAddress }
 
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.routing.{ Broadcast, DefaultResizer, SmallestMailboxPool }
+import akka.pattern.ask
+import rxmongo.bson.BSONBoolean
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
 object Connection {
@@ -83,9 +86,50 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
     resizer = Some(poolResizer)
   )
 
-  lazy val primary_addr : InetSocketAddress = {
-    // FIXME: need to negotiate with the servers for the primary
-    new InetSocketAddress(InetAddress.getLocalHost, 27017)
+  /** The address of the primary node in the replica set. It is assumed, at initialization, that the first host in
+    * URI is the primary. If that doesn't hold out to be true, it will be remedied at the first message request by
+    * polling for the primary.
+    */
+  var primary_addr : InetSocketAddress = uri.hosts.head
+  var msgs_to_next_check : Int = 1
+
+  def maybeCheckReplicaSet() = {
+    implicit val executionContext : ExecutionContext = context.dispatcher
+    msgs_to_next_check -= 1
+    if (msgs_to_next_check == 0) {
+      msgs_to_next_check = uri.options.messagesPerResize
+      primary_router.ask(IsMasterCmd)(Driver.defaultTimeout) map {
+        case msg : ReplyMessage ⇒ {
+          if (msg.numberReturned > 0) {
+            val doc = msg.documents.head
+            /*          doc.getAs[Boolean]("ismaster") match {
+              case Success(Some(x)) ⇒
+                log.warning("Current primary is confirmed as primary")
+              case Success(None) ⇒
+                log.warning("Response from IsMasterCmd had no 'ismaster' field")
+              case Failure(xcptn) ⇒
+                log.warning("Could not extract 'ismaster' field from IsMasterCmd response", xcptn)
+            } */
+            doc.get("ismaster") match {
+              case Some(v) ⇒
+                v match {
+                  case b : BSONBoolean ⇒
+                    if (b.value) {
+                      log.warning("Current primary is confirmed as primary.")
+                    } else {
+                      log.warning("Current primary is no longer the primary node.")
+                    }
+                }
+              case None ⇒
+                log.warning("Response from IsMasterCmd had no 'ismaster' field")
+            }
+          } else {
+            log.warning("Got no response from IsMasterCmd")
+          }
+        }
+        case x : Any ⇒ log.warning(s"Got junk from IsMasterCmd")
+      }
+    }
   }
 
   /** Primary Router
@@ -111,15 +155,16 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
       primary_router ! PoisonPill
       context become closing
 
-    case OpenChannel ⇒
-
     case RunCommand(command) ⇒
+      maybeCheckReplicaSet()
       primary_router ! command
+
+    case Channel.UnsolicitedReply(reply) ⇒
+      log.warning(s"Unsolicited Reply from MongoDB: $reply (ignored).")
+
   }
 
   def closing : Receive = {
-    case OpenChannel ⇒
-      log.warning("Ignoring OpenChannel request while closing connection")
     case RunCommand ⇒
       log.warning("Ignoring RunCommand request while closing connection")
     case Terminated(actor : ActorRef) ⇒

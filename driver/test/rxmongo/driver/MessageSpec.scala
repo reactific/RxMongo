@@ -53,7 +53,7 @@ class MessageSpec extends Specification {
         b.putDoc(update)
         val payload = b.result()
         val c = ByteString.newBuilder
-        c.putInt(payload.length)
+        c.putInt(payload.length + 16)
         c.putInt(msg.requestId)
         c.putInt(0)
         c.putInt(Message.OP_UPDATE.id)
@@ -84,7 +84,7 @@ class MessageSpec extends Specification {
         b.putDoc(update)
         val payload = b.result()
         val c = ByteString.newBuilder
-        c.putInt(payload.length)
+        c.putInt(payload.length + 16)
         c.putInt(msg.requestId)
         c.putInt(0)
         c.putInt(Message.OP_INSERT.id)
@@ -120,7 +120,7 @@ class MessageSpec extends Specification {
         b.putDoc(selector)
         val payload = b.result()
         val c = ByteString.newBuilder
-        c.putInt(payload.length)
+        c.putInt(payload.length + 16)
         c.putInt(msg.requestId)
         c.putInt(0)
         c.putInt(Message.OP_QUERY.id)
@@ -134,6 +134,11 @@ class MessageSpec extends Specification {
     "produce correct buffer for OP_GET_MORE" in {
       val replyBuff : ByteString = {
         // struct {
+        //  int32   msgLength;
+        //  int32   requestID;     // identifier for this message
+        //  int32   responseTo;    // requestID from the original request (used in reponses from db)
+        //  int32   opCode;        // request type - see table below
+
         //   MsgHeader header;         // standard message header
         //   int32     responseFlags;  // bit vector - see details below
         //   int64     cursorID;       // cursor id if client needs to do get more's
@@ -142,8 +147,13 @@ class MessageSpec extends Specification {
         //   document* documents;      // documents
         // }
         val b = ByteString.newBuilder
+        b.putInt(40)
+        b.putInt(1)
+        b.putInt(23)
+        b.putInt(Message.OP_REPLY.id)
         b.putInt(0)
-        b.putLong(23L)
+        b.putLong(0)
+        b.putInt(0)
         b.putInt(0)
         b.putInt(0)
         b.result()
@@ -164,10 +174,10 @@ class MessageSpec extends Specification {
         b.putInt(0)
         b.putCStr("db.coll")
         b.putInt(1)
-        b.putLong(23)
+        b.putLong(replyMessage.cursorID)
         val payload = b.result()
         val c = ByteString.newBuilder
-        c.putInt(payload.length)
+        c.putInt(payload.length + 16)
         c.putInt(msg.requestId)
         c.putInt(0)
         c.putInt(Message.OP_GET_MORE.id)
@@ -198,7 +208,7 @@ class MessageSpec extends Specification {
         b.putDoc(selector)
         val payload = b.result()
         val c = ByteString.newBuilder
-        c.putInt(payload.length)
+        c.putInt(payload.length + 16)
         c.putInt(msg.requestId)
         c.putInt(0)
         c.putInt(Message.OP_DELETE.id)
@@ -228,7 +238,7 @@ class MessageSpec extends Specification {
         b.putLong(3)
         val payload = b.result()
         val c = ByteString.newBuilder
-        c.putInt(payload.length)
+        c.putInt(payload.length + 16)
         c.putInt(msg.requestId)
         c.putInt(0)
         c.putInt(Message.OP_KILL_CURSORS.id)

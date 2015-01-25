@@ -26,8 +26,11 @@ import java.net.{ Socket, InetSocketAddress, InetAddress }
 import javax.net.SocketFactory
 
 import akka.actor.ActorRef
+import akka.pattern.ask
+
 import org.specs2.execute.Result
 import org.specs2.mutable.Specification
+import rxmongo.bson.BSONObject
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -57,6 +60,21 @@ class DriverSpec extends Specification {
       driver.close(Duration(500, "ms"))
       success
     }
+
+    "send an innocuous query" in mongoTest { () ⇒
+      val driver = Driver(None, Some("Thing"))
+      val future = driver.connect("mongodb://localhost/", Some("TestConnection"))
+      val conn = Await.result(future, Duration(1, "s"))
+      conn.isInstanceOf[ActorRef] must beTrue
+      val c = conn.asInstanceOf[ActorRef]
+      c.ask(QueryMessage("rxmongo.test", 0, 1, BSONObject()))(Driver.defaultTimeout) map {
+        case msg : ReplyMessage ⇒
+          println("Got ReplyMessage)")
+      }
+      driver.close(Duration(500, "ms"))
+      success
+    }
+
   }
 
 }
