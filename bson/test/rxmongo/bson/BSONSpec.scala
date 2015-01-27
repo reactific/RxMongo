@@ -183,8 +183,8 @@ object Helper {
   val anArrayBSON : BSONArray = BSONArray(anArraySeq)
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
 
-  def makeObj : Builder = {
-    val b = Builder()
+  def makeObj : BSONBuilder = {
+    val b = BSONBuilder()
     b.double("double", 42.0D).
       string("string", "fourty-two").
       obj("obj", anObject).
@@ -206,7 +206,7 @@ object Helper {
     b
   }
 
-  def makeObject : BSONObject = makeObj.bsonObj
+  def makeObject : BSONObject = makeObj.toBSONObject
 
   def makeObject(width : Int, depth : Int) : BSONObject = {
     val bldr = makeObj
@@ -216,7 +216,7 @@ object Helper {
       }
       bldr.array("kids", kids.toSeq)
     }
-    bldr.bsonObj
+    bldr.toBSONObject
   }
 
   val suitableForTimingTests : Boolean = {

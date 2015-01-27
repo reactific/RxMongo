@@ -65,9 +65,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0) // terminating null
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.double("double", data)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build string correctly" in {
@@ -81,9 +81,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0) // terminating null
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.string("string", data)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build object correctly" in {
@@ -99,9 +99,9 @@ class BuilderSpec extends Specification {
         builder.result()
       }
       val obj = BSONObject(Map("string" -> BSONString("fourty-two"), "double" -> BSONDouble(42.0)))
-      val builder2 = Builder()
+      val builder2 = BSONBuilder()
       builder2.obj("obj", obj)
-      builder2.result must beEqualTo(expected)
+      builder2.toByteString must beEqualTo(expected)
     }
 
     "build array correctly" in {
@@ -127,9 +127,9 @@ class BuilderSpec extends Specification {
       }
       val str = BSONString("fourty-two")
       val dbl = BSONDouble(42.0)
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.array("array", Array(str, dbl))
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build binary correctly" in {
@@ -143,9 +143,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0) // terminating null
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.binary("binary", data.getBytes(utf8), BinarySubtype.UserDefinedBinary)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
 
     }
 
@@ -155,9 +155,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0) // terminating null
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.undefined("undefined")
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build objectID correctly" in {
@@ -168,9 +168,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0)
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.objectID("objectid", data)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build boolean correctly" in {
@@ -182,10 +182,10 @@ class BuilderSpec extends Specification {
         builder.putByte(0)
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.boolean("true", value = true)
       builder.boolean("false", value = false)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build utcDate correctly" in {
@@ -196,9 +196,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0)
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.utcDate("utc", data)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build nil correctly" in {
@@ -207,9 +207,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0)
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.nil("nil")
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build regex correctly" in {
@@ -220,9 +220,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0)
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.regex("regex", "pattern", "ilmsux")
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build dbPointer correctly" in {
@@ -234,9 +234,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0)
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.dbPointer("dbpointer", "referent", data)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build jsCode correctly" in {
@@ -247,9 +247,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0)
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.jsCode("jscode", code)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build symbol correctly" in {
@@ -260,9 +260,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0)
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.symbol("symbol", symbol)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build scopedJsCode correctly" in {
@@ -283,9 +283,9 @@ class BuilderSpec extends Specification {
         builder.result()
       }
       val obj = BSONObject(Map("string" -> "fourty-two", "double" -> 42.0))
-      val builder2 = Builder()
+      val builder2 = BSONBuilder()
       builder2.scopedJsCode("scopedJsCode", code, obj)
-      builder2.result must beEqualTo(expected)
+      builder2.toByteString must beEqualTo(expected)
 
     }
 
@@ -297,9 +297,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0)
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.integer("integer", data)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build timestamp correctly" in {
@@ -310,9 +310,9 @@ class BuilderSpec extends Specification {
         builder.putByte(0)
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.timestamp("timestamp", data)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "build long correctly" in {
@@ -323,18 +323,18 @@ class BuilderSpec extends Specification {
         builder.putByte(0)
         builder.result()
       }
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.long("long", data)
-      builder.result must beEqualTo(expected)
+      builder.toByteString must beEqualTo(expected)
     }
 
     "throw for invalid cstring" in {
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.string("name\u0000withNull", "string") should throwA[IllegalArgumentException]
     }
 
     "throw for invalid regex options" in {
-      val builder = Builder()
+      val builder = BSONBuilder()
       builder.regex("regex", "pattern", "fubar") should throwA[IllegalArgumentException]
     }
   }

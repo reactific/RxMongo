@@ -165,10 +165,10 @@ case class BSONObject private[bson] (buffer : ByteString)
     val itr = buffer.iterator
     val len = itr.getInt
     val content = itr.slice(0, len - 5).toByteString
-    val bldr = Builder()
+    val bldr = BSONBuilder()
     bldr.buffer ++= content
-    bldr.value(kv._1, kv._2.asInstanceOf[BSONValue])
-    new BSONObject(bldr.result)
+    bldr.append(kv._1, kv._2.asInstanceOf[BSONValue])
+    bldr.result()
   }
 
   def iterator : Iterator[(String, BSONValue)] = {
@@ -196,7 +196,7 @@ case class BSONObject private[bson] (buffer : ByteString)
     * @tparam T The type to which the call wishes the BSONValue to be decoded.
     * @param key The key to look up in the object to obtain the value
     * @return Success(None) if the key is not found, Success(Some(T)) if the key is found and converted successfully,
-    *     Failure(Throwable) if the conversion failed
+    *    Failure(Throwable) if the conversion failed
     *
     * If there is no matching value, or the value could not be deserialized or converted, returns a `None`.
     */
@@ -220,6 +220,15 @@ case class BSONObject private[bson] (buffer : ByteString)
   def value : Map[String, BSONValue] = iterator.toMap
 
   def compact : BSONObject = BSONObject(buffer.compact)
+
+  override def toString : String = {
+    val s = new StringBuilder
+    s.append("BSONObject(")
+    for ((k, v) ← iterator) { s.append(k).append("->").append(v.value).append(", ") }
+    s.setLength(s.length - 2)
+    s.append(")")
+    s.toString()
+  }
 }
 
 object BSONObject {
@@ -230,12 +239,14 @@ object BSONObject {
   def apply(data : (String, Any)*) : BSONObject = from(data.toSeq)
 
   def from(data : Seq[(String, Any)]) : BSONObject = {
-    val bldr = Builder()
+    val bldr = BSONBuilder()
     data.foreach {
-      case (key, value) ⇒ bldr.value(key, value)
+      case (key, value) ⇒ bldr.append(key, value)
     }
-    new BSONObject(bldr.result)
+    bldr.result()
   }
+
+  def newBuilder = BSONBuilder()
 }
 
 case class BSONArray private[bson] (buffer : ByteString) extends BSONDocument {
@@ -251,7 +262,7 @@ case class BSONArray private[bson] (buffer : ByteString) extends BSONDocument {
 
 object BSONArray {
   def apply(data : Iterable[BSONValue]) : BSONArray = {
-    val bldr = Builder()
+    val bldr = BSONBuilder()
     bldr.array(data)
     new BSONArray(bldr.buffer.result())
   }
@@ -273,12 +284,12 @@ case class BSONBinary private[bson] (buffer : ByteString) extends BSONValue {
 
 object BSONBinary {
   def apply(array : Array[Byte], subtype : BinarySubtype) : BSONBinary = {
-    val bldr = Builder()
+    val bldr = BSONBuilder()
     bldr.binary(array, subtype)
     new BSONBinary(bldr.buffer.result())
   }
   def apply(array : ByteString, subtype : BinarySubtype) : BSONBinary = {
-    val bldr = Builder()
+    val bldr = BSONBuilder()
     bldr.binary(array, subtype)
     new BSONBinary(bldr.buffer.result())
   }
@@ -297,7 +308,7 @@ case class BSONObjectID private[bson] (buffer : ByteString) extends BSONValue {
 
 object BSONObjectID {
   def apply(bytes : Array[Byte]) : BSONObjectID = {
-    val bldr = Builder()
+    val bldr = BSONBuilder()
     bldr.objectID(bytes)
     new BSONObjectID(bldr.buffer.result)
   }
@@ -312,7 +323,7 @@ case class BSONBoolean private[bson] (buffer : ByteString) extends BSONValue {
 
 object BSONBoolean {
   def apply(value : Boolean) : BSONBoolean = {
-    val bldr = Builder()
+    val bldr = BSONBuilder()
     bldr.boolean(value)
     new BSONBoolean(bldr.buffer.result)
   }
@@ -366,7 +377,7 @@ case class BSONDBPointer private[bson] (buffer : ByteString) extends BSONValue {
 
 object BSONDBPointer {
   def apply(referent : String, objectID : Array[Byte]) : BSONDBPointer = {
-    val bldr = Builder()
+    val bldr = BSONBuilder()
     bldr.dbPointer(referent, objectID)
     new BSONDBPointer(bldr.buffer.result())
   }
@@ -415,7 +426,7 @@ case class BSONScopedJsCode private[bson] (buffer : ByteString) extends BSONValu
 
 object BSONScopedJsCode {
   def apply(code : String, scope : BSONObject) : BSONScopedJsCode = {
-    val bldr = Builder()
+    val bldr = BSONBuilder()
     bldr.scopedJsCode(code, scope)
     new BSONScopedJsCode(bldr.buffer.result())
   }
