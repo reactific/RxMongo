@@ -28,9 +28,9 @@ import org.specs2.mutable.Specification
 class RxMongoClientSpec extends Specification {
 
   "RxMongoClient" should {
-    "provide some test cases" in {
-      pending
+    "allow connection" in {
+      Client("mongodb://localhost/mydb")
+      success
     }
   }
-
 }

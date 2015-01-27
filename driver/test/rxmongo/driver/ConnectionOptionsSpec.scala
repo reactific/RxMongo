@@ -24,6 +24,8 @@ package rxmongo.driver
 
 import org.specs2.mutable.Specification
 
+import scala.concurrent.duration.FiniteDuration
+
 class ConnectionOptionsSpec extends Specification {
 
   "WriteConcern" should {
@@ -50,4 +52,42 @@ class ConnectionOptionsSpec extends Specification {
     }
   }
 
+  "ConnectionOptions" should {
+    "validate connectTimeoutMS" in {
+      ConnectionOptions(connectTimeoutMS = 3700000).validate should throwA[IllegalArgumentException]
+    }
+    "validate socketTimeoutMS" in {
+      ConnectionOptions(socketTimeoutMS = -1).validate should throwA[IllegalArgumentException]
+    }
+    "validate maxPoolSize" in {
+      ConnectionOptions(maxPoolSize = 0).validate should throwA[IllegalArgumentException]
+    }
+    "validate minPoolSize" in {
+      ConnectionOptions(minPoolSize = 0).validate should throwA[IllegalArgumentException]
+    }
+    "validate maxPoolSize >= minPoolSize" in {
+      ConnectionOptions(maxPoolSize = 9, minPoolSize = 10).validate should throwA[IllegalArgumentException]
+    }
+    "validate maxIdleTimeMS" in {
+      ConnectionOptions(maxIdleTimeMS = 24 * 3600 * 1000 + 1).validate should throwA[IllegalArgumentException]
+    }
+    "validate wtimeoutMS" in {
+      ConnectionOptions(wtimeoutMS = -1).validate should throwA[IllegalArgumentException]
+    }
+    "validate rampupRate" in {
+      ConnectionOptions(rampupRate = 2).validate should throwA[IllegalArgumentException]
+    }
+    "validate backoffThreshold" in {
+      ConnectionOptions(backoffThreshold = 0.0).validate should throwA[IllegalArgumentException]
+    }
+    "validate backoffRate" in {
+      ConnectionOptions(backoffRate = 0).validate should throwA[IllegalArgumentException]
+    }
+    "validate messagesPerResize" in {
+      ConnectionOptions(messagesPerResize = -1).validate should throwA[IllegalArgumentException]
+    }
+    "validate channelReconnectPeriod" in {
+      ConnectionOptions(channelReconnectPeriod = FiniteDuration(-1, "s")).validate should throwA[IllegalArgumentException]
+    }
+  }
 }
