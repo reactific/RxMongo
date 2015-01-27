@@ -41,6 +41,7 @@ object Connection {
   sealed trait ConnectionRequest
   case class ChannelClosed(chan : ActorRef) extends ConnectionRequest
   case object Close extends ConnectionRequest
+  case object CheckReplicaSet extends ConnectionRequest
   case object Closed
 }
 
@@ -203,6 +204,12 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
   def receive : Receive = LoggingReceive {
     case Connection.Close ⇒
       close()
+
+    case Connection.CheckReplicaSet ⇒
+      msgs_to_next_check = uri.options.messagesPerResize
+      val cmd = IsMasterCmd()
+      context become waitForReplicaSet(cmd)
+      primary_router ! Channel.SendMessage(cmd, replyTo = self)
 
     case msg : RequestMessage ⇒
       if (primary_router == null) {
