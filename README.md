@@ -81,25 +81,14 @@ may not be compatible with prior releases.
 
 # Getting Started
 
-### Connecting With RxMongo Driver
-
-The
-```scala
-
-// Instantiate with default configuration and default name (RxMongo)
-val driver = rxmongo.driver.Driver()
-
-```
-### RxMongoClient
-The Rx
-
-### BSON.Documents
+### Working With BSONObject
 Mongo uses a data format known as BSON (Binary JSON) which uses a dozen or so basic types to represent nested data
-structures. Most often you will use a BSONObject which is often confused with a BSON Document but documents include
+structures. Most often you will use a BSONObject which is often confused with a BSONDocument but documents include
 BSONArray as well. RxMongo makes a distinction between these two by having both BSONObject and BSONArray derive from
 BSONDocument. BSONDocuments are, essentially, a `Map[String,BSONValue]`. BSONObjects can be constructed quite simply,
 however, since their constructor accepts a `Map[String,Any]` and does the corresponding translations from Any to
-BSONValue. This works for most typical data types. Where you need a specialized translater, you can write a BSONCodec.
+BSONValue. This works for most typical data types. Where you need a specialized translator, you can write a BSONCodec
+(see below).
 
 ```scala
 val BSONObj = BSONObject(
@@ -118,11 +107,123 @@ val BSONObj = BSONObject(
 )
 ```
 
-### rxmongo.client.Database
-TBD
+### Connecting With RxMongo Client
 
-### rxmongo.client.Collection
-TBD
+To make a high-level connection to MongoDB, use the Client interface. The code below shows how to create the
+client [1], obtain a database from the client [2], obtain a collection from the database [3], query the collection [4],
+obtain the results [5], and handle query errors [6].
 
-### rxmongo.client.VariantCollection
-TBD
+```scala
+package rxmongo.examples
+
+import rxmongo.bson.{RxMongoError, BSONObject}
+import rxmongo.client.Client
+import scala.concurrent.ExecutionContext.Implicits.global
+
+object ClientBasics extends App {
+
+  // [1] Make a connection to the mydb database on the local host
+  val client = Client("mongodb://localhost/mydb")
+
+  // [2] Obtain a database from the client
+  val db = client.database("mydb")
+
+  // [3] Obtain a collection from the database
+  val coll = db.collection("mycoll")
+
+  // [4] Query the collection for documents with the name "foo"
+  coll.query("name" -> "foo") map {
+    case results: Seq[BSONObject] =>
+      // [5] We got an answer to our query, print the results
+      println("Results: " + results)
+  } recover {
+    case xcptn: RxMongoError =>
+      // [6] We got an error in our query, print the error message
+      println("Error in query: " + xcptn)
+  }
+}
+```
+
+### Connecting With RxMongo Driver
+
+Alternatively, you can make a low-level connection to MongoDB via the Driver interface. The code below shows how to
+instantiate the driver[1], connect to a MongoDB instance using a Mongodb URL [2], create a query message [3], send a
+query and get its response in a non-blocking fashion [4], and decode the reply from MongoDB [5].
+
+```scala
+
+package rxmongo.examples
+
+import akka.actor.ActorRef
+import akka.pattern.ask
+
+import com.typesafe.config.ConfigFactory
+
+import rxmongo.driver._
+import rxmongo.bson._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+
+/** Basic Driver Example
+  *
+  * This example shows how to instantiate the driver[1], connect to a MongoDB instance using a
+  * Mongodb URL [2], create a query message [3], send a query and get its response in a non-blocking
+  * fashion [4], and decode the reply from MongoDB [5].
+  */
+object DriverBasics extends App {
+
+  // You can specify your own timeout for asynchronous calls instead of using this default value from Driver.
+  implicit val timeout = Driver.defaultTimeout
+
+  // [1] Instantiate with a specific configuration and a specific name for the driver
+  val driver = Driver(ConfigFactory.load("rxmongo"), "MyDriver")
+
+  // [2] Make a connection to database "mydb" on the local host at the default port and set the
+  // maxPoolSize configuration value to 19 so at most 19 channels to the server will be open. This
+  // will yield a Future[ActorRef] in "conn". If the connection succeeds, conn will have a value
+  // that can be used to talk to the members of a MongoDB replica set.
+  val conn = driver.connect("mongodb://localhost/mydb?maxPoolSize=19")
+
+  // [3] Create a query message to find the documents with the name "foo" in the mydb.mycoll namespace.
+  // You can also create all of the other kinds of messages that MongoDB supports.
+  val msg = QueryMessage("mydb.mycoll", numberToSkip=0, numberToReturn=1, BSONObject("name" -> "foo"))
+
+  // [4] When the connection is successful, extract the ActorRef and send it the query using the ask pattern
+  // which will asynchronously deliver a ReplyMessage when the response comes back from MongoDB.
+  conn.map {
+    case connection: ActorRef =>
+      connection.ask(msg).map {
+        case reply: ReplyMessage =>
+          // [5] We got a reply from MongoDB, now we need to decipher it. The numberReturned field tells us how
+          // many documents were returned by the query. If we got at least one, just print out the head document.
+          if (reply.numberReturned > 0) {
+            println("Document returned: " + reply.documents.head)
+          } else if (reply.QueryFailure) {
+            // In this case, there was something wrong with the query.
+            println("Query Failed")
+          } else {
+            // Chances are if you run this program, you will get this output because you don't have a
+            // database named "mydb.mycoll" and if you do, it probably doesn't have a document whose
+            // name field is "foo".
+            println("No results: " + reply)
+          }
+      } recover {
+        case xcptn: Throwable =>
+          // If the query fails for any reason, you can recover from it here.
+          println("Error from MongoDB: " + xcptn)
+      }
+  } recover {
+    case xcptn: Throwable =>
+      // If the connection fails for any reason, you can recover from it here.
+      println("Could not connect to MongoDB: " + xcptn)
+  }
+}
+
+```
+
+### Writing A BSONCodec
+
+A BSONCodec is a small object that can encode and decode values into and out of BSONValue. This allows all manner of
+Scala objects to be placed into a BSONObject or BSONArray with the conversions handled implicitly.
+
+*example TBD*

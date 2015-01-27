@@ -40,10 +40,11 @@ object Dependencies {
   val akka_http_core  = "com.typesafe.akka"   %% "akka-http-core-experimental"  % "1.0-M2"
   val akka_http       = "com.typesafe.akka"   %% "akka-http-experimental"       % "1.0-M2"
   val scala_logging   = "com.typesafe.scala-logging" %% "scala-logging"         % "3.1.0"
-  val logback_classic = "ch.qos.logback"       % "logback-classic"              % "1.1.2"      % "test"
+  val logback_test    = "ch.qos.logback"       % "logback-classic"              % "1.1.2"      % "test"
+  val logback_prod    = "ch.qos.logback"       % "logback-classic"              % "1.1.2"
   val specs           = "org.specs2"          %% "specs2-core"                  % "2.4.15"     % "test"
 
-  val common = Seq(specs, logback_classic)
+  val common = Seq(specs, logback_test)
 
   val bson = common ++ Seq( akka_actor )
 
@@ -51,5 +52,5 @@ object Dependencies {
 
   val client = common ++ Seq( )
 
-  val examples = common ++ Seq( )
+  val examples = common ++ Seq( logback_prod )
 }

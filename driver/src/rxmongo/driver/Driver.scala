@@ -168,6 +168,8 @@ object Driver {
 
   def apply(config : Config) = new Driver(Some(config))
 
+  def apply(config : Config, name : String) = new Driver(Some(config), name)
+
   private[driver] val _counter = new AtomicLong(0)
   private[driver] def nextCounter : Long = _counter.incrementAndGet()
   /** A method to generate a unique name for each actor that meets Akka's naming requirements.

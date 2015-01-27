@@ -20,19 +20,37 @@
  * SOFTWARE.
  */
 
-package rxmongo.client
+package rxmongo.examples
 
-import com.typesafe.config.Config
+import rxmongo.bson.{ RxMongoError, BSONObject }
+import rxmongo.client.Client
+import scala.concurrent.ExecutionContext.Implicits.global
 
-/** Primary Application Interface To RxMongo
+/** Basic Client Usage Example
   *
-  * Each RxMongoClient instance provides a separate interface to MongoDB. It can manage connections to multiple
-  * replica sets and coordinate the activity between them. Your application must instantiate an RxMongoClient in order
-  * to use RxMongo as all other object provided by RxMongo are accessed through this. You may instantiate multiple
-  * RxMongoClient instances, but each will maintain its own set of connections and view of the databases. This may be
-  * useful in testing but is unlikely to be useful in an application unless you wish to keep replica set traffic very
-  * separate.
+  * This example shows how to use the Client interface to create the client [1], obtain a database from the client [2],
+  * obtain a collection from the database [3], query the collection [4], obtain the results [5], and handle query
+  * errors [6].
   */
-case class RxMongoClient(config : Config) {
+object ClientBasics extends App {
 
+  // [1] Make a connection to the mydb database on the local host
+  val client = Client("mongodb://localhost/mydb")
+
+  // [2] Obtain a database from the client
+  val db = client.database("mydb")
+
+  // [3] Obtain a collection from the database
+  val coll = db.collection("mycoll")
+
+  // [4] Query the collection for documents with the name "foo"
+  coll.query("name" -> "foo") map {
+    case results : Seq[BSONObject] ⇒
+      // [5] We got an answer to our query, print the results
+      println("Results: " + results)
+  } recover {
+    case xcptn : RxMongoError ⇒
+      // [6] We got an error in our query, print the error message
+      println("Error in query: " + xcptn)
+  }
 }
