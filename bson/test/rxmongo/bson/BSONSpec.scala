@@ -22,7 +22,7 @@
 
 package rxmongo.bson
 
-import java.lang.management.{ ManagementFactory }
+import java.lang.management.ManagementFactory
 import java.util.Date
 
 import org.specs2.mutable.Specification
@@ -220,9 +220,13 @@ object Helper {
   }
 
   val suitableForTimingTests : Boolean = {
-    val os = ManagementFactory.getOperatingSystemMXBean
-    val processors = os.getAvailableProcessors
-    val avg = os.getSystemLoadAverage
-    avg < processors / 4
+    if (System.getenv("TRAVIS") != null)
+      false
+    else {
+      val os = ManagementFactory.getOperatingSystemMXBean
+      val processors = os.getAvailableProcessors
+      val avg = os.getSystemLoadAverage
+      avg < processors / 4
+    }
   }
 }
