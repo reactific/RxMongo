@@ -42,7 +42,7 @@ case class Builder() {
   def result : ByteString = {
     val content = buffer.result()
     val result = ByteString.newBuilder
-    result.putInt(content.length + 1)
+    result.putInt(content.length + 5) // 4 for length, 1 for terminating 0 byte
     result ++= content
     result.putByte(0)
     result.result()
@@ -211,7 +211,7 @@ case class Builder() {
           putCStr(index.toString)
         array ++= value.buffer
     }
-    buffer.putInt(array.length + 1)
+    buffer.putInt(array.length + 5) // 4 for length, 1 for terminating 0 byte
     buffer ++= array.result
     buffer.putByte(0)
     this
@@ -263,7 +263,7 @@ case class Builder() {
       putStr(code).
       putObj(scope)
     val tmp = content.result()
-    buffer.putInt(tmp.length)
+    buffer.putInt(tmp.length + 4) // add four for the length field itself
     buffer ++= tmp
     this
   }

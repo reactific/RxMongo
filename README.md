@@ -59,14 +59,64 @@ For example, an RxMongo Cursor can be obtained as a `Source[BSON.Object]` which 
 connected to a Sink of some sort. Becasue of this, the application writer need not worry about buffering as back
 pressure is communicated all the way through and dealt with at the interface to mongod.
 
+### Two API Levels: Driver & Client
+
+RxMongo has two ways to interact with it: Driver and Client. The Driver interface is flexible and highly performant,
+while the Client interface is easy to use but has some overheads. Which level you pick depends on the nature of your
+application.
+
+In the Driver interface, you ask the Driver object to get you a connection to a MongoDB replica set. This gets you an
+ActorRef to a Connection actor that you can use to communicate with the MongoDB server. The Connection actor can take
+RequestMessage objects that encapsulate the wire protocol for Mongo. If the request is due a reply, you get back a
+ReplyMessage. Creating RequestMessage objects is very efficient and minimizes buffer copies.
+
+In the Client interface, you ask the Client object to open Database and Collection objects. Each of those classes have
+methods that allow you to manipulate the databases and collections in your mongo server. These Client API classes
+translate your method invocations into the corresponding Driver calls. This part of the API also provides a set of
+abstractions for variant collections, named queries, and other utilities to make using Mongo simpler.
+
+### Full Featured for Mongo 2.8
+By the 1.0 release, RxMongo will fully support all Mongo 2.8 features and is aimed at the Mongo 2.8 release. It may or
+may not be compatible with prior releases.
 
 # Getting Started
 
-### RxMongoClient
-TBD
+### Connecting With RxMongo Driver
 
-### BSON.Document
-TBD
+The
+```scala
+
+// Instantiate with default configuration and default name (RxMongo)
+val driver = rxmongo.driver.Driver()
+
+```
+### RxMongoClient
+The Rx
+
+### BSON.Documents
+Mongo uses a data format known as BSON (Binary JSON) which uses a dozen or so basic types to represent nested data
+structures. Most often you will use a BSONObject which is often confused with a BSON Document but documents include
+BSONArray as well. RxMongo makes a distinction between these two by having both BSONObject and BSONArray derive from
+BSONDocument. BSONDocuments are, essentially, a `Map[String,BSONValue]`. BSONObjects can be constructed quite simply,
+however, since their constructor accepts a `Map[String,Any]` and does the corresponding translations from Any to
+BSONValue. This works for most typical data types. Where you need a specialized translater, you can write a BSONCodec.
+
+```scala
+val BSONObj = BSONObject(
+    "double" -> 42.0D,
+    "string" -> "fourty-two",
+    "obj" -> Helper.anObject,
+    "array" -> Helper.anArray,
+    "map" -> map,
+    "binary" -> Helper.data,
+    "undefined" -> null,
+    "boolean" -> true,
+    "date" -> date,
+    "regex" -> regex,
+    "integer" -> 42,
+    "long" -> 42L
+)
+```
 
 ### rxmongo.client.Database
 TBD

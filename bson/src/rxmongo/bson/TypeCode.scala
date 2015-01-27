@@ -22,6 +22,8 @@
 
 package rxmongo.bson
 
+import scala.annotation.switch
+
 /** Base class of the case objects for BSON code values
   *
   * Byte code identifiers from here: [[http://docs.mongodb.org/manual/reference/bson-types/]]
@@ -51,7 +53,7 @@ case object MaxKey extends { val code : Byte = 127 } with TypeCode
 
 object TypeCode {
   def apply(code : Byte) : TypeCode = {
-    code match {
+    (code : @switch) match {
       case 1   ⇒ DoubleCode
       case 2   ⇒ StringCode
       case 3   ⇒ ObjectCode

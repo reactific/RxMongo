@@ -28,6 +28,7 @@ import java.util.regex.Pattern
 
 import akka.util.{ ByteIterator, ByteStringBuilder }
 
+import scala.annotation.switch
 import scala.util.matching.Regex
 
 /** The bson package object.
@@ -75,7 +76,6 @@ package object bson {
 
     def putStr(value : String) : ByteStringBuilder = {
       val bytes = value.getBytes(utf8)
-      val length = bytes.length + 1
       bldr.putInt(bytes.length + 1)
       bldr.putBytes(bytes)
       bldr.putByte(0)
@@ -179,8 +179,8 @@ package object bson {
       val save = itr.clone()
       val len = itr.getInt
       require(len < maxDocSize, s"Maximum object size is $maxDocSize bytes")
-      itr.drop(len)
-      val buffer = save.slice(0, len + 4).toByteString
+      itr.drop(len - 4)
+      val buffer = save.slice(0, len).toByteString
       new BSONObject(buffer)
     }
 
@@ -194,13 +194,14 @@ package object bson {
       val regex_options = {
         options.map {
           case ch : Char ⇒
-            ch match {
+            (ch : @switch) match {
               case 'i' ⇒ "i"
               case 'l' ⇒ ""
               case 'm' ⇒ "m"
               case 's' ⇒ "s"
               case 'u' ⇒ "U"
               case 'x' ⇒ "x"
+              case _   ⇒ ""
             }
         }
       }.mkString

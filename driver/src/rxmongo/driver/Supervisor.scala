@@ -23,6 +23,7 @@
 package rxmongo.driver
 
 import akka.actor._
+import akka.event.LoggingReceive
 
 import scala.collection.mutable
 
@@ -58,15 +59,15 @@ class Supervisor extends Actor with ActorLogging {
     }
   }
 
-  def exit = {
+  def exit() = {
     log.debug("RxMongo Supervisor has terminated connections and is stopping")
     context stop self
   }
 
-  override def receive = {
+  override def receive = LoggingReceive {
     case AddConnection(uri : MongoURI, name : String) ⇒
       log.debug(s"AddConnection($uri,$name)")
-      val connection = context.actorOf(Connection.props(uri), name)
+      val connection = context.actorOf(Connection.props(uri), Driver.actorName(name))
       context.watch(connection)
       connections.put(uri, connection)
       sender ! connection
@@ -74,7 +75,7 @@ class Supervisor extends Actor with ActorLogging {
     case DropConnection(uri : MongoURI) ⇒
       log.debug(s"DropConnection($uri)")
       connections.get(uri) match {
-        case Some(connection) ⇒ connection ! PoisonPill
+        case Some(connection) ⇒ connection ! Connection.Close
         case None ⇒ sender() ! NoSuchConnection(uri)
       }
 
@@ -87,7 +88,7 @@ class Supervisor extends Actor with ActorLogging {
     case Shutdown ⇒
       log.debug("RxMongo Supervisor is terminating connections")
       if (connections.isEmpty) {
-        exit
+        exit()
       } else {
         connections.foreach {
           case (uri, connection) ⇒
@@ -97,7 +98,7 @@ class Supervisor extends Actor with ActorLogging {
       }
   }
 
-  def closing : Receive = {
+  def closing : Receive = LoggingReceive {
     case ac : AddConnection ⇒
       log.warning("Refusing to add connection while RxMongo Supervisor is closing.")
 
@@ -113,7 +114,7 @@ class Supervisor extends Actor with ActorLogging {
     case Terminated(actor) ⇒
       removeConnection(actor)
       if (connections.isEmpty) {
-        exit
+        exit()
       }
   }
 }

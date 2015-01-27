@@ -22,24 +22,26 @@
 
 package rxmongo.driver
 
-import java.net.{ InetSocketAddress }
+import java.net.InetSocketAddress
 
 import akka.actor.SupervisorStrategy._
 import akka.actor._
+import akka.event.LoggingReceive
 import akka.routing.{ Broadcast, DefaultResizer, SmallestMailboxPool }
-import akka.pattern.ask
-import rxmongo.bson.BSONBoolean
+
+import rxmongo.bson.{ BSONString, BSONBoolean }
 
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
+import scala.collection.mutable
 
 object Connection {
   def props(uri : MongoURI) = Props(classOf[Connection], uri)
 
   sealed trait ConnectionRequest
   case class ChannelClosed(chan : ActorRef) extends ConnectionRequest
-  case object OpenChannel extends ConnectionRequest
-  case class RunCommand(command : Command) extends ConnectionRequest
+  case object Close extends ConnectionRequest
+  case object Closed
 }
 
 /** Connection To MongoDB Replica Set
@@ -47,8 +49,6 @@ object Connection {
   * This represents RxMongo's connection to a replica set.
   */
 class Connection(uri : MongoURI) extends Actor with ActorLogging {
-
-  import rxmongo.driver.Connection._
 
   /** Supervision Strategy Decider
     * This "Decider" determines what to do for a given exception type. For now, all exceptions cause restart of the
@@ -86,51 +86,24 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
     resizer = Some(poolResizer)
   )
 
+  implicit val ec : ExecutionContext = context.system.dispatcher
+
   /** The address of the primary node in the replica set. It is assumed, at initialization, that the first host in
     * URI is the primary. If that doesn't hold out to be true, it will be remedied at the first message request by
     * polling for the primary.
     */
-  var primary_addr : InetSocketAddress = uri.hosts.head
-  var msgs_to_next_check : Int = 1
+  var addresses : List[InetSocketAddress] = List.empty[InetSocketAddress]
 
-  def maybeCheckReplicaSet() = {
-    implicit val executionContext : ExecutionContext = context.dispatcher
-    msgs_to_next_check -= 1
-    if (msgs_to_next_check == 0) {
-      msgs_to_next_check = uri.options.messagesPerResize
-      primary_router.ask(IsMasterCmd)(Driver.defaultTimeout) map {
-        case msg : ReplyMessage ⇒ {
-          if (msg.numberReturned > 0) {
-            val doc = msg.documents.head
-            /*          doc.getAs[Boolean]("ismaster") match {
-              case Success(Some(x)) ⇒
-                log.warning("Current primary is confirmed as primary")
-              case Success(None) ⇒
-                log.warning("Response from IsMasterCmd had no 'ismaster' field")
-              case Failure(xcptn) ⇒
-                log.warning("Could not extract 'ismaster' field from IsMasterCmd response", xcptn)
-            } */
-            doc.get("ismaster") match {
-              case Some(v) ⇒
-                v match {
-                  case b : BSONBoolean ⇒
-                    if (b.value) {
-                      log.warning("Current primary is confirmed as primary.")
-                    } else {
-                      log.warning("Current primary is no longer the primary node.")
-                    }
-                }
-              case None ⇒
-                log.warning("Response from IsMasterCmd had no 'ismaster' field")
-            }
-          } else {
-            log.warning("Got no response from IsMasterCmd")
-          }
-        }
-        case x : Any ⇒ log.warning(s"Got junk from IsMasterCmd")
-      }
+  def nextAddr : InetSocketAddress = {
+    if (addresses.isEmpty) {
+      addresses = uri.hosts
     }
+    val result = addresses.head
+    addresses = addresses.tail
+    result
   }
+
+  var current_addr = nextAddr
 
   /** Primary Router
     * This is the router that manages a pool of Channels to the MongoDB Primary server. It is configured according
@@ -138,37 +111,176 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
     * Channels in this router. The router is lazy instantiated so there is no cost of pool set up if this connection
     * is never used.
     */
-  lazy val primary_router = context.actorOf(
-    Channel.
-      props(primary_addr, uri.options, self, isPrimary = true).
-      withRouter(routerConfig),
-    Driver.actorName("PrimaryChannel")
-  )
+  var primary_router : ActorRef = null
+
+  var msgs_to_next_check : Int = 1
 
   override def preStart() = {
-    super.preStart()
+    open()
   }
 
-  def receive = {
-    case PoisonPill ⇒
-      primary_router ! Broadcast(PoisonPill)
-      primary_router ! PoisonPill
-      context become closing
+  def open() : Unit = {
+    val router = context.actorOf(
+      Channel.
+        props(current_addr, uri.options, self, isPrimary = true).
+        withRouter(routerConfig),
+      Driver.actorName("PrimaryChannel")
+    )
+    log.debug("Created Router: {}", router)
+    context become (waitForChannelConnected(router), discardOld = true)
+  }
 
-    case RunCommand(command) ⇒
-      maybeCheckReplicaSet()
-      primary_router ! command
+  def close() : Unit = {
+    log.debug("Closing")
+    if (primary_router != null) {
+      primary_router ! Broadcast(Channel.Close)
+      context become (closing(sender()), discardOld = true)
+    } else {
+      context.stop(self)
+    }
+  }
+
+  val pendingRequestQueue = mutable.Queue.empty[Channel.SendMessage]
+
+  def enqueue(msg : RequestMessage) = {
+    log.debug("Queueing message {}", msg)
+    pendingRequestQueue.enqueue(Channel.SendMessage(msg, replyTo = sender()))
+  }
+
+  def dequeueAll() : Unit = {
+    assert(primary_router != null)
+    for (e ← pendingRequestQueue) { primary_router ! e }
+    pendingRequestQueue.clear()
+  }
+
+  def handleUnsolicited(reply : ReplyMessage) = {
+    log.warning(s"Unsolicited Reply from MongoDB: $reply (ignored).")
+  }
+
+  def retryChannelConnect() = {
+    primary_router = null // FIXME: Try others in replica set
+    context become (waitForChannelRetry, discardOld = true)
+    context.system.scheduler.scheduleOnce(uri.options.channelReconnectPeriod, self, "retry")
+  }
+
+  def waitForChannelConnected(pendingRouter : ActorRef) : Receive = LoggingReceive {
+    case Connection.Close ⇒
+      close()
+
+    case msg : RequestMessage ⇒
+      enqueue(msg)
 
     case Channel.UnsolicitedReply(reply) ⇒
-      log.warning(s"Unsolicited Reply from MongoDB: $reply (ignored).")
+      handleUnsolicited(reply)
 
+    case Channel.ConnectionFailed(conn) ⇒
+      val old_addr = current_addr
+      current_addr = nextAddr
+      log.debug("Connection to {} failed, trying {} next.", old_addr, current_addr)
+      retryChannelConnect()
+
+    case Channel.ConnectionSucceeded(conn) ⇒
+      log.debug("Connection to {} succeeded", uri)
+      primary_router = pendingRouter
+      dequeueAll()
+      context.become(receive, discardOld = true)
   }
 
-  def closing : Receive = {
-    case RunCommand ⇒
-      log.warning("Ignoring RunCommand request while closing connection")
+  def waitForChannelRetry : Receive = LoggingReceive {
+    case Connection.Close ⇒
+      close()
+
+    case msg : RequestMessage ⇒
+      enqueue(msg)
+
+    case Channel.UnsolicitedReply(reply) ⇒
+      handleUnsolicited(reply)
+
+    case "retry" ⇒
+      open()
+  }
+
+  def receive : Receive = LoggingReceive {
+    case Connection.Close ⇒
+      close()
+
+    case msg : RequestMessage ⇒
+      if (primary_router == null) {
+        // There is no primary router, which shouldn't happen. Enqueue the message and then try to open again
+        log.warning("No primary while in normal receive mode. Queuing and attempting open again")
+        enqueue(msg)
+        open()
+      } else {
+        msgs_to_next_check -= 1
+        if (msgs_to_next_check == 0) {
+          // It is time to check the primary router, first reset the counter
+          msgs_to_next_check = uri.options.messagesPerResize
+          enqueue(msg)
+          val cmd = IsMasterCmd()
+          context become waitForReplicaSet(cmd)
+          primary_router ! Channel.SendMessage(cmd, replyTo = self)
+        } else {
+          // We assume the primary_router is still valid and send the request message
+          primary_router ! Channel.SendMessage(msg, replyTo = sender())
+        }
+      }
+
+    case Channel.UnsolicitedReply(reply) ⇒
+      handleUnsolicited(reply)
+  }
+
+  def waitForReplicaSet(cmd : IsMasterCmd) : Receive = LoggingReceive {
+    case Connection.Close ⇒
+      close()
+
+    case msg : RequestMessage ⇒
+      enqueue(msg)
+
+    case msg : ReplyMessage ⇒
+      if (msg.responseTo == cmd.requestId) {
+        if (msg.numberReturned > 0) {
+          log.debug("Reply from IsMasterCmd has a document")
+          val doc = msg.documents.head
+          doc.get("ismaster") match {
+            case Some(v) ⇒
+              v match {
+                case b : BSONBoolean ⇒
+                  if (b.value) {
+                    log.debug("Current primary is confirmed as primary.")
+                    dequeueAll()
+                  } else {
+                    log.debug("Current primary is no longer the primary node.")
+                    primary_router ! PoisonPill
+                    doc.get("primary") match {
+                      case Some(x : BSONString) ⇒
+                        val host_port = x.value.split(":")
+                        current_addr = InetSocketAddress.createUnresolved(host_port(0), host_port(1).toInt)
+                        open()
+                      case _ ⇒
+                        throw new IllegalStateException("MongoDB replied to IsMaster without a primary")
+                    }
+                  }
+              }
+            case None ⇒
+              log.error("Reply from IsMasterCmd had no 'ismaster' field")
+          }
+        } else {
+          log.error("No document in IsMasterCmd response")
+        }
+      } else {
+        log.error("Expected reply to IsMasterCmd.{} but got responseTo=={}", cmd.requestId, msg.responseTo)
+      }
+
+    case Channel.UnsolicitedReply(reply) ⇒
+      handleUnsolicited(reply)
+  }
+
+  def closing(replyTo : ActorRef) : Receive = {
+    case x : RequestMessage ⇒
+      log.info("Ignoring RunCommand request while closing connection")
     case Terminated(actor : ActorRef) ⇒
       if (actor == primary_router) {
+        replyTo ! Connection.Closed
         context.stop(self)
       }
   }

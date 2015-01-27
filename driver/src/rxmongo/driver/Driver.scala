@@ -27,13 +27,13 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 import akka.actor.{ Terminated, Inbox, ActorRef, ActorSystem }
+import akka.event.{ Logging, LoggingAdapter }
 import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.config.{ ConfigFactory, Config }
-import org.slf4j.LoggerFactory
 import rxmongo.driver.Supervisor.AddConnection
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration._
 import scala.util.{ Failure, Success }
 
@@ -60,29 +60,34 @@ import scala.util.{ Failure, Success }
   * @param name An optional name for this instance of the Driver. In situations where more than one driver is
   * instantiated, this may become necessary in order to distinguish the various driver's actors by name.
   */
-case class Driver(cfg : Option[Config] = None, name : Option[String] = None) extends Closeable {
-
-  val log = LoggerFactory.getLogger(classOf[Driver])
+case class Driver(cfg : Option[Config] = None, name : String = "RxMongo") extends Closeable {
 
   val config = cfg match { case Some(c) ⇒ c; case None ⇒ ConfigFactory.load("rxmongo") }
 
-  val namePrefix = "RxMongo-" + (name match { case Some(x) ⇒ x; case None ⇒ "" })
-
   // RxMongo's ActorSystem is configured here. We use a separate one so it doesn't interfere with the application.
-  val system = ActorSystem("RxMongo", config.getConfig("rxmongo.akka"))
+  val system = ActorSystem("RxMongo", config.getConfig("rxmongo"))
+
+  lazy val log : LoggingAdapter = Logging.getLogger(system, this.getClass)
 
   implicit val executionContext : ExecutionContext = system.dispatcher
 
-  private val supervisorActor = system.actorOf(Supervisor.props(), namePrefix + "-Supervisor")
+  private var supervisorActor = system.actorOf(Supervisor.props(), Driver.actorName(name + "-Supervisor"))
 
   private val supervisorInbox = Inbox.create(system)
 
   supervisorInbox.watch(supervisorActor)
 
-  private def supervisorHasTerminated(timeout : FiniteDuration = Duration(0, TimeUnit.SECONDS)) = {
+  private def supervisorHasTerminated(timeout : FiniteDuration = 0.seconds) = {
     try {
       supervisorInbox.receive(timeout) match {
-        case Terminated(actor) ⇒ actor == supervisorActor
+        case Terminated(actor) ⇒ {
+          if (actor == supervisorActor) {
+            supervisorActor = null
+            true
+          } else {
+            false
+          }
+        }
         case _ ⇒ false
       }
     } catch {
@@ -95,25 +100,27 @@ case class Driver(cfg : Option[Config] = None, name : Option[String] = None) ext
   def close(timeout : FiniteDuration) = {
     // Tell the supervisor to close. It will shut down all the connections and then shut down the ActorSystem
     // as it is exiting.
-    if (!supervisorHasTerminated()) {
+    if (supervisorActor != null && !supervisorHasTerminated()) {
       supervisorActor ! Supervisor.Shutdown
 
-      // Wait for the supervisor to shut down the RxMong actors in an orderly fashion, hopefully within the callers
+      // Wait for the supervisor to shut down the RxMongo actors in an orderly fashion, hopefully within the callers
       // timeout. If not, we just force the ActorSystem to shut down. Either way, after this, the ActorSystem is down.
       if (!supervisorHasTerminated(timeout)) {
-        log.warn(s"RxMongo Supervisor failed to terminate within $timeout, forcing ActorSystem shutdown")
+        log.warning(s"RxMongo Supervisor failed to terminate within $timeout, forcing ActorSystem shutdown")
       }
-
-      system.shutdown()
-
-      // When the actorSystem is shutdown, it means that supervisorActor has exited (run its postStop). Even if that
-      // hasn't happened, the shutdown() method is asynchronous and this close method is synchronous so make sure
-      // we wait for the system to be actually down.
-      system.awaitTermination(timeout.toMillis match { case 0 ⇒ Duration.Inf; case _ ⇒ timeout })
     }
-    // Validate that the ActorSystem is shut down.
-    require(system.isTerminated)
+
+    // Terminate the actor system
+    system.terminate()
+
+    // When the actorSystem is shutdown, it means that supervisorActor has exited (run its postStop). Even if that
+    // hasn't happened, the shutdown() method is asynchronous and this close method is synchronous so make sure
+    // we wait for the system to be actually down.
+    Await.result(system.whenTerminated, timeout.toMillis match { case 0 ⇒ Duration.Inf; case _ ⇒ timeout })
+    log.debug("RxMongo Closed")
   }
+
+  def isClosed = supervisorActor == null || supervisorHasTerminated()
 
   /** Creates a new MongoConnection from URI.
     *
@@ -122,11 +129,16 @@ case class Driver(cfg : Option[Config] = None, name : Option[String] = None) ext
     * @param uri The MongoURI object that contains the connection details
     */
   def connect(uri : MongoURI, name : Option[String])(implicit timeout : Timeout) : Future[ActorRef] = {
+    require(!isClosed, "Cannot connect with closed RxMongo Driver")
+
     val final_name = name match {
       case Some(nm) ⇒ nm
-      case None     ⇒ "Connection-" + Driver.nextCounter
+      case None     ⇒ Driver.actorName("Connection-")
     }
-    (supervisorActor ? AddConnection(uri, final_name)).map { x ⇒ x.asInstanceOf[ActorRef] }
+    (supervisorActor ? AddConnection(uri, final_name)).map { x ⇒
+      log.debug(s"Connection to '$final_name' acquired actor $x")
+      x.asInstanceOf[ActorRef]
+    }
   }
 
   /** Connect From A URI String

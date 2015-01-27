@@ -25,17 +25,16 @@ package rxmongo.driver
 import java.net.{ Socket, InetSocketAddress, InetAddress }
 import javax.net.SocketFactory
 
-import akka.actor.ActorRef
+import akka.actor.{ ActorSystem, ActorRef }
 import akka.pattern.ask
 
 import org.specs2.execute.Result
-import org.specs2.mutable.Specification
 import rxmongo.bson.BSONObject
 
 import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
-class DriverSpec extends Specification {
+class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
 
   def mongoTest(f : () ⇒ Result) : Result = {
     if (Helper.haveLocalMongo) {
@@ -45,33 +44,34 @@ class DriverSpec extends Specification {
     }
   }
 
+  sequential
+
   "Driver" should {
     "mind its lifecycle" in {
-      val driver = Driver(None, Some("One"))
-      driver.close(Duration(1, "seconds"))
-      driver.system.isTerminated must beTrue
+      val driver = Driver(None, "Lifecycle")
+      driver.close(1.second)
+      driver.isClosed must beTrue
     }
 
     "make a simple connection" in mongoTest { () ⇒
-      val driver = Driver(None, Some("Thing"))
-      val future = driver.connect("mongodb://localhost/", Some("TestConnection"))
-      val conn = Await.result(future, Duration(1, "s"))
+      val driver = Driver(None, "Simple")
+      val future = driver.connect("mongodb://localhost/")
+      val conn = Await.result(future, 1.seconds)
       conn.isInstanceOf[ActorRef] must beTrue
-      driver.close(Duration(500, "ms"))
+      driver.close(500.millis)
       success
     }
 
     "send an innocuous query" in mongoTest { () ⇒
-      val driver = Driver(None, Some("Thing"))
-      val future = driver.connect("mongodb://localhost/", Some("TestConnection"))
+      val driver = Driver(None, "Innocuous")
+      val future = driver.connect("mongodb://localhost/")
       val conn = Await.result(future, Duration(1, "s"))
       conn.isInstanceOf[ActorRef] must beTrue
       val c = conn.asInstanceOf[ActorRef]
-      c.ask(QueryMessage("rxmongo.test", 0, 1, BSONObject()))(Driver.defaultTimeout) map {
-        case msg : ReplyMessage ⇒
-          println("Got ReplyMessage)")
-      }
-      driver.close(Duration(500, "ms"))
+      val future2 = c.ask(QueryMessage("rxmongo.test", 0, 1, BSONObject("foo" -> 1)))(Driver.defaultTimeout)
+      val x = Await.result(future2, 3.seconds)
+      driver.close(500.millis)
+      x.isInstanceOf[ReplyMessage] must beTrue
       success
     }
 

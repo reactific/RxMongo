@@ -31,23 +31,25 @@ object Dependencies {
   )
 
   // Akka Stuff
-  val akkaV = "2.3.9"
+  // val akkaV = "2.3.9"
+  val akkaV = "2.4-SNAPSHOT"
   val akka_actor      = "com.typesafe.akka"   %% "akka-actor"                   % akkaV
   val akka_slf4j      = "com.typesafe.akka"   %% "akka-slf4j"                   % akkaV
   val akka_testkit    = "com.typesafe.akka"   %% "akka-testkit"                 % akkaV
   val akka_streams    = "com.typesafe.akka"   %% "akka-stream-experimental"     % "1.0-M2"
   val akka_http_core  = "com.typesafe.akka"   %% "akka-http-core-experimental"  % "1.0-M2"
   val akka_http       = "com.typesafe.akka"   %% "akka-http-experimental"       % "1.0-M2"
-
-  val grizzled_slf4j  = "org.clapper"         %% "grizzled-slf4j"               % "1.0.2"
+  val scala_logging   = "com.typesafe.scala-logging" %% "scala-logging"         % "3.1.0"
   val logback_classic = "ch.qos.logback"       % "logback-classic"              % "1.1.2"      % "test"
-  val specs           = "org.specs2"          %% "specs2-core"                  % "2.3.11"     % "test"
+  val specs           = "org.specs2"          %% "specs2-core"                  % "2.4.15"     % "test"
 
-  val common = Seq(specs, grizzled_slf4j, logback_classic)
+  val common = Seq(specs, logback_classic)
 
   val bson = common ++ Seq( akka_actor )
 
-  val driver = common ++ Seq( akka_streams, akka_actor, akka_testkit, akka_slf4j, akka_http_core )
+  val driver = common ++ Seq( akka_streams, akka_actor, akka_testkit, akka_slf4j, akka_http_core, scala_logging)
 
   val client = common ++ Seq( )
+
+  val examples = common ++ Seq( )
 }

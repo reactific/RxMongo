@@ -16,8 +16,8 @@
   -->
 
 <configuration>
-    <logger name="akka" level="DEBUG" />
-    <logger name="rxmongo" level="DEBUG"/>
+    <logger name="akka" level="WARN" />
+    <logger name="rxmongo" level="WARN"/>
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${logs_dir:-logs}/j9Accelerators.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
@@ -36,10 +36,10 @@
     </appender>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%date %-5level %logger{30} - %message%n%xException{5}</pattern>
+            <pattern>%date %-5level %logger{30}:  %message%n%xException{5}</pattern>
         </encoder>
     </appender>
-    <root level="DEBUG">
+    <root level="WARN">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" />
     </root>

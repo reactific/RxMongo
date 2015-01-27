@@ -38,6 +38,7 @@ object BuildSettings {
   val buildSettings: Seq[sbt.Def.Setting[_]] = Defaults.coreDefaultSettings ++
     Seq(
       organization := "org.rxmongo",
+      resolvers := Dependencies.resolvers,
       version := rxmongo_version,
       scalaVersion := "2.11.4",
       javaOptions in test ++= Seq("-Xmx512m", "-XX:MaxPermSize=512m"),

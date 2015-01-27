@@ -43,7 +43,11 @@ trait BSONValue {
 
 trait BSONDocument extends BSONValue {
 
-  case class DocumentIterator private[bson] (itr : ByteIterator) extends Iterator[(String, BSONValue)] {
+  class DocumentIterator private[bson] (docItr : ByteIterator) extends Iterator[(String, BSONValue)] {
+
+    val byteLen = docItr.getInt
+    val itr = docItr.slice(0, byteLen - 5) // remove 4 for the byteLen, and 1 for the terminating 0
+
     private def getKey : String = { itr.getCStr }
 
     private def skipLength : Int = {
@@ -65,6 +69,12 @@ trait BSONDocument extends BSONValue {
     private def skipObjId : Int = { itr.drop(12); 12 }
     private def skipByte : Int = { itr.drop(1); 1 }
 
+    private def skipDocument : Int = {
+      val len = itr.getInt
+      itr.drop(len - 4)
+      len
+    }
+
     def hasNext : Boolean = itr.hasNext
     def next() : (String, BSONValue) = {
       if (hasNext) {
@@ -81,9 +91,9 @@ trait BSONDocument extends BSONValue {
           case StringCode ⇒
             key -> BSONString(save.slice(0, skipLength).toByteString)
           case ObjectCode ⇒
-            key -> BSONObject(save.slice(0, skipLength).toByteString)
+            key -> BSONObject(save.slice(0, skipDocument).toByteString)
           case ArrayCode ⇒
-            key -> BSONArray(save.slice(0, skipLength).toByteString)
+            key -> BSONArray(save.slice(0, skipDocument).toByteString)
           case BinaryCode ⇒
             val len = skipLength + 1
             itr.drop(1)
@@ -101,7 +111,7 @@ trait BSONDocument extends BSONValue {
           case JavaScriptCode ⇒
             key -> BSONJsCode(save.slice(0, skipLength).toByteString)
           case ScopedJSCode ⇒
-            key -> BSONScopedJsCode(save.slice(0, skipLength).toByteString)
+            key -> BSONScopedJsCode(save.slice(0, skipDocument).toByteString)
           case DBPointerCode ⇒
             key -> BSONDBPointer(save.slice(0, skipLength + skipObjId).toByteString)
           case TimestampCode ⇒
@@ -154,7 +164,7 @@ case class BSONObject private[bson] (buffer : ByteString)
   def +[B1 >: BSONValue](kv : (String, B1)) : BSONObject = {
     val itr = buffer.iterator
     val len = itr.getInt
-    val content = itr.slice(0, len - 1).toByteString
+    val content = itr.slice(0, len - 5).toByteString
     val bldr = Builder()
     bldr.buffer ++= content
     bldr.value(kv._1, kv._2.asInstanceOf[BSONValue])
@@ -162,9 +172,7 @@ case class BSONObject private[bson] (buffer : ByteString)
   }
 
   def iterator : Iterator[(String, BSONValue)] = {
-    val itr = buffer.iterator
-    val length = itr.getInt
-    DocumentIterator(itr.slice(0, length - 1))
+    new DocumentIterator(buffer.iterator)
   }
 
   override def foreach[U](f : ((String, BSONValue)) ⇒ U) : Unit = {
@@ -188,7 +196,7 @@ case class BSONObject private[bson] (buffer : ByteString)
     * @tparam T The type to which the call wishes the BSONValue to be decoded.
     * @param key The key to look up in the object to obtain the value
     * @return Success(None) if the key is not found, Success(Some(T)) if the key is found and converted successfully,
-    *        Failure(Throwable) if the conversion failed
+    *     Failure(Throwable) if the conversion failed
     *
     * If there is no matching value, or the value could not be deserialized or converted, returns a `None`.
     */
@@ -236,9 +244,7 @@ case class BSONArray private[bson] (buffer : ByteString) extends BSONDocument {
   def compact : BSONArray = BSONArray(buffer.compact)
 
   def iterator : Iterator[BSONValue] = {
-    val itr = buffer.iterator
-    val length = itr.getInt
-    val docItr = DocumentIterator(itr.slice(0, length - 1))
+    val docItr = new DocumentIterator(buffer.iterator)
     docItr.map { case (key, value) ⇒ value }
   }
 }

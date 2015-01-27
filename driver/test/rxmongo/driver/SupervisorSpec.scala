@@ -23,12 +23,16 @@
 package rxmongo.driver
 
 import akka.actor._
+import akka.pattern.ask
 import akka.testkit.TestProbe
 import rxmongo.driver.Supervisor.NumConnectionsReply
 
+import scala.concurrent.Await
 import scala.concurrent.duration._
 
 class SupervisorSpec extends AkkaTest(ActorSystem("SupervisorTest")) {
+
+  sequential
 
   "Supervisor" should {
     "handle Shutdown" in {
@@ -44,9 +48,9 @@ class SupervisorSpec extends AkkaTest(ActorSystem("SupervisorTest")) {
 
     "return 0 for NumChannels at startup" in {
       val s = system.actorOf(Supervisor.props())
-      s ! Supervisor.NumConnections
-      expectMsg(500.millis, NumConnectionsReply(0))
-      success
+      val future = s.ask(Supervisor.NumConnections)(500.millis)
+      val reply = Await.result(future, 500.millis)
+      reply must beEqualTo(NumConnectionsReply(0))
     }
 
     "add a connection" in {

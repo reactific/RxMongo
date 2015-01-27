@@ -131,8 +131,8 @@ class BSONSpec extends Specification {
       val compactiontime = compactend - endtime
       len must beEqualTo(compact_len)
       if (Helper.suitableForTimingTests) {
-        constructiontime must beLessThan(2000000000L) // < 2 seconds for 10,000 nodes
-        compactiontime must beLessThan(400000000L) // < 400ms for 5MB compaction
+        constructiontime must beLessThan(3000000000L) // < 3 seconds for 10,000 nodes
+        compactiontime must beLessThan(500000000L) // < 400ms for 5MB compaction
         success
       } else {
         skipped(": machine too busy for timing tests")
