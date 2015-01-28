@@ -240,9 +240,7 @@ object BSONObject {
 
   def from(data : Seq[(String, Any)]) : BSONObject = {
     val bldr = BSONBuilder()
-    data.foreach {
-      case (key, value) ⇒ bldr.append(key, value)
-    }
+    bldr.append(data)
     bldr.result()
   }
 

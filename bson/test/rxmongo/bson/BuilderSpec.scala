@@ -128,7 +128,7 @@ class BuilderSpec extends Specification {
       val str = BSONString("fourty-two")
       val dbl = BSONDouble(42.0)
       val builder = BSONBuilder()
-      builder.array("array", Array(str, dbl))
+      builder.array("array", str, dbl)
       builder.toByteString must beEqualTo(expected)
     }
 

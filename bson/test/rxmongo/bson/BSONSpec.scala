@@ -188,7 +188,7 @@ object Helper {
     b.double("double", 42.0D).
       string("string", "fourty-two").
       obj("obj", anObject).
-      array("array", anArraySeq).
+      array("array", anArraySeq:_*).
       binary("binary", data, UserDefinedBinary).
       undefined("undefined").
       objectID("objectid", data).
@@ -214,7 +214,7 @@ object Helper {
       val kids = for (i ← 1 to width) yield {
         makeObject(width, depth - 1)
       }
-      bldr.array("kids", kids.toSeq)
+      bldr.array("kids", kids.toSeq:_*)
     }
     bldr.toBSONObject
   }
