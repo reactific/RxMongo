@@ -1,16 +1,16 @@
 # RxMongo
-A reactive, non-blocking, asynchronous driver for MongoDB 2.8 with ReactiveStreams and Akka.
+A reactive, non-blocking, asynchronous driver for MongoDB 3.0 using ReactiveStreams.
 
 # Status [![Build Status](https://travis-ci.org/reactific/RxMongo.svg?branch=master)](https://travis-ci.org/reactific/RxMongo)
 RxMongo is just getting started. Developers and testers are needed. If you want to help, please contact Reid.
 
 # Quick Start
 
-### Stable: Scala 2.11, SBT 0.13.7, Mongo 2.6
+### Stable: Scala 2.11, SBT 0.13.7, Mongo 3.0
 
 - Not available yet.
 
-### Development: Scala 2.11, SBT 0.13.7, Mongo 2.8
+### Development: Scala 2.11, SBT 0.13.7, Mongo 3.0
 
 Will be available in February 2015 with something like this:
 
@@ -22,18 +22,18 @@ libraryDependencies := "org.rxmongo" %% "rxmongo-client" % "0.1.0-SNAPSHOT"
 # Introduction
 RxMongo is similar in purpose to [ReactiveMongo](https://github.com/ReactiveMongo/ReactiveMongo), but not in
 implementation. RxMongo has the same aim, however: to provide a highly performant and scalable non-blocking asynchronous
-driver in Scala for MongoDB. Some attempts were made to modify ReactiveMongo but when pull requests were ignored and
-incremental modification got too difficult, we decided to start over from a fresh slate and let ReactiveMongo inform
+driver in Scala for MongoDB. Some attempts were made to modify ReactiveMongo but when it became apparent that the
+desired changes amounted to a re-write, we decided to start over from a fresh slate and let ReactiveMongo inform
 our design. RxMongo differs in its approach by emphasizing performance over ease of use and minimizing dependencies.
 It utilizes Akka for nearly everything (logging, I/O, streams, actors, configuration, etc.) and is reticent to
 depend on other packages.
 
-The goals of RxMongo is to provide best performing non-blocking, asynchronous, Scala driver for MongoDB that is
+The goals of RxMongo is to provide the best performing non-blocking, asynchronous Scala driver for MongoDB that is
 provably correct and production ready. This will be accomplished by using reactive programming principles, ensuring
 that every necessary construct has a full test suite, and requiring commits to pass every test so the project never
-regresses unnecessarily.
+regresses.
 
-RxMongo also seeks to maintain a clean clean and stable API for interacting with MongoDB that matches the MongoDB
+RxMongo also seeks to maintain a clean and stable API for interacting with MongoDB that matches the documented MongoDB
 interface but also makes use of Scala's many features so the API is not tedious to use.
 
 # Important Design Points
@@ -41,13 +41,20 @@ interface but also makes use of Scala's many features so the API is not tedious 
 ### Low Level BSON Interface
 
 Many Scala implementations of BSON use a variety of case classes to model the contents of a bson document and then
-serialize or deserialize accordingly. RxMongo takes a different approach. An RxMongo BSON Object simply wrap an
+serialize or deserialize accordingly. RxMongo takes a different approach. An RxMongo BSONObject simply wraps an
 Akka ByteString which is a rope-like data structure that avoids buffer copying. RxMongo provides a builder for
 constructing a BSON Object that directly constructs a ByteString with a ByteStringBuilder. At the end, you have
-a buffer that is ready to be written to an I/O channel. Similarly, data streams read from the mongod will be
-retained in place and BSON Object simply interprets that data instead of copying it into lots of case classes.
-The goal of all this is to eliminate data copying to and from the BSON binary format which is one of the key
-elements of a driver that performs well.
+a buffer that is ready to be written to an I/O channel. Similarly, data streams read from the mongod are retained
+in place and BSONObject simply interprets that data instead of copying it into lots of case classes. Data can be
+extracted to other forms, but that is always a choice, not automatic. The goal of all this is to eliminate data
+copying to and from the BSON binary format which is one of the key elements of a driver that performs well.
+
+
+### Efficient Query Builder DSL
+MongoDB suggests the use of various keywords (e.g. `$ne`, `$gte`, `$exists`) in BSONObjects to implement queries and
+other features. This is supported directly in RxMongo by adding a DSL layer on top of the BSONBuilder class. This
+remains efficient because what is generated directly from the DSL is a BSON binary buffer that can be sent to the
+server without further copying.
 
 ### Reactive Streams Based Interface
 
@@ -75,9 +82,10 @@ methods that allow you to manipulate the databases and collections in your mongo
 translate your method invocations into the corresponding Driver calls. This part of the API also provides a set of
 abstractions for variant collections, named queries, and other utilities to make using Mongo simpler.
 
-### Full Featured for Mongo 2.8
-By the 1.0 release, RxMongo will fully support all Mongo 2.8 features and is aimed at the Mongo 2.8 release. It may or
-may not be compatible with prior releases.
+### Full Featured for Mongo 3.0
+By the 1.0 release, RxMongo will fully support all Mongo 3.0 features and is aimed at the Mongo 3.0 release. Backwards
+compatibility with 2.6 may be offered but at a lower priority. Compatibility with versions prior to 2.6 will not be
+offered. 
 
 # Getting Started
 
