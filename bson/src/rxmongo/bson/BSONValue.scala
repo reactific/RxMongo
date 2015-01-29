@@ -353,7 +353,6 @@ case class BSONBoolean private[bson] (buffer : ByteString) extends BSONValue {
   def value : Boolean = {
     if (buffer.iterator.getByte == 0) false else true
   }
-  override def toString = value.toString
 }
 
 object BSONBoolean {
