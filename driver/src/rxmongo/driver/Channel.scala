@@ -38,15 +38,22 @@ object Channel {
   def props(remote : InetSocketAddress, options : ConnectionOptions, replies : ActorRef, isPrimary : Boolean) =
     Props(classOf[Channel], remote, options, replies)
 
+  sealed trait ChannelRequest
   case object Ack extends Tcp.Event
   case class CloseWithAck(ack : Any)
-  case class SendMessage(msg : RequestMessage, replyTo : ActorRef)
-  case object Close
+  case class SendMessage(msg : RequestMessage, replyTo : ActorRef) extends ChannelRequest
+  case object Close extends ChannelRequest
+  case object GetStatistics extends ChannelRequest
 
   sealed trait ChannelResponse
   case class ConnectionFailed(conn : Tcp.Connect) extends ChannelResponse
   case class ConnectionSucceeded(conn : Tcp.Connect) extends ChannelResponse
   case class UnsolicitedReply(reply : ReplyMessage) extends ChannelResponse
+  case class Statistics(
+    numMessages : Long,
+    numReplies : Long,
+    numFailures: Long
+  ) extends ChannelResponse
 }
 
 class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener : ActorRef)
@@ -73,9 +80,13 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
     pullMode = true
   )
 
+  var msgCounter : Long = 0L
+  var replyCounter : Long = 0L
+  var writeFailures : Long = 0L
+
   manager ! connectionMsg
 
-  log.debug("Connection request to IO Manager sent")
+  log.debug("Connection request to TCP Manager sent")
 
   override def preStart() = {
     manager ! ResumeReading
@@ -119,6 +130,9 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
         log.info(s"Spurious termination: $actor")
       }
 
+    case Channel.GetStatistics =>
+      sender() ! Channel.Statistics(msgCounter, replyCounter, writeFailures)
+
     case x : Channel.SendMessage ⇒
       log.debug(s"Not ready to send message to mongo yet, connection not registered: $x")
 
@@ -132,10 +146,14 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
       connection ! Close
       context become closing
 
+    case Channel.GetStatistics =>
+      sender() ! Channel.Statistics(msgCounter, replyCounter, writeFailures)
+
     case Channel.SendMessage(message : RequestMessage, replyTo : ActorRef) ⇒
+      msgCounter += 1
       // Send a message to Mongo via connection actor
       val msg_to_send = message.finish
-      log.debug("Sending message to Mongo: {} ({})", message, msg_to_send)
+      log.debug("Sending message to Mongo: {} ({} bytes)", message, msg_to_send.length)
       val msg = Write(msg_to_send, Channel.Ack)
       connection ! msg
       if (message.requiresResponse)
@@ -145,6 +163,7 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
       connection ! ResumeReading // Tell connection actor we can read more now
 
     case Received(data : ByteString) ⇒ // Receive a reply from Mongo
+      replyCounter += 1
       val reply = ReplyMessage(data) // Encapsulate that in a ReplyMessage
       pendingResponses.get(reply.responseTo) match {
         case Some(actor) ⇒ actor ! reply
@@ -153,13 +172,14 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
           listener ! Channel.UnsolicitedReply(reply)
       }
 
-    case Terminated(actor) ⇒ // The TCP
+    case Terminated(actor) ⇒ // The TCP connection has terminated
       if (actor == connection)
         log.debug("TCP Connection terminated unexpectedly: {}", actor)
       else
         log.debug(s"Spurious termination: $actor")
 
     case CommandFailed(w : Write) ⇒ // A write has failed
+      writeFailures += 1
       log.debug("CommandFailed: {}", w)
       // O/S buffer was full
       listener ! "write failed"
