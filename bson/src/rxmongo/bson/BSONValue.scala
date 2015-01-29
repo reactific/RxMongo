@@ -511,4 +511,3 @@ object BSONLong {
     new BSONLong(buffer.result())
   }
 }
-
