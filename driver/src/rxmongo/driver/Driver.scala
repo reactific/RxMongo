@@ -133,7 +133,7 @@ case class Driver(cfg : Option[Config] = None, name : String = "RxMongo") extend
 
     val final_name = name match {
       case Some(nm) ⇒ nm
-      case None     ⇒ Driver.actorName("Connection-")
+      case None     ⇒ "Connection"
     }
     (supervisorActor ? AddConnection(uri, final_name)).map { x ⇒
       log.debug(s"Connection to '$final_name' acquired actor $x")
