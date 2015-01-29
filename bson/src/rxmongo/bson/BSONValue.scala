@@ -27,9 +27,11 @@ import java.util.Date
 
 import akka.util.{ ByteIterator, ByteString }
 
+import scala.annotation.switch
 import scala.collection.{ Map, MapLike }
 import scala.util.Try
 import scala.util.matching.Regex
+import scala.language.implicitConversions
 
 trait BSONValue {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
@@ -53,80 +55,84 @@ trait BSONDocument extends BSONValue {
 
     private def getKey : String = { itr.getCStr }
 
-    private def skipLength : Int = {
-      val len = itr.getInt
-      itr.drop(len)
-      len + 4
-    }
-
-    private def skipCStr : Int = {
-      var count = 0
-      itr.dropWhile { ch ⇒ count += 1; ch != 0 }
-      itr.drop(1)
-      count
-    }
-
-    private def skipLong : Int = { itr.drop(8); 8 }
-    private def skipDouble : Int = skipLong
-    private def skipInt : Int = { itr.drop(4); 4 }
-    private def skipObjId : Int = { itr.drop(12); 12 }
-    private def skipByte : Int = { itr.drop(1); 1 }
-
-    private def skipDocument : Int = {
-      val len = itr.getInt
-      itr.drop(len - 4)
-      len
-    }
-
     def hasNext : Boolean = itr.hasNext
+
+    private def advance(i : ByteIterator, code : Byte) : Int = {
+      (code : @switch) match {
+        case 1  ⇒ i.skipDouble // Double
+        case 2  ⇒ i.skipLength // String
+        case 3  ⇒ i.skipDocument // Object
+        case 4  ⇒ i.skipDocument // Array
+        case 5  ⇒ i.skipLength + i.skipByte // Binary
+        case 6  ⇒ 0 // Undefined
+        case 7  ⇒ i.skipObjId // ObjectID
+        case 8  ⇒ i.skipByte // Boolean
+        case 9  ⇒ i.skipLong // Date
+        case 10 ⇒ 0 // Null
+        case 11 ⇒ i.skipCStr + i.skipCStr // Regex
+        case 12 ⇒ i.skipLength + i.skipObjId // DBPointer
+        case 13 ⇒ i.skipLength // JavaScript
+        case 14 ⇒ i.skipLength // Symbol
+        case 15 ⇒ i.skipDocument // Scoped JavaScript
+        case 16 ⇒ i.skipInt // Integer
+        case 17 ⇒ i.skipLong // Timestamp
+        case 18 ⇒ i.skipLong // Long
+        case _  ⇒ throw new NoSuchElementException("Unrecognized BSON Type Code")
+      }
+    }
+
+    private def toNext[T](i : ByteIterator)(f : (ByteIterator, TypeCode, String, Int) ⇒ T) : T = {
+      val code = i.getByte
+      val key = i.getCStr
+      val save = i.clone()
+      val len = advance(i, code)
+      f(save.slice(0, len), TypeCode(code), key, len)
+    }
+
+    override def size : Int = {
+      var result = 0
+      val i = itr.clone()
+      while (i.hasNext) {
+        val code = i.getByte
+        i.skipCStr
+        advance(i, code)
+        result += 1
+      }
+      result
+    }
+
     def next() : (String, BSONValue) = {
       if (hasNext) {
-        val code = itr.getByte
-        val key = getKey
-        val save = itr.clone()
-        TypeCode(code) match {
-          case IntegerCode ⇒
-            key -> BSONInteger(save.slice(0, skipInt).toByteString)
-          case LongCode ⇒
-            key -> BSONLong(save.slice(0, skipLong).toByteString)
-          case DoubleCode ⇒
-            key -> BSONDouble(save.slice(0, skipDouble).toByteString)
-          case StringCode ⇒
-            key -> BSONString(save.slice(0, skipLength).toByteString)
-          case ObjectCode ⇒
-            key -> BSONObject(save.slice(0, skipDocument).toByteString)
-          case ArrayCode ⇒
-            key -> BSONArray(save.slice(0, skipDocument).toByteString)
-          case BinaryCode ⇒
-            val len = skipLength + 1
-            itr.drop(1)
-            key -> BSONBinary(save.slice(0, len).toByteString)
-          case ObjectIDCode ⇒
-            key -> BSONObjectID(save.slice(0, skipObjId).toByteString)
-          case BooleanCode ⇒
-            key -> BSONBoolean(save.slice(0, skipByte).toByteString)
-          case DateCode ⇒
-            key -> BSONDate(save.slice(0, skipLong).toByteString)
-          case NullCode ⇒
-            key -> BSONNull
-          case RegexCode ⇒
-            key -> BSONRegex(save.slice(0, skipCStr + skipCStr).toByteString)
-          case JavaScriptCode ⇒
-            key -> BSONJsCode(save.slice(0, skipLength).toByteString)
-          case ScopedJSCode ⇒
-            key -> BSONScopedJsCode(save.slice(0, skipDocument).toByteString)
-          case DBPointerCode ⇒
-            key -> BSONDBPointer(save.slice(0, skipLength + skipObjId).toByteString)
-          case TimestampCode ⇒
-            key -> BSONTimestamp(save.slice(0, skipLong).toByteString)
-          case UndefinedCode ⇒
-            key -> BSONUndefined
-          case SymbolCode ⇒
-            key -> BSONSymbol(save.slice(0, skipLength).toByteString)
-          case x : TypeCode ⇒ throw new NoSuchElementException(s"Unrecognized: $x")
+        val save : ByteIterator = itr.clone()
+        toNext[(String, BSONValue)](itr) {
+          case (an_itr : ByteIterator, tc : TypeCode, key : String, len : Int) ⇒ {
+            val bytes = an_itr.toByteString
+            tc match {
+              case IntegerCode ⇒ key -> BSONInteger(bytes)
+              case LongCode ⇒ key -> BSONLong(bytes)
+              case DoubleCode ⇒ key -> BSONDouble(bytes)
+              case StringCode ⇒ key -> BSONString(bytes)
+              case ObjectCode ⇒ key -> BSONObject(bytes)
+              case ArrayCode ⇒ key -> BSONArray(bytes)
+              case BinaryCode ⇒ key -> BSONBinary(bytes)
+              case ObjectIDCode ⇒ key -> BSONObjectID(bytes)
+              case BooleanCode ⇒ key -> BSONBoolean(bytes)
+              case DateCode ⇒ key -> BSONDate(bytes)
+              case NullCode ⇒ key -> BSONNull
+              case RegexCode ⇒ key -> BSONRegex(bytes)
+              case JavaScriptCode ⇒ key -> BSONJsCode(bytes)
+              case ScopedJSCode ⇒ key -> BSONScopedJsCode(bytes)
+              case DBPointerCode ⇒ key -> BSONDBPointer(bytes)
+              case TimestampCode ⇒ key -> BSONTimestamp(bytes)
+              case UndefinedCode ⇒ key -> BSONUndefined
+              case SymbolCode ⇒ key -> BSONSymbol(bytes)
+              case x : TypeCode ⇒ throw new NoSuchElementException(s"Unrecognized: $x")
+            }
+          }
         }
-      } else
+      } else {
         Iterator.empty.next()
+      }
     }
   }
 
@@ -183,14 +189,10 @@ case class BSONObject private[bson] (buffer : ByteString)
     iterator.foreach[U](f)
   }
 
-  override def size : Int = {
-    // FIXME: This is horribly inefficient
-    iterator.size
-  }
+  override def size : Int = iterator.size
 
-  def get(key : String) : Option[BSONValue] = {
-    // FIXME: This is horribly inefficient
-    toMap.get(key)
+  def get(key_to_find : String) : Option[BSONValue] = {
+    iterator.find { case (key, value) ⇒ key == key_to_find } map { case (key, value) ⇒ value }
   }
 
   /** Get with conversion to another type
@@ -206,7 +208,7 @@ case class BSONObject private[bson] (buffer : ByteString)
     */
   def getAs[T](key : String)(implicit codec : BSONCodec[T]) : Try[Option[T]] = Try {
     get(key) match {
-      case Some(value) ⇒ Some(codec.read(value))
+      case Some(value) ⇒ codec.readOption(value)
       case None ⇒ None
     }
   }
@@ -278,7 +280,7 @@ case class BSONArray private[bson] (buffer : ByteString) extends BSONDocument {
       for (v ← itr) {
         s.append(v.toString).append(", ")
       }
-      s.setLength((s.length - 2))
+      s.setLength(s.length - 2)
       s.append(" ]")
     }
     s.toString()
