@@ -41,5 +41,6 @@
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" />
     </root>
+    <logger name="rxmongo" level="DEBUG"/>
 
 </configuration>
