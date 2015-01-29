@@ -52,8 +52,7 @@ object Channel {
   case class Statistics(
     numMessages : Long,
     numReplies : Long,
-    numFailures: Long
-  ) extends ChannelResponse
+    numFailures : Long) extends ChannelResponse
 }
 
 class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener : ActorRef)
@@ -130,7 +129,7 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
         log.info(s"Spurious termination: $actor")
       }
 
-    case Channel.GetStatistics =>
+    case Channel.GetStatistics ⇒
       sender() ! Channel.Statistics(msgCounter, replyCounter, writeFailures)
 
     case x : Channel.SendMessage ⇒
@@ -146,7 +145,7 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
       connection ! Close
       context become closing
 
-    case Channel.GetStatistics =>
+    case Channel.GetStatistics ⇒
       sender() ! Channel.Statistics(msgCounter, replyCounter, writeFailures)
 
     case Channel.SendMessage(message : RequestMessage, replyTo : ActorRef) ⇒
