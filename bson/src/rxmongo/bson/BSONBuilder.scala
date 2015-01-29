@@ -77,12 +77,12 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] {
     this
   }
 
-  def obj(key: String, fields: Map[String,Any]) : BSONBuilder = {
+  def obj(key : String, fields : Map[String, Any]) : BSONBuilder = {
     putPrefix(ObjectCode, key)
     obj(fields.toSeq)
   }
 
-  def obj(key: String, field1: (String,Any), fields: (String,Any)* ) : BSONBuilder = {
+  def obj(key : String, field1 : (String, Any), fields : (String, Any)*) : BSONBuilder = {
     putPrefix(ObjectCode, key)
     obj(Seq(field1) ++ fields)
   }
@@ -181,54 +181,61 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] {
     this
   }
 
-
   private[bson] def append(key : String, anyVal : Any) : BSONBuilder = {
     anyVal match {
       case BSONNull ⇒ putPrefix(NullCode, key)
       case BSONUndefined ⇒ putPrefix(UndefinedCode, key)
       case v : BSONValue ⇒
         putPrefix(v.code, key); buffer ++= v.buffer
-      case i : Int     ⇒ integer(key, i)
-      case l : Long    ⇒ long(key, l)
-      case d : Double  ⇒ double(key, d)
-      case f : Float   ⇒ double(key, f)
+      case i : Int ⇒ integer(key, i)
+      case l : Long ⇒ long(key, l)
+      case d : Double ⇒ double(key, d)
+      case f : Float ⇒ double(key, f)
       case b : Boolean ⇒ boolean(key, b)
-      case s : Short   ⇒ integer(key, s)
-      case s : String  ⇒ string(key, s)
-      case d : Date    ⇒ utcDate(key, d.getTime)
+      case s : Short ⇒ integer(key, s)
+      case s : String ⇒ string(key, s)
+      case d : Date ⇒ utcDate(key, d.getTime)
       case b : ByteString ⇒ binary(key, b, UserDefinedBinary)
       case r : Regex ⇒ regex(key, r)
-      case m : Map[String, Any] @unchecked ⇒ putPrefix(ObjectCode, key); obj(m.toSeq)
-      case a : Array[Byte] ⇒ binary(key, a, UserDefinedBinary)
-      case i : Iterable[Any] ⇒ array(key, i.toSeq:_*)
+      case m : Map[String, Any] @unchecked ⇒
+        putPrefix(ObjectCode, key); obj(m.toSeq)
+      case a : Array[Byte]   ⇒ binary(key, a, UserDefinedBinary)
+      case i : Iterable[Any] ⇒ array(key, i.toSeq : _*)
       case x : Any ⇒
         throw RxMongoError(s"Unable to convert $x into a BSONValue")
     }
     this
   }
 
-  private[bson] def append(fields: Iterable[(String,_)]) : BSONBuilder = {
+  private[bson] def append(fields : Iterable[(String, _)]) : BSONBuilder = {
     fields.foreach {
-      case (key:String, value: Unit) => nil(key)
-      case (key:String, value:Any) ⇒ this.append(key, value)
-      case (key:String, null) => nil(key)
+      case (key : String, value : Unit) ⇒ nil(key)
+      case (key : String, value : Any) ⇒ this.append(key, value)
+      case (key : String, null) ⇒ nil(key)
     }
     this
   }
 
-  private[bson] def obj(fields: Iterable[(String,Any)]) : BSONBuilder = {
+  private[bson] def obj(fields : Iterable[(String, Any)]) : BSONBuilder = {
     val docBuilder = BSONBuilder()
-    for ((key : String, any: Any) ← fields ) {
+    for ((key : String, any : Any) ← fields) {
       docBuilder.append(key, any)
     }
     buffer ++= docBuilder.toByteString
     this
   }
 
-  private[bson] def array(values: Iterable[Any]) : BSONBuilder = {
+  private[bson] def obj(key : String, value : ByteString) : BSONBuilder = {
+    putPrefix(ObjectCode, key)
+    buffer ++= value
+    this
+  }
+
+  private[bson] def array(values : Iterable[Any]) : BSONBuilder = {
     val arrayBuilder = BSONBuilder()
     values.zipWithIndex.foreach {
-      case (value, index) ⇒ arrayBuilder.append(index.toString, value)
+      case (v, i) ⇒
+        arrayBuilder.append(i.toString, v)
     }
     buffer ++= arrayBuilder.toByteString()
     this

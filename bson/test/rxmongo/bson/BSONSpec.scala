@@ -180,7 +180,7 @@ object Helper {
   val data = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
   val anArray = Seq(42.0D, "fourty-two")
   val anArraySeq = Seq(BSONDouble(42.0D), BSONString("fourty-two"))
-  val anArrayBSON : BSONArray = BSONArray(anArraySeq)
+  val anArrayBSON : BSONArray = BSONArray(anArray)
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
 
   def makeObj : BSONBuilder = {
@@ -188,7 +188,7 @@ object Helper {
     b.double("double", 42.0D).
       string("string", "fourty-two").
       obj("obj", anObject).
-      array("array", anArraySeq:_*).
+      array("array", anArray : _*).
       binary("binary", data, UserDefinedBinary).
       undefined("undefined").
       objectID("objectid", data).
@@ -214,7 +214,7 @@ object Helper {
       val kids = for (i ← 1 to width) yield {
         makeObject(width, depth - 1)
       }
-      bldr.array("kids", kids.toSeq:_*)
+      bldr.array("kids", kids.toSeq : _*)
     }
     bldr.toBSONObject
   }

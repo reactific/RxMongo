@@ -87,13 +87,13 @@ class RequestMessage(val opcode : Message.OpCode) extends Message {
 /** The Mongo Update Message
   * The OP_UPDATE message is used to update a document in a collection.
   * @param fullCollectionName The full name of the collection, including database name, like "dbName.collectionName".
-  *              The full collection name is the concatenation of the database name with the collection
-  *              name, using a . for the concatenation. For example, for the database foo and the
-  *              collection bar, the full collection name is foo.bar.
+  *             The full collection name is the concatenation of the database name with the collection
+  *             name, using a . for the concatenation. For example, for the database foo and the
+  *             collection bar, the full collection name is foo.bar.
   * @param selector The document selector used to match which documents will be updated
   * @param update The update to apply to the selected documents
   * @param upsert If set, the database will insert the supplied object into the collection if no matching
-  *  document is found
+  * document is found
   * @param multiUpdate if set, the database will update all matching objects in the collection, not just the first one.
   */
 case class UpdateMessage(
@@ -126,14 +126,14 @@ case class UpdateMessage(
 /** The Mongo Insert Message
   * The OP_INSERT message is used to insert one or more documents into a collection.
   * @param fullCollectionName The full name of the collection, including database name, like "dbName.collectionName".
-  *              The full collection name is the concatenation of the database name with the collection
-  *              name, using a . for the concatenation. For example, for the database foo and the
-  *              collection bar, the full collection name is foo.bar.
+  *             The full collection name is the concatenation of the database name with the collection
+  *             name, using a . for the concatenation. For example, for the database foo and the
+  *             collection bar, the full collection name is foo.bar.
   * @param documents A sequence of documents to be inserted into the collection
   * @param continueOnError If set, the database will not stop processing a bulk insert if one fails (eg due to
-  *           duplicate IDs). This makes bulk insert behave similarly to a series of single inserts,
-  *           except lastError will be set if any insert fails, not just the last one. If multiple
-  *           errors occur, only the most recent will be reported by getLastError. (new in 1.9.1)
+  *          duplicate IDs). This makes bulk insert behave similarly to a series of single inserts,
+  *          except lastError will be set if any insert fails, not just the last one. If multiple
+  *          errors occur, only the most recent will be reported by getLastError. (new in 1.9.1)
   */
 case class InsertMessage(
   fullCollectionName : String,
@@ -219,28 +219,28 @@ abstract class GenericQueryMessage extends RequestMessage(Message.OP_QUERY) {
 /** The Mongo Query Message
   * The OP_QUERY message is used to query the database for documents in a collection.
   * @param fullCollectionName The full name of the collection, including database name, like "dbName.collectionName".
-  *              The full collection name is the concatenation of the database name with the collection
-  *              name, using a . for the concatenation. For example, for the database foo and the
-  *              collection bar, the full collection name is foo.bar.
+  *             The full collection name is the concatenation of the database name with the collection
+  *             name, using a . for the concatenation. For example, for the database foo and the
+  *             collection bar, the full collection name is foo.bar.
   * @param numberToSkip The number of documents to skip. Sets the number of documents to omit - starting from the first
-  *        document in the resulting dataset - when returning the result of the query.
+  *       document in the resulting dataset - when returning the result of the query.
   * @param numberToReturn The number of documents to return in the first OP_REPLY batch. Limits the number of documents
-  *          in the first OP_REPLY message to the query. However, the database will still establish a
-  *          cursor and return the cursorID to the client if there are more results than numberToReturn.
-  *          If the client driver offers ‘limit’ functionality (like the SQL LIMIT keyword), then it is
-  *          up to the client driver to ensure that no more than the specified number of documents are
-  *          returned to the calling application. If numberToReturn is 0, the db will use the default
-  *          return size. If the number is negative, then the database will return that number and
-  *          close the cursor. No further results for that query can be fetched. If numberToReturn
-  *          is 1 the server will treat it as -1 (closing the cursor automatically).
+  *         in the first OP_REPLY message to the query. However, the database will still establish a
+  *         cursor and return the cursorID to the client if there are more results than numberToReturn.
+  *         If the client driver offers ‘limit’ functionality (like the SQL LIMIT keyword), then it is
+  *         up to the client driver to ensure that no more than the specified number of documents are
+  *         returned to the calling application. If numberToReturn is 0, the db will use the default
+  *         return size. If the number is negative, then the database will return that number and
+  *         close the cursor. No further results for that query can be fetched. If numberToReturn
+  *         is 1 the server will treat it as -1 (closing the cursor automatically).
   * @param query The query object. BSON document that represents the query. The query will contain one or more
   * elements, all of which must match for a document to be included in the result set. Possible elements
   * include $query, $orderby, $hint, $explain, and $snapshot.
   * @param returnFieldsSelector Optional. Selector indicating the fields to return. BSON document that limits the
-  *                fields in the returned documents. The returnFieldsSelector contains one or more
-  *                elements, each of which is the name of a field that should be returned, and and the
-  *                integer value 1. In JSON notation, a returnFieldsSelector to limit to the fields
-  *                a, b and c would be: `{ a : 1, b : 1, c : 1}`.
+  *               fields in the returned documents. The returnFieldsSelector contains one or more
+  *               elements, each of which is the name of a field that should be returned, and and the
+  *               integer value 1. In JSON notation, a returnFieldsSelector to limit to the fields
+  *               a, b and c would be: `{ a : 1, b : 1, c : 1}`.
   *
   * The database will respond to an OP_QUERY message with an OP_REPLY message.
   */
@@ -260,19 +260,19 @@ case class QueryMessage(
 /** The Mongo GET MORE Message
   * The OP_GET_MORE message is used to query the database for documents in a collection. T
   * @param fullCollectionName The full name of the collection, including database name, like "dbName.collectionName".
-  *              The full collection name is the concatenation of the database name with the collection
-  *              name, using a . for the concatenation. For example, for the database foo and the
-  *              collection bar, the full collection name is foo.bar.
+  *             The full collection name is the concatenation of the database name with the collection
+  *             name, using a . for the concatenation. For example, for the database foo and the
+  *             collection bar, the full collection name is foo.bar.
   * @param numberToReturn Limits the number of documents in the first OP_REPLY message to the query. However, the
-  *          database will still establish a cursor and return the cursorID to the client if there are
-  *          more results than numberToReturn. If the client driver offers ‘limit’ functionality (like
-  *          the SQL LIMIT keyword), then it is up to the client driver to ensure that no more than the
-  *          specified number of document are returned to the calling application. If numberToReturn is 0,
-  *          the db will used the default return size.
+  *         database will still establish a cursor and return the cursorID to the client if there are
+  *         more results than numberToReturn. If the client driver offers ‘limit’ functionality (like
+  *         the SQL LIMIT keyword), then it is up to the client driver to ensure that no more than the
+  *         specified number of document are returned to the calling application. If numberToReturn is 0,
+  *         the db will used the default return size.
   * @param forReply The ReplyMessage for an OP_QUERY to which this GetMoreMessage is requesting more data. This is used
-  *    instead of a cursorID value so that it is not possible to mix up the cursorID. This means the
-  *    original reply message will stick around while we're still getting more messages. We're okay with
-  *    that.
+  *   instead of a cursorID value so that it is not possible to mix up the cursorID. This means the
+  *   original reply message will stick around while we're still getting more messages. We're okay with
+  *   that.
   */
 case class GetMoreMessage(
   fullCollectionName : String,
@@ -298,14 +298,14 @@ case class GetMoreMessage(
   * The OP_DELETE message is used to remove one or more documents from a collection.
   *
   * @param fullCollectionName The full name of the collection, including database name, like "dbName.collectionName".
-  *              The full collection name is the concatenation of the database name with the collection
-  *              name, using a . for the concatenation. For example, for the database foo and the
-  *              collection bar, the full collection name is foo.bar.
+  *             The full collection name is the concatenation of the database name with the collection
+  *             name, using a . for the concatenation. For example, for the database foo and the
+  *             collection bar, the full collection name is foo.bar.
   * @param selector BSON document that represent the query used to select the documents to be removed. The selector
-  *    will contain one or more elements, all of which must match for a document to be removed from the
-  *    collection.
+  *   will contain one or more elements, all of which must match for a document to be removed from the
+  *   collection.
   * @param singleRemove If set, the database will remove only the first matching document in the collection.
-  *        Otherwise all matching documents will be removed.
+  *       Otherwise all matching documents will be removed.
   */
 
 case class DeleteMessage(

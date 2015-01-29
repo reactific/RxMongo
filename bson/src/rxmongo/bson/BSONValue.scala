@@ -39,6 +39,9 @@ trait BSONValue {
   def code : TypeCode
 
   def length : Int = buffer.length
+
+  override def toString = value.toString
+
 }
 
 trait BSONDocument extends BSONValue {
@@ -146,6 +149,7 @@ object BSONDouble {
 case class BSONString private[bson] (buffer : ByteString) extends BSONValue {
   def value : String = { buffer.iterator.getStr }
   val code = StringCode
+  override def toString = value
 }
 
 object BSONString {
@@ -196,7 +200,7 @@ case class BSONObject private[bson] (buffer : ByteString)
     * @tparam T The type to which the call wishes the BSONValue to be decoded.
     * @param key The key to look up in the object to obtain the value
     * @return Success(None) if the key is not found, Success(Some(T)) if the key is found and converted successfully,
-    *    Failure(Throwable) if the conversion failed
+    * Failure(Throwable) if the conversion failed
     *
     * If there is no matching value, or the value could not be deserialized or converted, returns a `None`.
     */
@@ -223,10 +227,17 @@ case class BSONObject private[bson] (buffer : ByteString)
 
   override def toString : String = {
     val s = new StringBuilder
-    s.append("BSONObject(")
-    for ((k, v) ← iterator) { s.append(k).append("->").append(v.value).append(", ") }
-    s.setLength(s.length - 2)
-    s.append(")")
+    val itr = iterator
+    if (itr.isEmpty) {
+      s.append("{}")
+    } else {
+      s.append("{ ")
+      for ((k, v) ← itr) {
+        s.append(k).append("->").append(v).append(", ")
+      }
+      s.setLength(s.length - 2)
+      s.append(" }")
+    }
     s.toString()
   }
 }
@@ -256,10 +267,31 @@ case class BSONArray private[bson] (buffer : ByteString) extends BSONDocument {
     val docItr = new DocumentIterator(buffer.iterator)
     docItr.map { case (key, value) ⇒ value }
   }
+
+  override def toString : String = {
+    val s = new StringBuilder
+    val itr = iterator
+    if (itr.isEmpty) {
+      s.append("[]")
+    } else {
+      s.append("[ ")
+      for (v ← itr) {
+        s.append(v.toString).append(", ")
+      }
+      s.setLength((s.length - 2))
+      s.append(" ]")
+    }
+    s.toString()
+  }
 }
 
 object BSONArray {
-  def apply(data : Iterable[BSONValue]) : BSONArray = {
+  def apply(data : Any, data2 : Any*) : BSONArray = {
+    val bldr = BSONBuilder()
+    bldr.array(Seq(data) ++ data2)
+    new BSONArray(bldr.buffer.result())
+  }
+  def apply(data : Seq[Any]) : BSONArray = {
     val bldr = BSONBuilder()
     bldr.array(data)
     new BSONArray(bldr.buffer.result())
@@ -276,6 +308,8 @@ case class BSONBinary private[bson] (buffer : ByteString) extends BSONValue {
     val result = itr.getBytes(len)
     BinarySubtype(subtype) -> result
   }
+
+  override def toString = "BSONBinary(" + value.toString() + ")"
 
   def subtype : BinarySubtype = { BinarySubtype(buffer.iterator.drop(4).getByte) }
 }
@@ -297,11 +331,13 @@ case object BSONUndefined extends BSONValue {
   val buffer = ByteString.empty
   def code = UndefinedCode
   def value : Unit = {}
+  override def toString = "BSONUndefined"
 }
 
 case class BSONObjectID private[bson] (buffer : ByteString) extends BSONValue {
   def code = ObjectIDCode
   def value : Array[Byte] = { buffer.iterator.getBytes(12) }
+  override def toString = "BSONObjectId(" + value + ")"
 }
 
 object BSONObjectID {
@@ -317,13 +353,14 @@ case class BSONBoolean private[bson] (buffer : ByteString) extends BSONValue {
   def value : Boolean = {
     if (buffer.iterator.getByte == 0) false else true
   }
+  override def toString = value.toString
 }
 
 object BSONBoolean {
   def apply(value : Boolean) : BSONBoolean = {
     val bldr = BSONBuilder()
     bldr.boolean(value)
-    new BSONBoolean(bldr.buffer.result)
+    new BSONBoolean(bldr.buffer.result())
   }
 }
 
