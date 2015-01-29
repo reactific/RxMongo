@@ -29,7 +29,7 @@ import akka.actor._
 import akka.event.LoggingReceive
 import akka.routing.{ Broadcast, DefaultResizer, SmallestMailboxPool }
 
-import rxmongo.bson.{ BSONString, BSONBoolean }
+import rxmongo.bson.{ BSONObject, BSONString, BSONBoolean }
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -39,10 +39,29 @@ object Connection {
   def props(uri : MongoURI) = Props(classOf[Connection], uri)
 
   sealed trait ConnectionRequest
+
   case class ChannelClosed(chan : ActorRef) extends ConnectionRequest
+
+  case object GetStatus extends ConnectionRequest
+
   case object Close extends ConnectionRequest
+
   case object CheckReplicaSet extends ConnectionRequest
+
   case object Closed
+
+  sealed trait ConnectionResponse
+
+  case class ConnectionStatus(
+    numChannels : Int,
+    numMessages : Int,
+    numResponses : Int,
+    maxBsonObjectSize : Int,
+    maxMessageSize : Int,
+    maxWriteBatchWize : Int,
+    maxWireVersion : Int,
+    minWireVersion : Int) extends ConnectionResponse
+
 }
 
 /** Connection To MongoDB Replica Set
@@ -89,12 +108,31 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
 
   implicit val ec : ExecutionContext = context.system.dispatcher
 
-  /** The address of the primary node in the replica set. It is assumed, at initialization, that the first host in
-    * URI is the primary. If that doesn't hold out to be true, it will be remedied at the first message request by
-    * polling for the primary.
+  /** The addresses of the nodes in the replica set.
+    *
+    * This list starts out empty and is updated by the initial MongoURI's addresses and then subsequently by
+    * the responses to isMaster command. As the replica set changes so will this list
     */
   var addresses : List[InetSocketAddress] = List.empty[InetSocketAddress]
 
+  /** Update The Replica Set
+    *
+    * This function processes the reply from the IsMaster command that contains replica set and other information.
+    * The
+    * @see [[http://docs.mongodb.org/master/reference/command/isMaster/]]
+    */
+  def handleReplicaSetUpdate(doc : BSONObject) = {
+    // We're going to query this doc a lot, convert it to a map
+    val map = doc.toMap
+    map.contains("")
+  }
+
+  /** Obtain the address of the next node in the replica set.
+    *
+    * This function treats the list of addresses like a ring buffer wrapping back to the head when it walks
+    * off the tail.
+    * @return
+    */
   def nextAddr : InetSocketAddress = {
     if (addresses.isEmpty) {
       addresses = uri.hosts
@@ -246,8 +284,8 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
     case msg : ReplyMessage ⇒
       if (msg.responseTo == cmd.requestId) {
         if (msg.numberReturned > 0) {
-          log.debug("Reply from IsMasterCmd has a document")
           val doc = msg.documents.head
+          log.debug("Reply from IsMasterCmd: {}", doc)
           doc.get("ismaster") match {
             case Some(v) ⇒
               v match {
