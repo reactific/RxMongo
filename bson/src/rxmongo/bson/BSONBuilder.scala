@@ -181,6 +181,11 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] {
     this
   }
 
+  private[bson] def appendAs[T, B <: BSONValue](key : String, v : T)(implicit codec : BSONCodec[T, B]) : BSONBuilder = {
+    buffer ++= codec.write(v).buffer
+    this
+  }
+
   private[bson] def append(key : String, anyVal : Any) : BSONBuilder = {
     anyVal match {
       case BSONNull ⇒ putPrefix(NullCode, key)

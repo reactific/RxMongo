@@ -389,5 +389,35 @@ class BSONValueSpec extends Specification {
       val long = value.asInstanceOf[BSONLong].value
       long must beEqualTo(data)
     }
+
+    "throw on getAsString with non-string value" in {
+      val obj = BSONObject("str" -> "fourty-two", "num" -> 42.0)
+      obj.getAsString("str") must beEqualTo("fourty-two")
+      obj.getAsString("num") must throwA[IllegalArgumentException]
+    }
+
+    "throw on getAsInt with non-Int value" in {
+      val obj = BSONObject("str" -> "fourty-two", "num" -> 42)
+      obj.getAsInt("num") must beEqualTo(42)
+      obj.getAsInt("str") must throwA[IllegalArgumentException]
+    }
+
+    "throw on getAsDouble with non-Double value" in {
+      val obj = BSONObject("str" -> "fourty-two", "num" -> 42.0)
+      obj.getAsDouble("num") must beEqualTo(42.0)
+      obj.getAsDouble("str") must throwA[IllegalArgumentException]
+    }
+
+    "find a user implemented Codec" in {
+      case class UserDefined(val1 : String, val2 : Double)
+      implicit object UserDefinedCodec extends BSONCodec[UserDefined, BSONObject] {
+        val code = ObjectCode
+        def read(value : BSONObject) : UserDefined = { UserDefined(value.getAsString("val1"), value.getAsDouble("val2")) }
+        def write(value : UserDefined) : BSONObject = { BSONObject("val1" -> value.val1, "val2" -> value.val2) }
+      }
+      val obj = UserDefined("val1", 42.0)
+      val obj2 = BSONObject("obj", obj)
+      obj2.getAsObject[UserDefined]("obj") must beEqualTo(obj)
+    }
   }
 }

@@ -29,7 +29,6 @@ import akka.util.{ ByteIterator, ByteString }
 
 import scala.annotation.switch
 import scala.collection.{ Map, MapLike }
-import scala.util.Try
 import scala.util.matching.Regex
 import scala.language.implicitConversions
 
@@ -206,12 +205,20 @@ case class BSONObject private[bson] (buffer : ByteString)
     *
     * If there is no matching value, or the value could not be deserialized or converted, returns a `None`.
     */
-  def getAs[T](key : String)(implicit codec : BSONCodec[T]) : Try[Option[T]] = Try {
+  def getAs[T, B <: BSONValue](key : String)(implicit codec : BSONCodec[T, B]) : T = {
     get(key) match {
-      case Some(value) ⇒ codec.readOption(value)
-      case None ⇒ None
+      case Some(value : B @unchecked) if value.code == codec.code ⇒ codec.read(value)
+      case Some(value : BSONValue) ⇒ throw new IllegalArgumentException(
+        s"Expected type ${codec.typeName} for key '$key' but got type ${value.code.typeName}")
+      case None ⇒ throw new NoSuchElementException(key)
     }
   }
+
+  def getAsObject[T](key : String)(implicit codec : BSONCodec[T, BSONObject]) : T = getAs[T, BSONObject](key)(codec)
+  def getAsString(key : String) : String = getAs[String, BSONString](key)
+  def getAsInt(key : String) : Int = getAs[Int, BSONInteger](key)
+  def getAsDouble(key : String) : Double = getAs[Double, BSONDouble](key)
+  def getAsDate(key : String) : Date = getAs[Date, BSONDate](key)
 
   override def empty : BSONObject = BSONObject.empty
 
@@ -227,7 +234,7 @@ case class BSONObject private[bson] (buffer : ByteString)
 
   def compact : BSONObject = BSONObject(buffer.compact)
 
-  override def toString : String = {
+  override def toString() : String = {
     val s = new StringBuilder
     val itr = iterator
     if (itr.isEmpty) {
@@ -251,11 +258,19 @@ object BSONObject {
   def apply(data : Map[String, Any]) : BSONObject = from(data.toSeq)
   def apply(data : (String, Any)*) : BSONObject = from(data.toSeq)
 
+  def apply[T](key : String, value : T)(implicit codec : BSONCodec[T, BSONObject]) : BSONObject = {
+    val bldr = BSONBuilder()
+    bldr.obj(key, BSONObject.from[T](value))
+    bldr.result()
+  }
+
   def from(data : Seq[(String, Any)]) : BSONObject = {
     val bldr = BSONBuilder()
     bldr.append(data)
     bldr.result()
   }
+
+  def from[T](data : T)(implicit codec : BSONCodec[T, BSONObject]) : BSONObject = codec.write(data)
 
   def newBuilder = BSONBuilder()
 }
