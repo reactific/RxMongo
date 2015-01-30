@@ -42,9 +42,9 @@ import scala.concurrent.duration._
   * @param ssl When true: Initiate the connection with SSL. When false: Initiate the connection without SSL. The
   * default value is false.
   * @param connectTimeoutMS The time in milliseconds to attempt a connection before timing out. The default (0) is never
-  *      to timeout, unless the underlying TCP implementation times out.
+  *     to timeout, unless the underlying TCP implementation times out.
   * @param socketTimeoutMS The time in milliseconds to attempt a send or receive on a socket before the attempt times
-  *     out. The default (0) is never to timeout, unless the underlying TCP implementation times out.
+  *    out. The default (0) is never to timeout, unless the underlying TCP implementation times out.
   * @param maxPoolSize The maximum number of channels, per replica node, in the channel pool. The default value is 100.
   * RxMongo will always attempt to keep at least this number of channels active and ready for use.
   * If this is too low, it affects latency of requests because channels may need to be obtained
@@ -55,12 +55,12 @@ import scala.concurrent.duration._
   * handle. If this is set too high, then unneeded connections may be retained until the idle
   * timeout expires.
   * @param maxIdleTimeMS The maximum number of milliseconds that a connection can remain idle in the pool before being
-  *   removed and closed. The default is 60,000.
+  *  removed and closed. The default is 60,000.
   * @param waitQueueMultiple A number that the driver multiples the maxPoolSize value to, to provide the maximum number
-  *       of requests allowed to wait for a connection to become available from the pool. The
-  *       default, 0, indicates that the requests are only constrained by memory size
+  *      of requests allowed to wait for a connection to become available from the pool. The
+  *      default, 0, indicates that the requests are only constrained by memory size
   * @param waitQueueTimeoutMS The maximum time in milliseconds that a request can wait for a connection to become
-  *        available. The default is 60,000
+  *       available. The default is 60,000
   * @param w The Write Concern option. Write concern describes the kind of assurances that the mongod and the driver
   * provide to the application regarding the success and durability of the write operation. This option defines
   * the level and kind of write concern. This option can take either a number or a string as a value, as
@@ -96,28 +96,28 @@ import scala.concurrent.duration._
   * value less than 1, journal prevails. If you set journal to true, and the mongod does not have
   * journaling enabled, as with storage.journal.enabled, then MongoDB will error.
   * @param readPreference The Read Preference Option. The Read preference describe the behavior of read operations with
-  *    regards to replica sets. It specifies the replica set read preference for this connection.
-  *    The read preference values are the following: "primary": All read operations use only the
-  *    current replica set primary. This is the default. If the primary is unavailable, read
-  *    operations produce an error or throw an exception. "primaryPreferred": In most situations,
-  *    operations read from the primary member of the set. However, if the primary is unavailable,
-  *    as is the case during failover situations, operations read from secondary members.
-  *    "secondary": Operations read only from the secondary members of the set. If no secondaries
-  *    are available, then this read operation produces an error or exception. Read operations using
-  *    the secondary mode may return stale data. "secondaryPreferred": In most situations,
-  *    operations read from secondary members, but in situations where the set consists of a
-  *    single primary (and no other members), the read operation will use the set’s primary.
-  *    Read operations using the secondaryPreferred mode may return stale data. "nearest":
-  *    The driver reads from the nearest member of the set according to the member selection
-  *    process. Reads in the nearest mode do not consider the member’s type. Reads in nearest mode
-  *    may read from both primaries and secondaries. Set this mode to minimize the effect of
-  *    network latency on read operations without preference for current or stale data. Read
-  *    operations using the nearest mode may return stale data.
+  *   regards to replica sets. It specifies the replica set read preference for this connection.
+  *   The read preference values are the following: "primary": All read operations use only the
+  *   current replica set primary. This is the default. If the primary is unavailable, read
+  *   operations produce an error or throw an exception. "primaryPreferred": In most situations,
+  *   operations read from the primary member of the set. However, if the primary is unavailable,
+  *   as is the case during failover situations, operations read from secondary members.
+  *   "secondary": Operations read only from the secondary members of the set. If no secondaries
+  *   are available, then this read operation produces an error or exception. Read operations using
+  *   the secondary mode may return stale data. "secondaryPreferred": In most situations,
+  *   operations read from secondary members, but in situations where the set consists of a
+  *   single primary (and no other members), the read operation will use the set’s primary.
+  *   Read operations using the secondaryPreferred mode may return stale data. "nearest":
+  *   The driver reads from the nearest member of the set according to the member selection
+  *   process. Reads in the nearest mode do not consider the member’s type. Reads in nearest mode
+  *   may read from both primaries and secondaries. Set this mode to minimize the effect of
+  *   network latency on read operations without preference for current or stale data. Read
+  *   operations using the nearest mode may return stale data.
   * @param readPreferenceTags Specifies a tag set as a comma-separated list of colon-separated key-value pairs.
-  *        For example: `dc:ny,rack:1`. To specify a list of tag sets, use multiple
-  *        readPreferenceTags options. The following specifies two tag sets and an empty tag set:
-  *        `readPreferenceTags=dc:ny,rack:1&readPreferenceTags=dc:ny&readPreferenceTags=`. Order
-  *        matters when using multiple readPreferenceTags.
+  *       For example: `dc:ny,rack:1`. To specify a list of tag sets, use multiple
+  *       readPreferenceTags options. The following specifies two tag sets and an empty tag set:
+  *       `readPreferenceTags=dc:ny,rack:1&readPreferenceTags=dc:ny&readPreferenceTags=`. Order
+  *       matters when using multiple readPreferenceTags.
   * @param authSource Specify the database name associated with the user’s credentials, if the users collection do
   * not exist in the database where the client is connecting. authSource defaults to the database
   * specified in the connection string. For authentication mechanisms that delegate credential
@@ -125,16 +125,16 @@ import scala.concurrent.duration._
   * PLAIN (LDAP) and GSSAPI (Kerberos) authentication mechanisms. MongoDB will ignore authSource
   * values if the connection string specifies no user name.
   * @param authMechanism Support for the PLAIN and MONGODB-X509 authentication mechanisms. Specify the authentication
-  *   mechanism that MongoDB will use to authenticate the connection. Possible values include:
-  *   "MONGODB-CR", "MONGODB-X509", "GSSAPI", "PLAIN". Only MongoDB Enterprise mongod and mongos
-  *   instances provide GSSAPI (Kerberos) and PLAIN (LDAP) mechanisms. To use MONGODB-X509, you must
-  *   have SSL Enabled.
+  *  mechanism that MongoDB will use to authenticate the connection. Possible values include:
+  *  "MONGODB-CR", "MONGODB-X509", "GSSAPI", "PLAIN". Only MongoDB Enterprise mongod and mongos
+  *  instances provide GSSAPI (Kerberos) and PLAIN (LDAP) mechanisms. To use MONGODB-X509, you must
+  *  have SSL Enabled.
   * @param gssapiServiceName Set the Kerberos service name when connecting to Kerberized MongoDB instances. This value
-  *       must match the service name set on MongoDB instances. gssapiServiceName defaults to
-  *       mongodb for all clients and for MongoDB instance. If you change saslServiceName setting
-  *       on a MongoDB instance, you will need to set gssapiServiceName to the same value.
+  *      must match the service name set on MongoDB instances. gssapiServiceName defaults to
+  *      mongodb for all clients and for MongoDB instance. If you change saslServiceName setting
+  *      on a MongoDB instance, you will need to set gssapiServiceName to the same value.
   * @param uuidRepresentation The representation of UUIDs in this driver. This is provided for completeness only with
-  *        the MongoDB documentation. For RxMongo, this value is always "standard"
+  *       the MongoDB documentation. For RxMongo, this value is always "standard"
   * @param tcpNoDelay Enables or disables the TCP_NODELAY flag (disable/enable Nagle's algorithm). Enabled by default.
   * @param tcpKeepAlive Enables or disables the TCP_KEEPALIVE flag. Enabled by default
   * @param tcpOOBInline Enables or disables the TCP_OOBINLINE flag (receipt of urgent data). Disabled by default.
@@ -142,21 +142,21 @@ import scala.concurrent.duration._
   * specified, the connection is made through whichever route can get there.
   * @param localPort Optionally specifies the local TCP port number to use. Next available is used if not specified.
   * @param rampupRate The rate at which the Channel pool grows when it is time to add more Channels. The default is
-  *         0.25 or 25% of maxPoolSize (rounded up). For example, if maxPoolSize is 10 then whenever the
-  *         pool needs to grow (all channels are busy), it will grow by 3.
+  *        0.25 or 25% of maxPoolSize (rounded up). For example, if maxPoolSize is 10 then whenever the
+  *        pool needs to grow (all channels are busy), it will grow by 3.
   * @param backoffThreshold The threshold of the Channel pool that is busy below which the pools size is decreased. The
-  *               default is 0.25 or 25% of maxPoolSize (rounded up). For example if maxPoolSize is 10 then
-  *               the pool size will only be lowered when 3 or fewer Channels are busy.
+  *              default is 0.25 or 25% of maxPoolSize (rounded up). For example if maxPoolSize is 10 then
+  *              the pool size will only be lowered when 3 or fewer Channels are busy.
   * @param backoffRate The rate at which we remove channels from the pool when we are backing off. The default value
-  *          is 0.10 or 10% of maxPoolSize (rounded up). FOr example, if maxPoolSize is 10 then whenever we
-  *          are removing channels, we remove 1 at a time
+  *         is 0.10 or 10% of maxPoolSize (rounded up). FOr example, if maxPoolSize is 10 then whenever we
+  *         are removing channels, we remove 1 at a time
   * @param messagesPerResize The number of messages flowing into the connection between size checks. Increasing this
-  *                value decreases the overhead of the resizing logic at the expense of potentially increasing
-  *                processing delays because channels were not created quickly enough. The default is 10
+  *               value decreases the overhead of the resizing logic at the expense of potentially increasing
+  *               processing delays because channels were not created quickly enough. The default is 10
   * @param channelReconnectPeriod When all access to a replica set fails, RxMongo tries to regularly reconnect using
-  *                        the information it has. This value controls the period of time between reconnection
-  *                        attempts. The default is 10,000 milliseconds (10 seconds). A value of 0 means fail
-  *                        instead of attempting reconnection.
+  *                       the information it has. This value controls the period of time between reconnection
+  *                       attempts. The default is 10,000 milliseconds (10 seconds). A value of 0 means fail
+  *                       instead of attempting reconnection.
   */
 
 case class ConnectionOptions(
@@ -187,6 +187,7 @@ case class ConnectionOptions(
   backoffThreshold : Double = 0.25, // Only back off when we are less than 25% busy
   backoffRate : Double = 0.10, // Remove 10% of the pool when we back off
   messagesPerResize : Int = 10, // Only check for resizing every 10 messages
+  replicaSetCheckPeriod : FiniteDuration = FiniteDuration(15, TimeUnit.MINUTES), // Check the replica ever 15 minutes
   channelReconnectPeriod : FiniteDuration = FiniteDuration(10, TimeUnit.SECONDS) // Attempt reconnection every 10 seconds
   ) {
   def validate : ConnectionOptions = {
@@ -201,6 +202,8 @@ case class ConnectionOptions(
     require(backoffThreshold > 0.0 && backoffThreshold < 1.0, "backoffThreshold must be between 0.0 and 1.0")
     require(backoffRate > 0.0 && backoffRate <= 1.0, "backoffRate must be between 0.0 and 1.0")
     require(messagesPerResize >= 0 && messagesPerResize < 1000000, "messagesPerResize must be between 1 and 1,000,000")
+    require(replicaSetCheckPeriod > 0.millis && replicaSetCheckPeriod < 1.day,
+      "replicaSetCheckPeriod must be a value between 1 and 86,400,000 milliseconds")
     require(channelReconnectPeriod >= 0.seconds, "channelReconnectPeriod must be non-negative")
     this
   }
@@ -243,6 +246,9 @@ object ConnectionOptions {
     r = addOption("backoffThreshold") { v ⇒ r.copy(backoffThreshold = v.toDouble) }
     r = addOption("backoffRate") { v ⇒ r.copy(backoffRate = v.toDouble) }
     r = addOption("messagesPerResize") { v ⇒ r.copy(messagesPerResize = v.toInt) }
+    r = addOption("replicaSetCheckPeriod") {
+      v ⇒ r.copy(replicaSetCheckPeriod = FiniteDuration(v.toLong, TimeUnit.MILLISECONDS))
+    }
     r = addOption("channelReconnectPeriod") {
       v ⇒ r.copy(channelReconnectPeriod = FiniteDuration(v.toLong, TimeUnit.MILLISECONDS))
     }

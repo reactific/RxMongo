@@ -219,7 +219,7 @@ class BSONValueSpec extends Specification {
       val (key, value) = itr.next()
       key must beEqualTo("date")
       value.isInstanceOf[BSONDate] must beTrue
-      val time = value.asInstanceOf[BSONDate].value
+      val time = value.asInstanceOf[BSONDate].value.getTime
       time must beEqualTo(data)
     }
 

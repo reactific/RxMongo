@@ -116,7 +116,11 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] {
     boolean(value)
   }
 
-  def utcDate(key : String, time : Long) : BSONBuilder = {
+  def date(key : String, time : Date) : BSONBuilder = {
+    date(key, time.getTime)
+  }
+
+  def date(key : String, time : Long) : BSONBuilder = {
     putPrefix(DateCode, key)
     utcDate(time)
   }
@@ -199,7 +203,7 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] {
       case b : Boolean ⇒ boolean(key, b)
       case s : Short ⇒ integer(key, s)
       case s : String ⇒ string(key, s)
-      case d : Date ⇒ utcDate(key, d.getTime)
+      case d : Date ⇒ date(key, d.getTime)
       case b : ByteString ⇒ binary(key, b, UserDefinedBinary)
       case r : Regex ⇒ regex(key, r)
       case m : Map[String, Any] @unchecked ⇒

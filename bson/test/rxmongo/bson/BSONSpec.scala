@@ -52,7 +52,7 @@ class BSONSpec extends Specification {
       val undefined = map.get("undefined")
       val objectid = map.get("objectid")
       val boolean = map.get("boolean")
-      val utcDate = map.get("date")
+      val date = map.get("date")
       val nil = map.get("null")
       val regex = map.get("regex")
       val dbpointer = map.get("dbpointer")
@@ -71,7 +71,7 @@ class BSONSpec extends Specification {
       undefined.isDefined must beTrue
       objectid.isDefined must beTrue
       boolean.isDefined must beTrue
-      utcDate.isDefined must beTrue
+      date.isDefined must beTrue
       nil.isDefined must beTrue
       regex.isDefined must beTrue
       dbpointer.isDefined must beTrue
@@ -96,7 +96,7 @@ class BSONSpec extends Specification {
       undefined.get.value.asInstanceOf[Unit] must beEqualTo({})
       objectid.get.value.asInstanceOf[Array[Byte]] must beEqualTo(Helper.data)
       boolean.get.value.asInstanceOf[Boolean] must beEqualTo(true)
-      utcDate.get.value.asInstanceOf[Long] must beLessThan(System.currentTimeMillis)
+      date.get.value.asInstanceOf[Date].getTime must beLessThan(System.currentTimeMillis)
       nil.get.value.asInstanceOf[Unit] must beEqualTo({})
       regex.get.value.asInstanceOf[Regex].pattern.pattern must beEqualTo("(?imsUx)pattern")
 
@@ -193,7 +193,7 @@ object Helper {
       undefined("undefined").
       objectID("objectid", data).
       boolean("boolean", value = true).
-      utcDate("date", System.currentTimeMillis()).
+      date("date", System.currentTimeMillis()).
       nil("null").
       regex("regex", "pattern", "ilmsux").
       dbPointer("dbpointer", "referent", data).

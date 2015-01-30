@@ -219,6 +219,32 @@ case class BSONObject private[bson] (buffer : ByteString)
   def getAsInt(key : String) : Int = getAs[Int, BSONInteger](key)
   def getAsDouble(key : String) : Double = getAs[Double, BSONDouble](key)
   def getAsDate(key : String) : Date = getAs[Date, BSONDate](key)
+  def getAsBoolean(key : String) : Boolean = getAs[Boolean, BSONBoolean](key)
+
+  def getOptionalObject[T](key : String)(implicit codec : BSONCodec[T, BSONObject]) : Option[T] = {
+    try { Some(getAs[T, BSONObject](key)(codec)) }
+    catch { case x : Exception ⇒ None }
+  }
+  def getOptionalString(key : String) : Option[String] = {
+    try { Some(getAs[String, BSONString](key)) }
+    catch { case x : Exception ⇒ None }
+  }
+  def getOptionalInt(key : String) : Option[Int] = {
+    try { Some(getAs[Int, BSONInteger](key)) }
+    catch { case x : Exception ⇒ None }
+  }
+  def getOptionalDouble(key : String) : Option[Double] = {
+    try { Some(getAs[Double, BSONDouble](key)) }
+    catch { case x : Exception ⇒ None }
+  }
+  def getOptionalDate(key : String) : Option[Date] = {
+    try { Some(getAs[Date, BSONDate](key)) }
+    catch { case x : Exception ⇒ None }
+  }
+  def getOptionalBoolean(key : String) : Option[Boolean] = {
+    try { Some(getAs[Boolean, BSONBoolean](key)) }
+    catch { case x : Exception ⇒ None }
+  }
 
   override def empty : BSONObject = BSONObject.empty
 
@@ -228,11 +254,15 @@ case class BSONObject private[bson] (buffer : ByteString)
 
   def toMap : Map[String, BSONValue] = iterator.toMap
 
+  def toAnyMap : Map[String, Any] = iterator.toMap.map { case (k, v) ⇒ k -> v.value }
+
   override def toSeq : Seq[(String, BSONValue)] = iterator.toSeq
 
   def value : Map[String, BSONValue] = iterator.toMap
 
   def compact : BSONObject = BSONObject(buffer.compact)
+
+  def to[T](implicit codec : BSONCodec[T, BSONObject]) : T = codec.read(this)
 
   override def toString() : String = {
     val s = new StringBuilder
@@ -382,10 +412,10 @@ object BSONBoolean {
 
 case class BSONDate private[bson] (buffer : ByteString) extends BSONValue {
   def code = DateCode
-  def value : Long = {
-    buffer.iterator.getLong
+  def value : Date = {
+    new Date(buffer.iterator.getLong)
   }
-  def toDate : Date = { new Date(buffer.iterator.getLong) }
+  def toLong : Long = { buffer.iterator.getLong }
 }
 
 object BSONDate {

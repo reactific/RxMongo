@@ -114,7 +114,23 @@ object BSONCodec {
 
   implicit object DateCodec extends BSONCodec[Date, BSONDate] {
     def code = DateCode
-    def read(value : BSONDate) : Date = { new Date(value.value) }
+    def read(value : BSONDate) : Date = { value.value }
     def write(value : Date) : BSONDate = BSONDate(value)
+  }
+
+  implicit object BooleanCodec extends BSONCodec[Boolean, BSONBoolean] {
+    def code = BooleanCode
+    def read(value : BSONBoolean) : Boolean = { value.value }
+    def write(value : Boolean) : BSONBoolean = BSONBoolean(value)
+  }
+
+  implicit object ArrayOfStringCodec extends BSONCodec[Array[String], BSONArray] {
+    def code = ArrayCode
+    def read(value : BSONArray) : Array[String] = {
+      value.iterator.map { v ⇒ v.value.toString }.toArray
+    }
+    def write(value : Array[String]) : BSONArray = {
+      BSONArray(value.iterator.toSeq)
+    }
   }
 }

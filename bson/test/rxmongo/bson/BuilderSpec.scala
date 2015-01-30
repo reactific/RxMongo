@@ -197,7 +197,7 @@ class BuilderSpec extends Specification {
         builder.result()
       }
       val builder = BSONBuilder()
-      builder.utcDate("utc", data)
+      builder.date("utc", data)
       builder.toByteString must beEqualTo(expected)
     }
 

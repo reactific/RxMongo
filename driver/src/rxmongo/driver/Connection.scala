@@ -29,11 +29,12 @@ import akka.actor._
 import akka.event.LoggingReceive
 import akka.routing.{ Broadcast, DefaultResizer, SmallestMailboxPool }
 
-import rxmongo.bson.{ BSONObject, BSONString, BSONBoolean }
+import rxmongo.bson.{ BSONObject }
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.collection.mutable
+import scala.util.{ Failure, Success, Try }
 
 object Connection {
   def props(uri : MongoURI) = Props(classOf[Connection], uri)
@@ -108,12 +109,25 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
 
   implicit val ec : ExecutionContext = context.system.dispatcher
 
+  var addresses : List[InetSocketAddress] = uri.hosts
+
   /** The addresses of the nodes in the replica set.
     *
     * This list starts out empty and is updated by the initial MongoURI's addresses and then subsequently by
     * the responses to isMaster command. As the replica set changes so will this list
     */
-  var addresses : List[InetSocketAddress] = List.empty[InetSocketAddress]
+  var primary_address : InetSocketAddress = uri.hosts.head
+
+  var secondary_addresses : List[InetSocketAddress] = List.empty[InetSocketAddress]
+
+  var isMasterResponse : IsMasterResponse = IsMasterResponse()
+
+  def nameToAddr(name : String) : InetSocketAddress = {
+    val parts = name.split(":")
+    if (parts.length != 2)
+      throw new IllegalStateException(s"Host:Port address has invalid format: $name")
+    InetSocketAddress.createUnresolved(parts(0), parts(1).toInt)
+  }
 
   /** Update The Replica Set
     *
@@ -121,10 +135,48 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
     * The
     * @see [[http://docs.mongodb.org/master/reference/command/isMaster/]]
     */
-  def handleReplicaSetUpdate(doc : BSONObject) = {
-    // We're going to query this doc a lot, convert it to a map
-    val map = doc.toMap
-    map.contains("")
+  def handleReplicaSetUpdate(doc : BSONObject) : Try[Unit] = Try {
+    // Convert and save as an IsMasterResponse object
+    isMasterResponse = doc.to[IsMasterResponse]
+    isMasterResponse.setName match {
+      case Some(setName) ⇒ {
+        // There is a replica set
+        uri.options.replicaSet match {
+          case Some(requiredReplicaSet) ⇒
+            if (requiredReplicaSet != setName)
+              throw new IllegalStateException(
+                "Connection URI requires replica set '$requiredReplicaSet' but connection reports '$setName'"
+              )
+            else
+              log.debug(s"Required replica set name '$setName' is confirmed.")
+          case None ⇒
+            log.debug(s"Using replica set name '$setName'.")
+        }
+
+        isMasterResponse.primary match {
+          case Some(primary) ⇒
+            primary_address = nameToAddr(primary)
+            isMasterResponse.hosts match {
+              case Some(hosts) ⇒
+                secondary_addresses = { for (host ← hosts if host != primary) yield { nameToAddr(host) } }.toList
+                log.debug(s"Finished IsMaster: replicaSet=$setName, primary=$primary_address, secondaries=$secondary_addresses")
+              case None ⇒
+                throw new IllegalStateException(s"Replica doesn't know its host members!")
+            }
+          case None ⇒
+            throw new IllegalStateException(s"Replica doesn't know its primary!")
+        }
+      }
+      case None ⇒ {
+        // There is no replica set involved
+        if (isMasterResponse.ismaster) {
+          secondary_addresses = List.empty[InetSocketAddress]
+          log.debug(s"Finished IsMaster: primary=$primary_address, secondaries=$secondary_addresses")
+        } else {
+          throw new IllegalStateException(s"No replica and no master")
+        }
+      }
+    }
   }
 
   /** Obtain the address of the next node in the replica set.
@@ -152,7 +204,11 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
     */
   var primary_router : ActorRef = null
 
-  var msgs_to_next_check : Int = 1
+  var time_till_next_check : Long = 0
+  def resetCheckReplicateSetTime = {
+    time_till_next_check = System.currentTimeMillis() + uri.options.replicaSetCheckPeriod.toMillis
+  }
+  def shouldCheckReplicaSet : Boolean = time_till_next_check <= System.currentTimeMillis()
 
   override def preStart() = {
     open()
@@ -165,8 +221,8 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
         withRouter(routerConfig),
       Driver.actorName("PrimaryChannel")
     )
-    log.debug("Created Router: {}", router)
     context become (waitForChannelConnected(router), discardOld = true)
+    log.debug("Created Router: {}", router)
   }
 
   def close() : Unit = {
@@ -244,9 +300,9 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
       close()
 
     case Connection.CheckReplicaSet ⇒
-      msgs_to_next_check = uri.options.messagesPerResize
+      resetCheckReplicateSetTime
       val cmd = IsMasterCmd()
-      context become waitForReplicaSet(cmd)
+      context.become(waitForReplicaSet(cmd), discardOld = true)
       primary_router ! Channel.SendMessage(cmd, replyTo = self)
 
     case msg : RequestMessage ⇒
@@ -256,13 +312,12 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
         enqueue(msg)
         open()
       } else {
-        msgs_to_next_check -= 1
-        if (msgs_to_next_check == 0) {
+        if (shouldCheckReplicaSet) {
           // It is time to check the primary router, first reset the counter
-          msgs_to_next_check = uri.options.messagesPerResize
+          resetCheckReplicateSetTime
           enqueue(msg)
           val cmd = IsMasterCmd()
-          context become waitForReplicaSet(cmd)
+          context.become(waitForReplicaSet(cmd), discardOld = true)
           primary_router ! Channel.SendMessage(cmd, replyTo = self)
         } else {
           // We assume the primary_router is still valid and send the request message
@@ -285,29 +340,14 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
       if (msg.responseTo == cmd.requestId) {
         if (msg.numberReturned > 0) {
           val doc = msg.documents.head
-          log.debug("Reply from IsMasterCmd: {}", doc)
-          doc.get("ismaster") match {
-            case Some(v) ⇒
-              v match {
-                case b : BSONBoolean ⇒
-                  if (b.value) {
-                    log.debug("Current primary is confirmed as primary.")
-                    dequeueAll()
-                  } else {
-                    log.debug("Current primary is no longer the primary node.")
-                    primary_router ! PoisonPill
-                    doc.get("primary") match {
-                      case Some(x : BSONString) ⇒
-                        val host_port = x.value.split(":")
-                        current_addr = InetSocketAddress.createUnresolved(host_port(0), host_port(1).toInt)
-                        open()
-                      case _ ⇒
-                        throw new IllegalStateException("MongoDB replied to IsMaster without a primary")
-                    }
-                  }
-              }
-            case None ⇒
-              log.error("Reply from IsMasterCmd had no 'ismaster' field")
+          handleReplicaSetUpdate(doc) match {
+            case Success(x) ⇒
+              // We are in business!
+              context.become(receive, discardOld = true)
+              dequeueAll()
+            case Failure(x) ⇒
+              log.warning("Failed to process isMaster response because of {}:{}", x.getClass.getName, x.getMessage)
+
           }
         } else {
           log.error("No document in IsMasterCmd response")
