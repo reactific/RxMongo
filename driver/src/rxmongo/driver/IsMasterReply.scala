@@ -51,7 +51,7 @@ import rxmongo.bson._
   * @param tags
   * @param electionId
   */
-case class IsMasterResponse(
+case class IsMasterReply(
   ok : Double = 0,
   ismaster : Boolean = false,
   maxBsonObjectSize : Int = 0,
@@ -74,8 +74,8 @@ case class IsMasterResponse(
   tags : Option[Map[String, String]] = None,
   electionId : Option[Long] = None)
 
-object IsMasterResponse {
-  implicit object IsMasterResponseCodec extends BSONCodec[IsMasterResponse, BSONObject] {
+object IsMasterReply {
+  implicit object IsMasterResponseCodec extends BSONCodec[IsMasterReply, BSONObject] {
     override def code : TypeCode = ObjectCode
 
     /** Convert T into BSONValue
@@ -83,7 +83,7 @@ object IsMasterResponse {
       * @param value The value, T, to be written to BSON
       * @return A Try[BSONValue] resulting from writing T to BSON
       */
-    override def write(value : IsMasterResponse) : BSONObject = {
+    override def write(value : IsMasterReply) : BSONObject = {
       val b = BSONBuilder()
       b.double("ok", value.ok)
       b.boolean("ismaster", value.ismaster)
@@ -114,9 +114,9 @@ object IsMasterResponse {
       * @param value The BSONValue to be converted
       * @return A Try[T] that results from reading T from BSON
       */
-    override def read(value : BSONObject) : IsMasterResponse = {
+    override def read(value : BSONObject) : IsMasterReply = {
       val map = value.toAnyMap
-      IsMasterResponse(
+      IsMasterReply(
         map.getOrElse("ok", 0.0D).asInstanceOf[Double],
         map.getOrElse("ismaster", false).asInstanceOf[Boolean],
         map.getOrElse("maxBsonObjectSize", 0).asInstanceOf[Int],

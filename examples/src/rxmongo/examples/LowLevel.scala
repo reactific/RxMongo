@@ -28,9 +28,10 @@ import akka.pattern.ask
 import akka.util.Timeout
 import rxmongo.driver.Connection.CheckReplicaSet
 
-import rxmongo.driver.{ ReplyMessage, DBStatsCmd, Driver }
+import rxmongo.driver._
 
-import scala.concurrent.Await
+import scala.collection.mutable
+import scala.concurrent.{ Future, Await }
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.StdIn
@@ -45,8 +46,9 @@ import scala.util.{ Failure, Success, Try }
 object LowLevel extends App {
 
   def getChoice : (Int, Seq[String]) = {
-    println("\n1: Show DB Stats (dbName)")
-    println("\n2: Check Replica Set ()")
+    println("\n1: Print Results (cmd #...)")
+    println("\n2: Show DB Stats (dbName)")
+    println("\n3: Check Replica Set ()")
     val line = StdIn.readLine("Your choice: ")
     if (line == null)
       return -1 -> Seq.empty
@@ -67,31 +69,57 @@ object LowLevel extends App {
   println("Connected to: " + url)
 
   var shouldExit : Boolean = false
+  var cmdId : Int = 0
+  val cmdResults = mutable.Map.empty[Int, Future[String]]
 
   while (!shouldExit) {
     val (choice, options) = getChoice
-    choice match {
-      case 1  ⇒ showDBStats(options)
-      case 2  ⇒ checkReplicaSet(options)
-      case -1 ⇒ shouldExit = true
-      case _  ⇒ println("Invalid choice, try again.")
+    cmdId += 1
+    Try {
+      choice match {
+        case 1  ⇒ printResults(options)
+        case 2  ⇒ showDBStats(options)
+        case 3  ⇒ checkReplicaSet(options)
+        case -1 ⇒ shouldExit = true
+        case _  ⇒ println("Invalid choice, try again.")
+      }
+    } match {
+      case Success(x) ⇒ //nothing to do
+      case Failure(x) ⇒
+        println(s"Error during command processing: ${x.getClass.getName}: ${x.getMessage}")
     }
   }
 
   System.exit(0)
 
+  def printResults(options : Seq[String]) : Unit = {
+    for (option ← options) {
+      val id = option.toInt
+      cmdResults.get(id) match {
+        case Some(result) ⇒
+          result.value match {
+            case Some(Success(msg)) ⇒
+              println(s"#$id: Succeeded: $msg")
+            case Some(Failure(xcptn)) ⇒
+              println(s"#$id: Failed: " + xcptn.getClass.getName + ": " + xcptn.getMessage)
+            case None ⇒
+              println(s"#$id: Incomplete")
+          }
+        case None ⇒
+          println(s"#$id: Not found")
+      }
+    }
+  }
+
   def showDBStats(options : Seq[String]) : Unit = {
     if (options.size != 1)
       println("You must specify exactly one database name as an argument to getDBStats")
     else {
-      println(s"getDBStats ${options(0)}")
-      val result = (connection ? DBStatsCmd(options(0))).mapTo[ReplyMessage]
-      result.onComplete {
-        case (msg) ⇒ msg match {
-          case Success(reply) ⇒ println("\n" + reply.toString)
-          case Failure(xcptn) ⇒ println("\nFailed: " + xcptn.getClass.getName + ": " + xcptn.getMessage)
-        }
+      val result = (connection ? DBStatsCmd(options(0))).mapTo[ReplyMessage] map { reply ⇒
+        reply.toString()
       }
+      cmdResults.put(cmdId, result)
+      println(s"Command #$cmdId (getDBStats ${options(0)}) issued.")
     }
   }
 
@@ -99,8 +127,11 @@ object LowLevel extends App {
     if (options.size != 0)
       println("checkReplicaSet does not require options")
     else {
-      println("checkReplicaSet")
-      connection ! CheckReplicaSet
+      val result = (connection ? CheckReplicaSet).mapTo[IsMasterReply] map { reply ⇒
+        reply.toString
+      }
+      cmdResults.put(cmdId, result)
+      println(s"Command #$cmdId (checkReplicaSet) issued.")
     }
   }
 }
