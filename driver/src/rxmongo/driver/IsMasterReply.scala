@@ -106,7 +106,7 @@ object IsMasterReply {
       value.hidden.map { v ⇒ b.boolean("hidden", v) }
       value.tags.map { v ⇒ b.obj("tags", v) }
       value.electionId.map { v ⇒ b.long("electionId", v) }
-      b.result()
+      b.result
     }
 
     /** Convert BSONValue Into T

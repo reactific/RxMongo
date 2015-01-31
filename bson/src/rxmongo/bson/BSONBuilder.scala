@@ -31,16 +31,26 @@ import rxmongo.bson.BinarySubtype.UserDefinedBinary
 import scala.collection.mutable
 import scala.util.matching.Regex
 
+/** A Trait for things that provide BSON ByteStrings
+  *
+  */
+trait BSONProvider {
+  /** Return the BSON byte string */
+  def toByteString : ByteString
+  def toBSONObject : BSONObject = BSONObject(toByteString)
+  def result : BSONObject = toBSONObject
+}
+
 /** Builder for BSON Object
   *
   * This uses the builder pattern to allow construction of a BSON.Object by using a ByteStringBuilder to construct
   * the corresponding ByteString and then instantiating BSON.Object with the immutable ByteString
   */
-case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] {
+case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with BSONProvider {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
   val buffer : ByteStringBuilder = ByteString.newBuilder
 
-  def toByteString() : ByteString = {
+  def toByteString : ByteString = {
     val content = buffer.result()
     val result = ByteString.newBuilder
     result.putInt(content.length + 5) // 4 for length, 1 for terminating 0 byte
@@ -48,10 +58,6 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] {
     result.putByte(0)
     result.result()
   }
-
-  def toBSONObject : BSONObject = BSONObject(toByteString())
-
-  override def result() : BSONObject = toBSONObject
 
   def +=(elem : (String, Any)) : this.type = {
     append(elem._1, elem._2)
@@ -75,6 +81,11 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] {
     putPrefix(ObjectCode, key)
     putObj(value)
     this
+  }
+
+  def obj(key: String, value: BSONBuilder) : BSONBuilder = {
+    putPrefix(ObjectCode, key)
+    putObj(value)
   }
 
   def obj(key : String, fields : Map[String, Any]) : BSONBuilder = {
@@ -246,7 +257,7 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] {
       case (v, i) ⇒
         arrayBuilder.append(i.toString, v)
     }
-    buffer ++= arrayBuilder.toByteString()
+    buffer ++= arrayBuilder.toByteString
     this
   }
 
@@ -319,6 +330,11 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] {
   }
 
   private[bson] def putObj(value : BSONObject) : BSONBuilder = {
+    buffer.putDoc(value)
+    this
+  }
+
+  private[bson] def putObj(value: BSONBuilder) : BSONBuilder = {
     buffer.putDoc(value)
     this
   }

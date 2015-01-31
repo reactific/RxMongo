@@ -46,21 +46,21 @@ class BooleanFieldExpression(fieldName : String) extends BooleanExpression {
   def $gte(value : Any) : BooleanExpression = { obj(fieldName, Map("$gte" -> value)); this }
   def $lte(value : Any) : BooleanExpression = { obj(fieldName, Map("$lte" -> value)); this }
   def $nin(values : Any*) : BooleanExpression = { obj(fieldName, Map("$nin" -> BSONArray(values))); this }
-  def $not(values : BooleanExpression) : BooleanExpression = { obj(fieldName, Map("$not" -> values.result())); this }
+  def $not(values : BooleanExpression) : BooleanExpression = { obj(fieldName, Map("$not" -> values.result)); this }
   def $exists(value : Boolean) : BooleanExpression = { obj(fieldName, Map("$exists" -> value)); this }
   def $type(code : TypeCode) : BooleanExpression = { obj(fieldName, Map("$type" -> code.code.toInt)); this }
 }
 
 class LogicalExpression(exp1 : BooleanExpression) extends BooleanExpression {
-  def $and(exp2 : Expression) : BooleanExpression = { array("$and", exp1.result(), exp2.result()); this }
-  def $or(exp2 : Expression) : BooleanExpression = { array("$and", exp1.result(), exp2.result()); this }
-  def $nor(exp2 : Expression) : BooleanExpression = { array("$nor", exp1.result(), exp2.result()); this }
+  def $and(exp2 : Expression) : BooleanExpression = { array("$and", exp1.result, exp2.result); this }
+  def $or(exp2 : Expression) : BooleanExpression = { array("$and", exp1.result, exp2.result); this }
+  def $nor(exp2 : Expression) : BooleanExpression = { array("$nor", exp1.result, exp2.result); this }
 }
 
 object $and extends BooleanExpression {
   def apply(expressions : BooleanExpression*) : BooleanExpression = {
     val e = new BooleanExpression
-    e.array("$and", expressions.map{ xe ⇒ xe.result() } : _*)
+    e.array("$and", expressions.map{ xe ⇒ xe.result } : _*)
     e
   }
 }
@@ -69,15 +69,17 @@ object $not extends BooleanExpression {
   def apply(expr : Expression with BooleanExpression) : BooleanExpression = {
     val e = new BooleanExpression
     e.putPrefix(ObjectCode, "$not")
-    e.obj(expr.result())
+    e.obj(expr.result)
     e
   }
 }
 
 object Expression {
-  implicit def conditionalExpression(fieldName : String) : BooleanFieldExpression = new BooleanFieldExpression(fieldName)
   implicit def stringLiteral(str : String) : StringLiteral = new StringLiteral(str)
   implicit def intLiteral(int : Int) : IntLiteral = new IntLiteral(int)
   implicit def doubleLiteral(dbl : Double) : DoubleLiteral = new DoubleLiteral(dbl)
-  implicit def logicalExpression(exp1 : BooleanExpression) : LogicalExpression = new LogicalExpression(exp1)
+  implicit def conditionalExpression(fieldName : String) : BooleanFieldExpression =
+    new BooleanFieldExpression(fieldName)
+  implicit def logicalExpression(exp1 : BooleanExpression) : LogicalExpression =
+    new LogicalExpression(exp1)
 }

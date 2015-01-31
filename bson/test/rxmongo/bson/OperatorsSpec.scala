@@ -45,27 +45,27 @@ class OperatorsSpec extends Specification {
 
   "Operators" should {
     "construct $eq properly" in {
-      foo_str.result() must beEqualTo (foo_str_equiv)
+      foo_str.result must beEqualTo (foo_str_equiv)
     }
 
     "construct $ne properly" in {
-      foo_bool.result() must beEqualTo(foo_bool_equiv)
+      foo_bool.result must beEqualTo(foo_bool_equiv)
     }
 
     "construct $gt properly" in {
-      foo_int.result() must beEqualTo(foo_int_equiv)
+      foo_int.result must beEqualTo(foo_int_equiv)
     }
 
     "construct $lt properly" in {
-      foo_date.result() must beEqualTo(foo_date_equiv)
+      foo_date.result must beEqualTo(foo_date_equiv)
     }
 
     "construct $gte properly" in {
-      foo_dbl.result() must beEqualTo(foo_dbl_equiv)
+      foo_dbl.result must beEqualTo(foo_dbl_equiv)
     }
 
     "construct $lte properly" in {
-      foo_null.result() must beEqualTo(foo_null_equiv)
+      foo_null.result must beEqualTo(foo_null_equiv)
     }
 
     "construct $in properly" in {
@@ -83,8 +83,9 @@ class OperatorsSpec extends Specification {
 
     "construct infix $and properly" in {
       val obj = foo_str $and foo_int
-      obj.result() must beEqualTo(BSONObject("$and" -> BSONArray(foo_str_equiv, foo_int_equiv)))
+      obj.result must beEqualTo(BSONObject("$and" -> BSONArray(foo_str_equiv, foo_int_equiv)))
     }
+
     "construct prefix $and properly" in {
       val obj = $and(foo_str, foo_bool, foo_int, foo_date, foo_dbl)
       obj.result must beEqualTo(BSONObject("$and" -> BSONArray(

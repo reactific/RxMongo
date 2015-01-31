@@ -177,7 +177,7 @@ case class BSONObject private[bson] (buffer : ByteString)
     val bldr = BSONBuilder()
     bldr.buffer ++= content
     bldr.append(kv._1, kv._2.asInstanceOf[BSONValue])
-    bldr.result()
+    bldr.result
   }
 
   def iterator : Iterator[(String, BSONValue)] = {
@@ -291,13 +291,13 @@ object BSONObject {
   def apply[T](key : String, value : T)(implicit codec : BSONCodec[T, BSONObject]) : BSONObject = {
     val bldr = BSONBuilder()
     bldr.obj(key, BSONObject.from[T](value))
-    bldr.result()
+    bldr.result
   }
 
   def from(data : Seq[(String, Any)]) : BSONObject = {
     val bldr = BSONBuilder()
     bldr.append(data)
-    bldr.result()
+    bldr.result
   }
 
   def from[T](data : T)(implicit codec : BSONCodec[T, BSONObject]) : BSONObject = codec.write(data)

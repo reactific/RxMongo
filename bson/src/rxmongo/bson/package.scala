@@ -129,6 +129,11 @@ package object bson {
       }
     }
 
+    def putDoc(value: BSONBuilder) : ByteStringBuilder = {
+      bldr ++= value.result.buffer
+      bldr
+    }
+
     def putDocs(values : Seq[BSONDocument]) : ByteStringBuilder = {
       for (doc ← values) { putDoc(doc) }
       bldr
