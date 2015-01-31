@@ -25,7 +25,7 @@ package rxmongo.client
 import org.specs2.mutable.Specification
 
 /** Test Suite For RxMongoClient */
-class RxMongoClientSpec extends Specification {
+class ClientSpec extends Specification {
 
   "RxMongoClient" should {
     "allow connection" in {
