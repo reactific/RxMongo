@@ -157,6 +157,28 @@ case class Driver(cfg : Option[Config] = None, name : String = "RxMongo") extend
       case Failure(xcptn)    ⇒ throw xcptn
     }
   }
+
+  /** Get All The Connections Established
+    *
+    * Gets the ActorRefs for the connections that have been established correlated with their MongoURI. The connections
+    * can be polled for further information about the connection or the server(s) they are connected to.
+    *
+    * @return A Future Map of MongoURI to ActorRef for active connections
+    */
+  def connections(implicit timeout : Timeout = Driver.defaultTimeout) : Future[Map[MongoURI,ActorRef]] = {
+    (supervisorActor ? Supervisor.GetConnections).mapTo[Supervisor.GetConnectionsReply].map { x ⇒ x.connections }
+  }
+
+  /** Get The Number Of Connections Established
+    *
+    * Returns the number of connections that have been made to MongoDB replica sets. Note that this is not the number
+    * of TCP connections made to mongod but the number of logical replica sets to which viable connections are
+    * established.
+    * @return The numer of connections
+    */
+  def numConnections(implicit timeout : Timeout = Driver.defaultTimeout) : Future[Int] = {
+    (supervisorActor ? Supervisor.NumConnections).mapTo[Supervisor.NumConnectionsReply].map { x ⇒ x.num }
+  }
 }
 
 object Driver {

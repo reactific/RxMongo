@@ -37,10 +37,12 @@ object Supervisor {
   case class DropConnection(uri : MongoURI) extends Request // no reply on success, NoSuchConnection if not found
   case object Shutdown extends Request // no reply, Supervisor shuts down
   case object NumConnections extends Request // reply with NumConnectionsReply
+  case object GetConnections extends Request
 
   sealed trait Reply
   case class NumConnectionsReply(num : Int) extends Reply
   case class NoSuchConnection(uri : MongoURI) extends Reply
+  case class GetConnectionsReply(connections: Map[MongoURI,ActorRef]) extends Reply
 }
 
 class Supervisor extends Actor with ActorLogging {
@@ -81,6 +83,9 @@ class Supervisor extends Actor with ActorLogging {
 
     case NumConnections ⇒
       sender() ! NumConnectionsReply(numConnections)
+
+    case GetConnections ⇒
+      sender() ! GetConnectionsReply(connections.toMap)
 
     case Terminated(actor) ⇒
       removeConnection(actor)
