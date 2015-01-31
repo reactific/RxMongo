@@ -36,10 +36,10 @@ class Projection extends BSONProvider {
 
   def toByteString = builder.toByteString
 
-  /** Include a named field in the query results
+  /** Include named fields in the query results
     *
-    * @param name The name of the field
-    * @return
+    * @param names The names of the fields to include
+    * @return A projection with fields included
     */
   def include(names: String*) : Projection = {
     for (name ← names) {
@@ -48,10 +48,10 @@ class Projection extends BSONProvider {
     this
   }
 
-  /** Exclude a named field from the query results
+  /** Exclude named fields from the query results
     *
-    * @param name The name of the field to
-    * @return
+    * @param names The names of the field to exclude
+    * @return A Projection with fields excluded
     */
   def exclude(names: String*) : Projection = {
     for (name <- names) {
@@ -106,7 +106,6 @@ class Projection extends BSONProvider {
     * @return A projection that returns the `count` elements of the array named `name` starting at
     *         `skip` elements from the start
     */
-
   def slice(name: String, skip: Int, count: Int) : Projection = {
     builder.obj(name, BSONBuilder().array("$slice", skip, count))
     this
@@ -121,7 +120,6 @@ class Projection extends BSONProvider {
     * @return A projection that returns the `count` elements of the array named `name` starting at
     *         `skip` elements from the start
     */
-
   def sliceFromStart(name: String, skip: Int, count: Int) : Projection = slice(name, skip, count)
 
   /** Project a slice of an array, from the end
@@ -133,7 +131,6 @@ class Projection extends BSONProvider {
     * @return A projection that returns `count` elements of the array named `name` starting from
     *         `skip` elements from the end.
     */
-
   def sliceFromEnd(name: String, skip: Int, count: Int) : Projection = {
     builder.obj(name, BSONBuilder().array("$slice", -skip, count))
     this
