@@ -47,8 +47,9 @@ object LowLevel extends App {
 
   def getChoice : (Int, Seq[String]) = {
     println("\n1: Print Results (cmd #...)")
-    println("\n2: Show DB Stats (dbName)")
-    println("\n3: Check Replica Set ()")
+    println("2: Show DB Stats (dbName)")
+    println("3: Check Replica Set ()")
+    println("4: Show Server Status ()")
     val line = StdIn.readLine("Your choice: ")
     if (line == null)
       return -1 -> Seq.empty
@@ -80,6 +81,7 @@ object LowLevel extends App {
         case 1  ⇒ printResults(options)
         case 2  ⇒ showDBStats(options)
         case 3  ⇒ checkReplicaSet(options)
+        case 4 ⇒ showServerStatus(options)
         case -1 ⇒ shouldExit = true
         case _  ⇒ println("Invalid choice, try again.")
       }
@@ -132,6 +134,18 @@ object LowLevel extends App {
       }
       cmdResults.put(cmdId, result)
       println(s"Command #$cmdId (checkReplicaSet) issued.")
+    }
+  }
+
+  def showServerStatus(options: Seq[String]) : Unit = {
+    if (options.size != 0)
+      println("showServerStatus does not require options")
+    else {
+      val result = (connection ? ServerStatus()).mapTo[ReplyMessage] map { reply ⇒
+      { for (doc ← reply.documents) yield { doc.toString() } }.mkString( ", " )
+      }
+      cmdResults.put(cmdId, result)
+      println(s"Command #$cmdId (showServerStatus) issued.")
     }
   }
 }
