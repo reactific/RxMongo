@@ -88,17 +88,19 @@ trait BSONDocument extends BSONValue {
       f(save.slice(0, len), TypeCode(code), key, len)
     }
 
-    override def size : Int = {
+    lazy val _size : Int = {
       var result = 0
       val i = itr.clone()
       while (i.hasNext) {
         val code = i.getByte
         i.skipCStr
         advance(i, code)
-        result += 1
+        result = result + 1
       }
       result
     }
+
+    override def size : Int = _size
 
     def next() : (String, BSONValue) = {
       if (hasNext) {
@@ -283,16 +285,22 @@ case class BSONObject private[bson] (buffer : ByteString)
 
 object BSONObject {
 
-  object empty extends BSONObject(ByteString.empty)
+  def newBuilder = BSONBuilder()
+
+  object empty extends BSONObject(BSONBuilder().toByteString)
+
+  def apply() : BSONObject = empty
 
   def apply(data : Map[String, Any]) : BSONObject = from(data.toSeq)
   def apply(data : (String, Any)*) : BSONObject = from(data.toSeq)
 
   def apply[T](key : String, value : T)(implicit codec : BSONCodec[T, BSONObject]) : BSONObject = {
     val bldr = BSONBuilder()
-    bldr.obj(key, BSONObject.from[T](value))
+    bldr.obj(key, BSONObject(value))
     bldr.result
   }
+
+  def apply[T](value: T)(implicit codec: BSONCodec[T, BSONObject]) : BSONObject = codec.write(value)
 
   def from(data : Seq[(String, Any)]) : BSONObject = {
     val bldr = BSONBuilder()
@@ -300,9 +308,6 @@ object BSONObject {
     bldr.result
   }
 
-  def from[T](data : T)(implicit codec : BSONCodec[T, BSONObject]) : BSONObject = codec.write(data)
-
-  def newBuilder = BSONBuilder()
 }
 
 case class BSONArray private[bson] (buffer : ByteString) extends BSONDocument {
@@ -333,11 +338,17 @@ case class BSONArray private[bson] (buffer : ByteString) extends BSONDocument {
 }
 
 object BSONArray {
+
+  object empty extends BSONArray(BSONBuilder().toByteString)
+
+  def apply() : BSONArray = empty
+
   def apply(data : Any, data2 : Any*) : BSONArray = {
     val bldr = BSONBuilder()
     bldr.array(Seq(data) ++ data2)
     new BSONArray(bldr.buffer.result())
   }
+
   def apply(data : Seq[Any]) : BSONArray = {
     val bldr = BSONBuilder()
     bldr.array(data)

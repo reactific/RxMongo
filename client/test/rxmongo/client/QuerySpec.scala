@@ -22,6 +22,117 @@
 
 package rxmongo.client
 
-class QuerySpec {
+import org.specs2.mutable.Specification
 
+import rxmongo.bson._
+
+class QuerySpec extends Specification {
+
+  "Query" should {
+    "accept a simple selector in constructor" in {
+      val q = Query("a" $eq "b")
+      q.result must beEqualTo(BSONObject("$query" → BSONObject("a" → "b")))
+    }
+
+    "accept a complex selector" in {
+      val q = Query((("a" $ne 42.0) $and ("b" $gte 21.0)) $or ("c" $lt 84.0))
+      q.result must beEqualTo(BSONObject(
+        "$query" → BSONObject("$or" →
+          BSONArray(
+            BSONObject("$and" →
+              BSONArray(
+                BSONObject( "a" → BSONObject("$ne" → 42.0)),
+                BSONObject( "b" → BSONObject("$gte" → 21.0))
+              )
+            ),
+            BSONObject("c" → BSONObject("$lt" → 84.0))
+          )
+        )
+      ))
+    }
+
+    "handle ascending sorting on one field" in {
+      val q = Query("a" $eq "b").orderBy("c")
+      q.result must beEqualTo(BSONObject("$query" → BSONObject("a" → "b"), "$orderby" → BSONObject("c" → 1)))
+    }
+
+    "handle descending sorting on one field" in {
+      val q = Query("a" $eq "b").orderBy("c", ascending=false)
+      q.result must beEqualTo(BSONObject("$query" → BSONObject("a" → "b"), "$orderby" → BSONObject("c" → -1)))
+    }
+
+    "handle adding a comment" in {
+      val q = Query("a" $eq "b").comment("This is for profiling")
+      q.result must beEqualTo(BSONObject("$query" → BSONObject("a" → "b"), "$comment" → "This is for profiling"))
+    }
+
+    "handle adding an index hint" in {
+      val q = Query("a" $eq "b").hint("_id")
+      q.result must beEqualTo(BSONObject("$query" → BSONObject("a" → "b"), "$hint" → BSONObject("_id" → 1)))
+
+    }
+
+    "handle maxScan(num_docs)" in {
+      pending
+    }
+
+    "handle maxTimeMS(millis)" in {
+      pending
+    }
+
+    "handle max(fields)" in {
+      pending
+    }
+    "handle min(fields)" in {
+      pending
+    }
+
+    "handle returnKey()" in {
+      pending
+    }
+
+    "handle showDiskLoc()" in {
+      pending
+    }
+
+    "handle snapshot()" in {
+      pending
+    }
+
+    "handle natural()" in {
+      pending
+    }
+
+    "handle complex query construction" in {
+      val q = Query("a" $eq "b").
+        comment("foo").
+        hint("a").
+        maxScan(1000).
+        maxTimeMS(1000).
+        max("count" → 10).
+        min("count" → 1).
+        orderBy("count").
+        returnKey().
+        showDiskLoc().
+        snapshot().
+        natural()
+      val actual = q.result
+      val expected = BSONObject(
+        "$query" → BSONObject("a" → "b"),
+        "$comment" → "foo",
+        "$hint" → BSONObject("a" → 1),
+        "$maxScan" → 1000,
+        "$maxTimeMS" → 1000L,
+        "$max" → BSONObject("count" → 10),
+        "$min" → BSONObject("count" → 1),
+        "$orderby" → BSONObject("count" → 1),
+        "$returnKey" → true,
+        "$showDiskLoc" → true,
+        "$snapshot" → true,
+        "$natural" → 1
+      )
+
+      actual must beEqualTo(expected)
+    }
+  }
 }

@@ -58,6 +58,11 @@ class BSONValueSpec extends Specification {
   }
 
   "BSONObject" should {
+    "construct empty" in {
+      val doc = BSONObject()
+      val itr = doc.iterator
+      itr.hasNext must beFalse
+    }
 
     "interpret double correctly" in {
       val data = 42.0D
@@ -418,6 +423,45 @@ class BSONValueSpec extends Specification {
       val obj = UserDefined("val1", 42.0)
       val obj2 = BSONObject("obj", obj)
       obj2.getAsObject[UserDefined]("obj") must beEqualTo(obj)
+    }
+
+    "support equality of empty" in {
+      val obj1 = BSONObject()
+      val obj2 = BSONObject()
+      obj1 must beEqualTo(obj2)
+    }
+
+    "support equality of complex" in {
+      val obj1 = BSONObject(
+        "$query" → BSONObject("a" → "b"),
+        "$comment" → "foo",
+        "$hint" → BSONObject("a" → 1),
+        "$maxScan" → 1000,
+        "$maxTimeMS" → 1000,
+        "$max" → BSONObject("count" → 10),
+        "$min" → BSONObject("count" → 1),
+        "$orderby" → BSONObject("count" → 1),
+        "$returnKey" → true,
+        "$showDiskLoc" → true,
+        "$snapshot" → true,
+        "$natural" → 1
+      )
+      val obj2 = BSONObject(
+        "$query" → BSONObject("a" → "b"),
+        "$comment" → "foo",
+        "$hint" → BSONObject("a" → 1),
+        "$maxScan" → 1000,
+        "$maxTimeMS" → 1000,
+        "$max" → BSONObject("count" → 10),
+        "$min" → BSONObject("count" → 1),
+        "$orderby" → BSONObject("count" → 1),
+        "$returnKey" → true,
+        "$showDiskLoc" → true,
+        "$snapshot" → true,
+        "$natural" → 1
+      )
+      obj1 must beEqualTo(obj2)
+
     }
   }
 }

@@ -28,48 +28,124 @@ import rxmongo.bson._
   *
   * A query is built
   */
-trait Query extends BSONProvider {
-  val bson = BSONBuilder()
+case class Query() extends BSONProvider {
+  private val bson = BSONBuilder()
   def toByteString = bson.toByteString
 
-  def sort(how: BSONObject) : Query = {
-    bson.obj("$orderby", how)
+  def select(what: BooleanExpression) : Query = {
+    bson.obj("$query", what)
     this
   }
-  def sortBy(field: String, ascending: Boolean = true) = {
-    sort(BSONObject(field → (if(ascending) 1 else -1)))
+
+  def comment(msg: String) : Query = {
+    bson.string("$comment", msg)
+    this
   }
-  def sortWith( f: () ⇒ BSONObject) = sort(f())
 
-}
-
-trait Selector extends Query {
-
-  override def toByteString = {
-    val content = super.result
-    val result = BSONBuilder()
-    result.obj("$query", content)
-    result.toByteString
+  /** Forces MongoDB to use a specific index. See hint()
+    * @see [[http://docs.mongodb.org/master/reference/operator/meta/hint/]]
+    * @param index
+    * @return
+    */
+  def hint(index: String) : Query = {
+    bson.obj("$hint", Map(index → 1))
+    this
   }
-}
 
-object Selector {
-  def apply() = ???
+  /** Limits the number of documents scanned.
+    * @see [[http://docs.mongodb.org/master/reference/operator/meta/maxScan/]]
+    * @param num_docs
+    * @return
+    */
+  def maxScan(num_docs: Int) : Query = {
+    bson.integer("$maxScan", num_docs)
+    this
+  }
+
+  /** Specifies a cumulative time limit in milliseconds for processing operations on a cursor.
+    * @see [[http://docs.mongodb.org/master/reference/operator/meta/maxTimeMS/]]
+    * @param millis
+    * @return
+    */
+  def maxTimeMS(millis: Long) : Query = {
+    bson.long("$maxTimeMS", millis)
+    this
+  }
+
+  /** Specifies an exclusive upper limit for the index to use in a query.
+    * @see [[http://docs.mongodb.org/master/reference/operator/meta/max/]]
+    * @param fields
+    * @return
+    */
+  def max(fields: (String,Any)*) : Query = {
+    bson.obj("$max", fields.head, fields.tail:_*)
+    this
+  }
+
+  /** Specifies an inclusive lower limit for the index to use in a query.
+    * @see [[http://docs.mongodb.org/master/reference/operator/meta/min/]]
+    * @param fields
+    * @return
+    */
+  def min(fields: (String,Any)*) : Query = {
+    bson.obj("$min", fields.head, fields.tail:_*)
+    this
+  }
+
+  /** Returns a cursor with documents sorted according to a sort specification.
+   * @see [[http://docs.mongodb.org/master/reference/operator/meta/orderby/]]
+   * @param field
+   * @param ascending
+   * @return
+   */
+  def orderBy(field: String, ascending: Boolean = true) : Query = {
+    bson.obj("$orderby", Map(field → (if(ascending) 1 else -1)))
+    this
+  }
+
+  /** Forces the cursor to only return fields included in the index.
+    * @see [[http://docs.mongodb.org/master/reference/operator/meta/returnKey/]]
+    * @return
+    */
+  def returnKey() : Query = {
+    bson.boolean("$returnKey", value=true)
+    this
+  }
+
+  /** Modifies the documents returned to include references to the on-disk location of each document.
+    * @see [[http://docs.mongodb.org/master/reference/operator/meta/showDiskLoc/]]
+    * @return
+    */
+  def showDiskLoc() : Query = {
+    bson.boolean("$showDiskLoc", value=true)
+    this
+  }
+
+  /** Forces the query to use the index on the _id field.
+    * @see [[http://docs.mongodb.org/master/reference/operator/meta/snapshot/]]
+    * @return
+    */
+  def snapshot() : Query = {
+    bson.boolean("$snapshot", value=true)
+    this
+  }
+
+  /** A special sort order that orders documents using the order of documents on disk.
+    *
+    * @see [[http://docs.mongodb.org/master/reference/operator/meta/natural/]]
+    * @param reverse
+    * @return
+    */
+  def natural(reverse: Boolean = false) : Query = {
+    bson.integer("$natural", if (reverse) -1 else 1)
+    this
+  }
+
 }
 
 object Query {
-
-  def apply(): Query = ???
-
-
-  implicit class QueryModifiers(q: Query) {
-  }
+  def apply(what : BooleanExpression) : Query = new Query().select(what)
 
   implicit class LimitQueryModifier(q: Query) {}
 
-  implicit class CommentQueryModifier(q: Query) {
-    def comment(msg: String) = {
-      q.bson.string("$comment", msg)
-    }
-  }
 }

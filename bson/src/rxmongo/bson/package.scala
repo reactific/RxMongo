@@ -29,6 +29,7 @@ import java.util.regex.Pattern
 import akka.util.{ ByteIterator, ByteStringBuilder }
 
 import scala.annotation.switch
+import scala.language.implicitConversions
 import scala.util.matching.Regex
 
 /** The bson package object.
@@ -221,7 +222,7 @@ package object bson {
 
     def skipCStr : Int = {
       var count = 0
-      itr.dropWhile { ch ⇒ count += 1; ch != 0 }
+      itr.dropWhile { ch ⇒ count = count + 1; ch != 0 }
       itr.drop(1)
       count
     }
@@ -239,4 +240,13 @@ package object bson {
     def skipByte : Int = { itr.drop(1); 1 }
 
   }
+
+  implicit def stringLiteral(str : String) : StringLiteral = new StringLiteral(str)
+  implicit def intLiteral(int : Int) : IntLiteral = new IntLiteral(int)
+  implicit def doubleLiteral(dbl : Double) : DoubleLiteral = new DoubleLiteral(dbl)
+  implicit def conditionalExpression(fieldName : String) : BooleanFieldExpression =
+    new BooleanFieldExpression(fieldName)
+  implicit def logicalExpression(exp1 : BooleanExpression) : LogicalExpression =
+    new LogicalExpression(exp1)
+
 }

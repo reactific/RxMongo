@@ -26,8 +26,6 @@ import java.util.Date
 
 import org.specs2.mutable.Specification
 
-import Expression._
-
 class OperatorsSpec extends Specification {
 
   val foo_str = "foo" $eq "bar"
