@@ -34,11 +34,16 @@ import scala.util.{ Failure, Success }
 /** Primary Application Interface To RxMongo
   *
   * Each Client instance provides a separate interface to MongoDB. It can manage connections to multiple
-  * replica sets and coordinate the activity between them. Your application must instantiate an RxMongoClient in order
-  * to use RxMongo as all other object provided by RxMongo are accessed through this. You may instantiate multiple
-  * RxMongoClient instances, but each will maintain its own set of connections and view of the databases. This may be
-  * useful in testing but is unlikely to be useful in an application unless you wish to keep replica set traffic very
+  * replica sets and coordinate the activity between them. Your application must instantiate an Client in order
+  * to use RxMongo as all other objects provided by RxMongo are accessed through this one. You may instantiate multiple
+  * Client instances, but each will maintain its own set of connections and view of the databases. This may be
+  * useful in testing but is unlikely to be useful in an application unless you wish to keep replica set traffic
   * separate.
+  *
+  * The Client is a wrapper around the [[rxmongo.driver.Driver]] object that allow you to avoid the low level
+  * interface of the Driver. Instead of dealing directly with connections to a MongoDB server, you deal with
+  * abstractions like [[rxmongo.client.Database]], [[rxmongo.client.Collection]], [[rxmongo.client.Query]] and
+  * [[rxmongo.client.Cursor]].
   */
 case class Client(uri : MongoURI, config : Option[Config], name : String) {
   private[client] val driver = Driver(config, name)
@@ -49,11 +54,41 @@ case class Client(uri : MongoURI, config : Option[Config], name : String) {
     Await.result(driver.connect(uri, None)(connectionTimeout), connectionTimeout.duration)
   }
 
+  /** Get a Database Object.
+    *
+    * Note that instantiation of this does not imply creation of the database. Databases are created on demand by
+    * MongoDB. So, you can create numerous instances of Database without interacting with MongoDB at all. Once you do
+    * something with the returned Database instance, however, you will be interacting with MongoDB.
+    * @param name The name of the database
+    * @return A lightweight interface to a MongoDB Database.
+    */
   def database(name : String) : Database = Database(name, this)
+
+  /** Get a Collection Object.
+    *
+    * Note that instantiona of this does not imply creation of a collection. Collections are created on demand by
+    * MongoDB. So, you can create numerous instances of Collection through this method without any interactions with
+    * MongoDB at all. Once you do something with the returned Collection instance, however, you will be interacting
+    * with MongoDB.
+    * @param dbName The name of the database
+    * @param collName The name of the collection
+    * @return
+    */
+  def collection(dbName: String, collName: String) : Collection = Database(dbName, this).collection(collName)
+
 }
 
 object Client {
 
+  /** Client constructor.
+    * Create a Client from a URI string, configuration options, and a name. The string uri is parsed into a MongoURI
+    * and then the arguments are passed to the Client class's constructor. If the uri cannot be parsed then an
+    * exception will be thrown
+    * @param uri The uri specifying what to connect to and how
+    * @param config rxmongo configuration options
+    * @param name The name for this client
+    * @return An instance of [[rxmongo.client.Client]] for interacting with MongoDB
+    */
   def apply(uri : String, config : Option[Config] = None, name : String = "RxMongo") = {
     MongoURI(uri) match {
       case Success(u) ⇒ new Client(u, config, name)
