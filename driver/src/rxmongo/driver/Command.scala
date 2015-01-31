@@ -22,7 +22,7 @@
 
 package rxmongo.driver
 
-import rxmongo.bson.{ BSONObject }
+import rxmongo.bson.BSONObject
 
 class Command(db : String, val query : BSONObject) extends GenericQueryMessage {
   val fullCollectionName = s"$db.$$cmd"
@@ -39,6 +39,7 @@ class Command(db : String, val query : BSONObject) extends GenericQueryMessage {
 
 class AdminCommand(query : BSONObject) extends Command("admin", query)
 
-case class IsMasterCmd() extends Command("rxmongo", BSONObject("isMaster" -> 1))
-case class GetLastErrorCmd(db : String) extends Command(db, BSONObject("getLastError" -> 1))
-case class DBStatsCmd(db : String) extends Command(db, BSONObject("dbStats" -> 1))
+case class IsMasterCmd() extends Command("admin", BSONObject("isMaster" → 1))
+case class ServerStatus() extends Command("admin", BSONObject("serverStatus" → 1))
+case class GetLastErrorCmd(db : String) extends Command(db, BSONObject("getLastError" → 1))
+case class DBStatsCmd(db : String) extends Command(db, BSONObject("dbStats" → 1))
