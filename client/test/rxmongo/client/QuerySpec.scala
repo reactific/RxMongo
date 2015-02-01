@@ -41,8 +41,8 @@ class QuerySpec extends Specification {
           BSONArray(
             BSONObject("$and" →
               BSONArray(
-                BSONObject( "a" → BSONObject("$ne" → 42.0)),
-                BSONObject( "b" → BSONObject("$gte" → 21.0))
+                BSONObject("a" → BSONObject("$ne" → 42.0)),
+                BSONObject("b" → BSONObject("$gte" → 21.0))
               )
             ),
             BSONObject("c" → BSONObject("$lt" → 84.0))
@@ -57,7 +57,7 @@ class QuerySpec extends Specification {
     }
 
     "handle descending sorting on one field" in {
-      val q = Query("a" $eq "b").orderBy("c", ascending=false)
+      val q = Query("a" $eq "b").orderBy("c", ascending = false)
       q.result must beEqualTo(BSONObject("$query" → BSONObject("a" → "b"), "$orderby" → BSONObject("c" → -1)))
     }
 

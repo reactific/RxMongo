@@ -24,13 +24,6 @@ package rxmongo.client
 
 import org.specs2.mutable.Specification
 
-/** Test Suite For RxMongoClient */
-class ClientSpec extends Specification {
+class CollectionSpec extends Specification {
 
-  "Client" should {
-    "allow connection" in {
-      Client("mongodb://localhost/mydb")
-      success
-    }
-  }
 }

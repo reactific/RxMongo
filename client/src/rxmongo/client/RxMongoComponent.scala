@@ -22,15 +22,14 @@
 
 package rxmongo.client
 
-import org.specs2.mutable.Specification
+import akka.event.{ Logging, LoggingAdapter }
+import akka.util.Timeout
+import rxmongo.driver.Driver
 
-/** Test Suite For RxMongoClient */
-class ClientSpec extends Specification {
+import scala.concurrent.ExecutionContext
 
-  "Client" should {
-    "allow connection" in {
-      Client("mongodb://localhost/mydb")
-      success
-    }
-  }
+abstract class RxMongoComponent(private[rxmongo] val driver : Driver) {
+  val log : LoggingAdapter = Logging.getLogger(driver.system, this.getClass)
+  implicit val executionContext : ExecutionContext = driver.system.dispatcher
+  implicit val timeout : Timeout = Driver.defaultTimeout
 }

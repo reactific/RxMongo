@@ -45,11 +45,7 @@ import scala.util.{ Failure, Success }
   * abstractions like [[rxmongo.client.Database]], [[rxmongo.client.Collection]], [[rxmongo.client.Query]] and
   * [[rxmongo.client.Cursor]].
   */
-case class Client(uri : MongoURI, config : Option[Config], name : String) {
-  private[client] val driver = Driver(config, name)
-
-  private implicit val connectionTimeout : Timeout = Driver.defaultTimeout
-
+case class Client(uri : MongoURI, config : Option[Config], name : String)(implicit connectionTimeout : Timeout) extends RxMongoComponent(Driver(config, name)) {
   private[client] val connection : ActorRef = {
     Await.result(driver.connect(uri, None)(connectionTimeout), connectionTimeout.duration)
   }
@@ -74,7 +70,7 @@ case class Client(uri : MongoURI, config : Option[Config], name : String) {
     * @param collName The name of the collection
     * @return
     */
-  def collection(dbName: String, collName: String) : Collection = Database(dbName, this).collection(collName)
+  def collection(dbName : String, collName : String) : Collection = Database(dbName, this).collection(collName)
 
 }
 
@@ -89,9 +85,9 @@ object Client {
     * @param name The name for this client
     * @return An instance of [[rxmongo.client.Client]] for interacting with MongoDB
     */
-  def apply(uri : String, config : Option[Config] = None, name : String = "RxMongo") = {
+  def apply(uri : String, config : Option[Config] = None, name : String = "RxMongo")(implicit connectionTimeout : Timeout = Driver.defaultTimeout) = {
     MongoURI(uri) match {
-      case Success(u) ⇒ new Client(u, config, name)
+      case Success(u) ⇒ new Client(u, config, name)(connectionTimeout)
       case Failure(x) ⇒ throw x
     }
   }

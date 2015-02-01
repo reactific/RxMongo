@@ -22,22 +22,32 @@
 
 package rxmongo.client
 
+import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
+
 import akka.pattern.ask
 import akka.util.Timeout
 
 import rxmongo.bson.{ RxMongoError, BSONObject }
-import rxmongo.driver.{ ReplyMessage, Driver, QueryMessage }
+import rxmongo.driver._
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.duration._
+import scala.util.{ Failure, Success, Try }
 
-case class Collection(name : String, db : Database) {
+/** Represents a MongoDB Collection
+  *
+  * @see [[http://docs.mongodb.org/master/reference/method/js-collection/]]
+  * @param name THe name of the collection in the database
+  * @param db A database object
+  */
+case class Collection(name : String, db : Database, statsRefesh : FiniteDuration = 1.day)(implicit timeout : Timeout = Driver.defaultTimeout)
+  extends RxMongoComponent(db.driver) {
 
-  implicit val ec : ExecutionContext = db.client.driver.executionContext
-  def namespace = db.namespace + "." + name
+  val fullName = db.namespace + "." + name
 
-  def query(selector : (String, Any)*)(implicit to : Timeout = Driver.defaultTimeout) : Future[Seq[BSONObject]] = {
+  def query(selector : (String, Any)*) : Future[Seq[BSONObject]] = {
     val obj = BSONObject(selector : _*)
-    val msg = QueryMessage(namespace, numberToSkip = 0, numberToReturn = 1, obj)
+    val msg = QueryMessage(fullName, numberToSkip = 0, numberToReturn = 1, obj)
     db.client.connection.ask(msg) map {
       case reply : ReplyMessage ⇒
         if (reply.QueryFailure)
@@ -46,4 +56,118 @@ case class Collection(name : String, db : Database) {
           reply.documents.toSeq
     }
   }
+
+  private val _stats = new AtomicReference[CollStatsReply](null)
+  private val _stats_refreshed_at = new AtomicLong(0)
+  private def getRefreshedStats() : CollStatsReply = Try {
+    val timeNow = System.currentTimeMillis()
+    if (_stats_refreshed_at.get() + statsRefesh.toMillis < timeNow) {
+      val result = (db.client.connection ? CollStatsCmd(db.namespace, name)).mapTo[ReplyMessage] map { reply ⇒
+        if (reply.numberReturned >= 1) {
+          val stats = reply.documents.head.to[CollStatsReply]
+          _stats.set(stats)
+          _stats_refreshed_at.set(timeNow)
+          stats
+        } else {
+          throw new IllegalStateException("Mongo didn't return a document for ColLStatsCmd")
+        }
+      }
+      Await.result(result, timeout.duration)
+    } else {
+      _stats.get
+    }
+  } match {
+    case Success(stats) ⇒ stats
+    case Failure(xcptn) ⇒
+      log.error(xcptn, "Failed to acquire collection statustics")
+      throw xcptn
+  }
+
+  /** Provides access to the aggregation pipeline.
+    *
+    */
+  def aggregate() = ???
+
+  /** Return the average size of an object (document) in the collection. This value is refreshed only as frequently
+    * as statsRefresh permits.
+    */
+  def avgObjSize() = getRefreshedStats().avgObjSize
+
+  /** Return a count of the number of documents in this collection. This value is refreshed only as frequently as
+    * statsRefresh permits.
+    */
+  def count() = getRefreshedStats().count
+
+  /** Wraps eval to copy data between collections in a single MongoDB instance. */
+  def copyTo() = ???
+  /** Builds an index on a collection. */
+  def createIndex() = ???
+  /** Renders a human-readable view of the data collected by indexStats which reflects B-tree utilization. */
+  def getIndexStats() = ???
+  /** Renders a human-readable view of the data collected by indexStats which reflects B-tree utilization. */
+  def indexStats() = ???
+  /** Returns the size of the collection. Wraps the size field in the output of the collStats. */
+  def dataSize() = ???
+  /** Returns an array of documents that have distinct values for the specified field. */
+  def distinct() = ???
+  /** Removes the specified collection from the database. */
+  def drop() = ???
+  /** Removes a specified index on a collection. */
+  def dropIndex() = ???
+  /** Removes all indexes on a collection. */
+  def dropIndexes() = ???
+  /** Deprecated. Use db.collection.createIndex(). */
+  def ensureIndex() = ???
+  /** Returns information on the query execution of various methods. */
+  def explain() = ???
+
+  /** Performs a query on a collection and returns a cursor object. */
+  def find(query : Query, projection : Option[Projection] = None) : Cursor = ???
+
+  def findAll(projection : Option[Projection] = None) : Cursor = find(Query(), projection)
+
+  /** Atomically modifies and returns a single document. */
+  def findAndModify() = ???
+  /** Performs a query and returns a single document. */
+  def findOne() = ???
+  /** Returns an array of documents that describe the existing indexes on a collection. */
+  def getIndexes() = ???
+  /** For collections in sharded clusters, db.collection.getShardDistribution() reports data of chunk distribution. */
+  def getShardDistribution() = ???
+  /** Internal diagnostic method for shard cluster. */
+  def getShardVersion() = ???
+  /** Provides simple data aggregation function.
+    * Groups documents in a collection by a key, and processes the results.
+    * Use aggregate() for more complex data aggregation.
+    */
+  def group() = ???
+  /** Creates a new document in a collection. */
+  def insert() = ???
+  /** Reports if a collection is a capped collection. */
+  def isCapped() : Boolean = getRefreshedStats().capped
+
+  /** Performs map-reduce style data aggregation. */
+  def mapReduce() = ???
+  /** Rebuilds all existing indexes on a collection. */
+  def reIndex() = ???
+  /** Deletes documents from a collection. */
+  def remove() = ???
+  /** Changes the name of a collection. */
+  def renameCollection() = ???
+  /** Provides a wrapper around an insert() and update() to insert new documents. */
+  def save() = ???
+  /** Reports on the state of a collection. */
+  def stats() : CollStatsReply = getRefreshedStats()
+
+  /** Reports the total size used by the collection in bytes. Provides a wrapper around the storageSize field of the collStats output. */
+  def storageSize() = getRefreshedStats().storageSize
+  /** Reports the total size of a collection, including the size of all documents and all indexes on a collection. */
+  def totalSize() = getRefreshedStats().size
+  /** Reports the total size used by the indexes on a collection. Provides a wrapper around the totalIndexSize field of the collStats output. */
+  def totalIndexSize() = getRefreshedStats().totalIndexSize
+
+  /** Modifies a document in a collection. */
+  def update() = ???
+  /** Performs diagnostic operations on a collection. */
+  def validate() = ???
 }

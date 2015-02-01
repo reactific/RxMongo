@@ -51,14 +51,14 @@ class ProjectionSpec extends Specification {
       val p1 = Projection()
       p1.result must beEqualTo(BSONObject())
       p1.include("a", "b", "c")
-      p1.result must beEqualTo(BSONObject("a"→1, "b"→1,"c"→1))
+      p1.result must beEqualTo(BSONObject("a" → 1, "b" → 1, "c" → 1))
 
     }
     "allow excludes" in {
       val p1 = Projection()
       p1.result must beEqualTo(BSONObject())
       p1.exclude("a", "b", "c")
-      p1.result must beEqualTo(BSONObject("a"→0, "b"→0,"c"→0))
+      p1.result must beEqualTo(BSONObject("a" → 0, "b" → 0, "c" → 0))
     }
     "allow slice" in {
       pending

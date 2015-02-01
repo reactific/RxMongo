@@ -32,12 +32,12 @@ case class Query() extends BSONProvider {
   private val bson = BSONBuilder()
   def toByteString = bson.toByteString
 
-  def select(what: BooleanExpression) : Query = {
+  def select(what : BooleanExpression) : Query = {
     bson.obj("$query", what)
     this
   }
 
-  def comment(msg: String) : Query = {
+  def comment(msg : String) : Query = {
     bson.string("$comment", msg)
     this
   }
@@ -47,7 +47,7 @@ case class Query() extends BSONProvider {
     * @param index
     * @return
     */
-  def hint(index: String) : Query = {
+  def hint(index : String) : Query = {
     bson.obj("$hint", Map(index → 1))
     this
   }
@@ -57,7 +57,7 @@ case class Query() extends BSONProvider {
     * @param num_docs
     * @return
     */
-  def maxScan(num_docs: Int) : Query = {
+  def maxScan(num_docs : Int) : Query = {
     bson.integer("$maxScan", num_docs)
     this
   }
@@ -67,7 +67,7 @@ case class Query() extends BSONProvider {
     * @param millis
     * @return
     */
-  def maxTimeMS(millis: Long) : Query = {
+  def maxTimeMS(millis : Long) : Query = {
     bson.long("$maxTimeMS", millis)
     this
   }
@@ -77,8 +77,8 @@ case class Query() extends BSONProvider {
     * @param fields
     * @return
     */
-  def max(fields: (String,Any)*) : Query = {
-    bson.obj("$max", fields.head, fields.tail:_*)
+  def max(fields : (String, Any)*) : Query = {
+    bson.obj("$max", fields.head, fields.tail : _*)
     this
   }
 
@@ -87,19 +87,19 @@ case class Query() extends BSONProvider {
     * @param fields
     * @return
     */
-  def min(fields: (String,Any)*) : Query = {
-    bson.obj("$min", fields.head, fields.tail:_*)
+  def min(fields : (String, Any)*) : Query = {
+    bson.obj("$min", fields.head, fields.tail : _*)
     this
   }
 
   /** Returns a cursor with documents sorted according to a sort specification.
-   * @see [[http://docs.mongodb.org/master/reference/operator/meta/orderby/]]
-   * @param field
-   * @param ascending
-   * @return
-   */
-  def orderBy(field: String, ascending: Boolean = true) : Query = {
-    bson.obj("$orderby", Map(field → (if(ascending) 1 else -1)))
+    * @see [[http://docs.mongodb.org/master/reference/operator/meta/orderby/]]
+    * @param field
+    * @param ascending
+    * @return
+    */
+  def orderBy(field : String, ascending : Boolean = true) : Query = {
+    bson.obj("$orderby", Map(field → (if (ascending) 1 else -1)))
     this
   }
 
@@ -108,7 +108,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def returnKey() : Query = {
-    bson.boolean("$returnKey", value=true)
+    bson.boolean("$returnKey", value = true)
     this
   }
 
@@ -117,7 +117,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def showDiskLoc() : Query = {
-    bson.boolean("$showDiskLoc", value=true)
+    bson.boolean("$showDiskLoc", value = true)
     this
   }
 
@@ -126,7 +126,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def snapshot() : Query = {
-    bson.boolean("$snapshot", value=true)
+    bson.boolean("$snapshot", value = true)
     this
   }
 
@@ -136,7 +136,7 @@ case class Query() extends BSONProvider {
     * @param reverse
     * @return
     */
-  def natural(reverse: Boolean = false) : Query = {
+  def natural(reverse : Boolean = false) : Query = {
     bson.integer("$natural", if (reverse) -1 else 1)
     this
   }
@@ -146,6 +146,6 @@ case class Query() extends BSONProvider {
 object Query {
   def apply(what : BooleanExpression) : Query = new Query().select(what)
 
-  implicit class LimitQueryModifier(q: Query) {}
+  implicit class LimitQueryModifier(q : Query) {}
 
 }

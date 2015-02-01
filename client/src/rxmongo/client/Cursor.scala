@@ -22,15 +22,11 @@
 
 package rxmongo.client
 
-import org.specs2.mutable.Specification
+import rxmongo.bson.BSONObject
 
-/** Test Suite For RxMongoClient */
-class ClientSpec extends Specification {
+case class Cursor private[client] (query : Query) extends Iterator[BSONObject] {
 
-  "Client" should {
-    "allow connection" in {
-      Client("mongodb://localhost/mydb")
-      success
-    }
-  }
+  override def hasNext : Boolean = ???
+
+  override def next() : BSONObject = ???
 }

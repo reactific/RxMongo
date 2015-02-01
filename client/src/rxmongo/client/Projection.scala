@@ -22,7 +22,7 @@
 
 package rxmongo.client
 
-import rxmongo.bson.{BSONProvider, BSONBuilder}
+import rxmongo.bson.{ BSONProvider, BSONBuilder }
 
 /** Represents A MongoDB Query Projection
   *
@@ -41,7 +41,7 @@ class Projection extends BSONProvider {
     * @param names The names of the fields to include
     * @return A projection with fields included
     */
-  def include(names: String*) : Projection = {
+  def include(names : String*) : Projection = {
     for (name ← names) {
       builder.integer(name, 1)
     }
@@ -53,8 +53,8 @@ class Projection extends BSONProvider {
     * @param names The names of the field to exclude
     * @return A Projection with fields excluded
     */
-  def exclude(names: String*) : Projection = {
-    for (name <- names) {
+  def exclude(names : String*) : Projection = {
+    for (name ← names) {
       builder.integer(name, 0)
     }
     this
@@ -69,7 +69,7 @@ class Projection extends BSONProvider {
     * @param count The number of elements of the array to return, from the start
     * @return
     */
-  def slice(name: String, count : Int) : Projection = {
+  def slice(name : String, count : Int) : Projection = {
     builder.obj(name, BSONBuilder().integer("$slice", count))
     this
   }
@@ -83,7 +83,7 @@ class Projection extends BSONProvider {
     * @param count The number of elements of the array to return, from the start
     * @return A projection that returns the first `count` elements of the array named `name`
     */
-  def sliceFromStart(name: String, count: Int) : Projection = slice(name, count)
+  def sliceFromStart(name : String, count : Int) : Projection = slice(name, count)
 
   /** Project a slice of an array, from the end.
     *
@@ -92,7 +92,7 @@ class Projection extends BSONProvider {
     * @param count The number of elements of the array to return, from the end
     * @return A projection that returns the last `count` elements of the array named `name`
     */
-  def sliceFromEnd(name: String, count: Int) : Projection = {
+  def sliceFromEnd(name : String, count : Int) : Projection = {
     builder.obj(name, BSONBuilder().integer("$slice", -count))
     this
   }
@@ -104,9 +104,9 @@ class Projection extends BSONProvider {
     * @param skip The number of elements of the array to skip, from the start
     * @param count The number of elements of the array to return, from the skip point
     * @return A projection that returns the `count` elements of the array named `name` starting at
-    *         `skip` elements from the start
+    *       `skip` elements from the start
     */
-  def slice(name: String, skip: Int, count: Int) : Projection = {
+  def slice(name : String, skip : Int, count : Int) : Projection = {
     builder.obj(name, BSONBuilder().array("$slice", skip, count))
     this
   }
@@ -118,9 +118,9 @@ class Projection extends BSONProvider {
     * @param skip The number of elements of the array to skip, from the start
     * @param count The number of elements of the array to return, from the skip point
     * @return A projection that returns the `count` elements of the array named `name` starting at
-    *         `skip` elements from the start
+    *       `skip` elements from the start
     */
-  def sliceFromStart(name: String, skip: Int, count: Int) : Projection = slice(name, skip, count)
+  def sliceFromStart(name : String, skip : Int, count : Int) : Projection = slice(name, skip, count)
 
   /** Project a slice of an array, from the end
     *
@@ -129,9 +129,9 @@ class Projection extends BSONProvider {
     * @param skip The number of elements of the array to skip, from the end
     * @param count The number of elements of the array to return, from the skip point
     * @return A projection that returns `count` elements of the array named `name` starting from
-    *         `skip` elements from the end.
+    *       `skip` elements from the end.
     */
-  def sliceFromEnd(name: String, skip: Int, count: Int) : Projection = {
+  def sliceFromEnd(name : String, skip : Int, count : Int) : Projection = {
     builder.obj(name, BSONBuilder().array("$slice", -skip, count))
     this
   }
@@ -142,7 +142,7 @@ class Projection extends BSONProvider {
     * @param name The name of the field for the textScore meta value
     * @return
     */
-  def metaTextScore(name: String) : Projection = {
+  def metaTextScore(name : String) : Projection = {
     builder.obj(name, BSONBuilder().string("$meta", "textScore"))
     this
   }
@@ -154,8 +154,8 @@ class Projection extends BSONProvider {
     * @param query The query to select which elements of the array to return
     * @return A projection with the element match included.
     */
-  def elemMatch(name: String, query: Query) : Projection = {
-    builder.obj(name, BSONBuilder().obj("$elemMatch", query.result) )
+  def elemMatch(name : String, query : Query) : Projection = {
+    builder.obj(name, BSONBuilder().obj("$elemMatch", query.result))
     this
   }
 
@@ -165,7 +165,7 @@ class Projection extends BSONProvider {
     * @param name The name of the array field
     * @return A projection with the positional slicing included.
     */
-  def positional(name: String) : Projection = {
+  def positional(name : String) : Projection = {
     builder.integer(name + ".$", 1)
     this
   }
@@ -184,9 +184,9 @@ object Projection {
     * @param names
     * @return
     */
-  def except(names: String*) : Projection = {
+  def except(names : String*) : Projection = {
     val result = Projection()
-    for (name ← names) { result.builder.integer(name,0) }
+    for (name ← names) { result.builder.integer(name, 0) }
     result
   }
 
@@ -199,7 +199,7 @@ object Projection {
     * @param names The names of the fields to include
     * @return A Projection that causes the query to only return certain fields.
     */
-  def only(names: String*) : Projection = {
+  def only(names : String*) : Projection = {
     val result = Projection()
     for (name ← names) { result.builder.integer(name, 1) }
     result.builder.integer("_id", 0)
@@ -215,9 +215,9 @@ object Projection {
     * @param names
     * @return
     */
-  def specific(names: (String,Boolean)* ) : Projection = {
+  def specific(names : (String, Boolean)*) : Projection = {
     val result = Projection()
-    for ( (name,include) ← names) { result.builder.integer(name, if (include) 1 else 0) }
+    for ((name, include) ← names) { result.builder.integer(name, if (include) 1 else 0) }
     result
   }
 
