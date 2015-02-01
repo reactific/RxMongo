@@ -139,24 +139,24 @@ object BSONCodec {
     def code = NotACode
     def read(value : BSONValue) : Any = {
       (value.code.code : @switch) match {
-        case 1 ⇒ value.asInstanceOf[BSONDouble].value
-        case 2   ⇒ value.asInstanceOf[BSONString].value
-        case 3   ⇒ value.asInstanceOf[BSONObject].value
-        case 4   ⇒ value.asInstanceOf[BSONArray].value
-        case 5   ⇒ value.asInstanceOf[BSONBinary].value
-        case 6   ⇒ Unit
-        case 7   ⇒ value.asInstanceOf[BSONObjectID].value
-        case 8   ⇒ value.asInstanceOf[BSONBoolean].value
-        case 9   ⇒ value.asInstanceOf[BSONDate].value
-        case 10  ⇒ null
-        case 11  ⇒ value.asInstanceOf[BSONRegex].value
-        case 12  ⇒ value.asInstanceOf[BSONDBPointer].value
-        case 13  ⇒ value.asInstanceOf[BSONJsCode].value
-        case 14  ⇒ value.asInstanceOf[BSONSymbol].value
-        case 15  ⇒ value.asInstanceOf[BSONScopedJsCode].value
-        case 16  ⇒ value.asInstanceOf[BSONInteger].value
-        case 17  ⇒ value.asInstanceOf[BSONTimestamp].value
-        case 18  ⇒ value.asInstanceOf[BSONLong].value
+        case 1  ⇒ value.asInstanceOf[BSONDouble].value
+        case 2  ⇒ value.asInstanceOf[BSONString].value
+        case 3  ⇒ value.asInstanceOf[BSONObject].value
+        case 4  ⇒ value.asInstanceOf[BSONArray].value
+        case 5  ⇒ value.asInstanceOf[BSONBinary].value
+        case 6  ⇒ Unit
+        case 7  ⇒ value.asInstanceOf[BSONObjectID].value
+        case 8  ⇒ value.asInstanceOf[BSONBoolean].value
+        case 9  ⇒ value.asInstanceOf[BSONDate].value
+        case 10 ⇒ null
+        case 11 ⇒ value.asInstanceOf[BSONRegex].value
+        case 12 ⇒ value.asInstanceOf[BSONDBPointer].value
+        case 13 ⇒ value.asInstanceOf[BSONJsCode].value
+        case 14 ⇒ value.asInstanceOf[BSONSymbol].value
+        case 15 ⇒ value.asInstanceOf[BSONScopedJsCode].value
+        case 16 ⇒ value.asInstanceOf[BSONInteger].value
+        case 17 ⇒ value.asInstanceOf[BSONTimestamp].value
+        case 18 ⇒ value.asInstanceOf[BSONLong].value
         case _ ⇒
           throw new NoSuchElementException(s"BSON TypeCode($code)")
       }
@@ -175,7 +175,7 @@ object BSONCodec {
         case d : Date ⇒ BSONDate(d.getTime)
         case r : Regex ⇒ BSONRegex(r)
         case b : ByteString ⇒ BSONBinary(b, UserDefinedBinary)
-        case a : Array[Byte]   ⇒ BSONBinary(a, UserDefinedBinary)
+        case a : Array[Byte] ⇒ BSONBinary(a, UserDefinedBinary)
         case m : Map[String, Any] @unchecked ⇒ BSONObject(m)
         case i : Iterable[Any] ⇒ BSONArray(i.toSeq)
         case x : Any ⇒

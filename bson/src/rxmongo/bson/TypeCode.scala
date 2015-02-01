@@ -33,7 +33,7 @@ sealed trait TypeCode {
   val typeName : String
 }
 
-case object NotACode extends { val code : Byte = 0 ; val typeName = "Not_A_BSONValue" } with TypeCode
+case object NotACode extends { val code : Byte = 0; val typeName = "Not_A_BSONValue" } with TypeCode
 case object DoubleCode extends { val code : Byte = 1; val typeName = "BSONDouble" } with TypeCode
 case object StringCode extends { val code : Byte = 2; val typeName = "BSONString" } with TypeCode
 case object ObjectCode extends { val code : Byte = 3; val typeName = "BSONObject" } with TypeCode

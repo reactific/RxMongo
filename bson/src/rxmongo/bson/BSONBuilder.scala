@@ -98,7 +98,7 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
     obj(Seq(field1) ++ fields)
   }
 
-  def array(key : String, value1 : Any, values: Any*) : BSONBuilder = {
+  def array(key : String, value1 : Any, values : Any*) : BSONBuilder = {
     putPrefix(ArrayCode, key)
     array(Seq(value1) ++ values)
   }
