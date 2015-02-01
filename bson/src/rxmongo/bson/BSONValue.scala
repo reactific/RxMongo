@@ -29,20 +29,26 @@ import akka.util.{ ByteIterator, ByteString }
 
 import scala.annotation.switch
 import scala.collection.{ Map, MapLike }
+import scala.collection.immutable
 import scala.util.matching.Regex
 import scala.language.implicitConversions
 
 trait BSONValue {
-  implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
   private[bson] val buffer : ByteString
   def value : Any
 
   def code : TypeCode
 
+  def typeName : String = code.typeName
+
   def length : Int = buffer.length
 
   override def toString = value.toString
 
+}
+
+object BSONValue {
+  implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
 }
 
 trait BSONDocument extends BSONValue {
@@ -192,8 +198,20 @@ case class BSONObject private[bson] (buffer : ByteString)
 
   override def size : Int = iterator.size
 
-  def get(key_to_find : String) : Option[BSONValue] = {
-    iterator.find { case (key, value) ⇒ key == key_to_find } map { case (key, value) ⇒ value }
+  def get(keyToFind : String) : Option[BSONValue] = {
+    iterator.find {
+      case (key, value) ⇒ key == keyToFind
+    } map {
+      case (key, value) ⇒ value
+    }
+  }
+
+  def getObject(keyToFind : String) : Option[BSONObject] = {
+    iterator.find {
+      case (key, value) ⇒ value.code == ObjectCode && key == keyToFind
+    } map {
+      case (key, value) ⇒ value.asInstanceOf[BSONObject]
+    }
   }
 
   /** Get with conversion to another type
@@ -211,12 +229,34 @@ case class BSONObject private[bson] (buffer : ByteString)
     get(key) match {
       case Some(value : B @unchecked) if value.code == codec.code ⇒ codec.read(value)
       case Some(value : BSONValue) ⇒ throw new IllegalArgumentException(
-        s"Expected type ${codec.typeName} for key '$key' but got type ${value.code.typeName}")
+        s"Expected type ${codec.typeName} for key '$key' but got type ${value.typeName}")
       case None ⇒ throw new NoSuchElementException(key)
     }
   }
 
-  def getAsObject[T](key : String)(implicit codec : BSONCodec[T, BSONObject]) : T = getAs[T, BSONObject](key)(codec)
+  def getAsObject[T](key : String)(implicit codec : BSONCodec[T, BSONObject]) : T = {
+    getAs[T, BSONObject](key)(codec)
+  }
+
+  def getAsSeq[T, B <: BSONValue](key : String)(implicit codec : BSONCodec[T, B]) : Iterator[T] = {
+    get(key) match {
+      case Some(v : BSONValue) if v.code == ArrayCode ⇒ value.asInstanceOf[BSONArray].as[T, B]
+      case Some(v : BSONValue) ⇒ throw new IllegalArgumentException(
+        s"Expected type BSONArray for key '$key' but got type ${v.typeName}"
+      )
+      case None ⇒ throw new NoSuchElementException(key)
+    }
+  }
+
+  def getAsMap[T, B <: BSONValue](key : String)(implicit codec : BSONCodec[T, B]) : immutable.Map[String, T] = {
+    iterator.map {
+      case (k, v : B @unchecked) if v.code == codec.code ⇒ k -> codec.read(v)
+      case (k, v) ⇒
+        throw new IllegalArgumentException(
+          s"Expected type ${codec.typeName} for key '$k' but got type ${v.typeName}")
+    }.toMap
+  }
+
   def getAsString(key : String) : String = getAs[String, BSONString](key)
   def getAsInt(key : String) : Int = getAs[Int, BSONInteger](key)
   def getAsDouble(key : String) : Double = getAs[Double, BSONDouble](key)
@@ -300,7 +340,7 @@ object BSONObject {
     bldr.result
   }
 
-  def apply[T](value: T)(implicit codec: BSONCodec[T, BSONObject]) : BSONObject = codec.write(value)
+  def apply[T](value : T)(implicit codec : BSONCodec[T, BSONObject]) : BSONObject = codec.write(value)
 
   def from(data : Seq[(String, Any)]) : BSONObject = {
     val bldr = BSONBuilder()
@@ -335,6 +375,15 @@ case class BSONArray private[bson] (buffer : ByteString) extends BSONDocument {
     }
     s.toString()
   }
+
+  def as[T, B <: BSONValue](implicit codec : BSONCodec[T, B]) : Iterator[T] = {
+    iterator.map {
+      case v : BSONValue if v.code == codec.code ⇒ codec.read(v.asInstanceOf[B])
+      case v : BSONValue ⇒ throw new IllegalArgumentException(
+        s"Expected type ${codec.typeName} but got type ${v.typeName}"
+      )
+    }
+  }
 }
 
 object BSONArray {
@@ -343,15 +392,29 @@ object BSONArray {
 
   def apply() : BSONArray = empty
 
+  /*
   def apply(data : Any, data2 : Any*) : BSONArray = {
     val bldr = BSONBuilder()
     bldr.array(Seq(data) ++ data2)
     new BSONArray(bldr.buffer.result())
   }
+  */
 
-  def apply(data : Seq[Any]) : BSONArray = {
+  def apply(data : Array[Any]) : BSONArray = {
     val bldr = BSONBuilder()
     bldr.array(data)
+    new BSONArray(bldr.buffer.result())
+  }
+
+  def apply[T, B <: BSONValue](data : Iterable[T])(implicit codec : BSONCodec[T, B]) : BSONArray = {
+    val bldr = BSONBuilder()
+    bldr.codecArray(data)
+    new BSONArray(bldr.buffer.result())
+  }
+
+  def apply[T, B <: BSONValue](data1 : T, data : T*)(implicit codec : BSONCodec[T, B]) : BSONArray = {
+    val bldr = BSONBuilder()
+    bldr.codecArray[T, B](Seq(data1) ++ data)
     new BSONArray(bldr.buffer.result())
   }
 }

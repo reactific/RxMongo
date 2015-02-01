@@ -24,6 +24,11 @@ package rxmongo.bson
 
 import java.util.Date
 
+import akka.util.ByteString
+import rxmongo.bson.BinarySubtype.UserDefinedBinary
+
+import scala.annotation.switch
+import scala.util.matching.Regex
 import scala.util.{ Failure, Success, Try }
 
 /** BSON Coder/Decoder (Codec) between BSONValue and type T
@@ -124,13 +129,68 @@ object BSONCodec {
     def write(value : Boolean) : BSONBoolean = BSONBoolean(value)
   }
 
+  implicit object BSONObjectCodec extends BSONCodec[BSONObject, BSONObject] {
+    def code = ObjectCode
+    def read(value : BSONObject) : BSONObject = { value }
+    def write(value : BSONObject) : BSONObject = { value }
+  }
+
+  implicit object BSONAnyCodec extends BSONCodec[Any, BSONValue] {
+    def code = NotACode
+    def read(value : BSONValue) : Any = {
+      (value.code.code : @switch) match {
+        case 1 ⇒ value.asInstanceOf[BSONDouble].value
+        case 2   ⇒ value.asInstanceOf[BSONString].value
+        case 3   ⇒ value.asInstanceOf[BSONObject].value
+        case 4   ⇒ value.asInstanceOf[BSONArray].value
+        case 5   ⇒ value.asInstanceOf[BSONBinary].value
+        case 6   ⇒ Unit
+        case 7   ⇒ value.asInstanceOf[BSONObjectID].value
+        case 8   ⇒ value.asInstanceOf[BSONBoolean].value
+        case 9   ⇒ value.asInstanceOf[BSONDate].value
+        case 10  ⇒ null
+        case 11  ⇒ value.asInstanceOf[BSONRegex].value
+        case 12  ⇒ value.asInstanceOf[BSONDBPointer].value
+        case 13  ⇒ value.asInstanceOf[BSONJsCode].value
+        case 14  ⇒ value.asInstanceOf[BSONSymbol].value
+        case 15  ⇒ value.asInstanceOf[BSONScopedJsCode].value
+        case 16  ⇒ value.asInstanceOf[BSONInteger].value
+        case 17  ⇒ value.asInstanceOf[BSONTimestamp].value
+        case 18  ⇒ value.asInstanceOf[BSONLong].value
+        case _ ⇒
+          throw new NoSuchElementException(s"BSON TypeCode($code)")
+      }
+    }
+    def write(value : Any) : BSONValue = {
+      value match {
+        case null ⇒ BSONNull
+        case v : BSONValue ⇒ v
+        case i : Int ⇒ BSONInteger(i)
+        case l : Long ⇒ BSONLong(l)
+        case d : Double ⇒ BSONDouble(d)
+        case f : Float ⇒ BSONDouble(f)
+        case b : Boolean ⇒ BSONBoolean(b)
+        case s : Short ⇒ BSONInteger(s)
+        case s : String ⇒ BSONString(s)
+        case d : Date ⇒ BSONDate(d.getTime)
+        case r : Regex ⇒ BSONRegex(r)
+        case b : ByteString ⇒ BSONBinary(b, UserDefinedBinary)
+        case a : Array[Byte]   ⇒ BSONBinary(a, UserDefinedBinary)
+        case m : Map[String, Any] @unchecked ⇒ BSONObject(m)
+        case i : Iterable[Any] ⇒ BSONArray(i.toSeq)
+        case x : Any ⇒
+          throw RxMongoError(s"Unable to convert $x into a BSONValue")
+      }
+    }
+  }
+
   implicit object ArrayOfStringCodec extends BSONCodec[Array[String], BSONArray] {
     def code = ArrayCode
     def read(value : BSONArray) : Array[String] = {
       value.iterator.map { v ⇒ v.value.toString }.toArray
     }
     def write(value : Array[String]) : BSONArray = {
-      BSONArray(value.iterator.toSeq)
+      BSONArray(value)
     }
   }
 }

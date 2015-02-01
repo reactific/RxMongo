@@ -43,25 +43,24 @@ class BSONSpec extends Specification {
       if (Helper.suitableForTimingTests)
         constructiontime must beLessThan(200000000L)
 
-      val map = bsonObject.value
-      val double = map.get("double")
-      val string = map.get("string")
-      val obj = map.get("obj")
-      val array = map.get("array")
-      val binary = map.get("binary")
-      val undefined = map.get("undefined")
-      val objectid = map.get("objectid")
-      val boolean = map.get("boolean")
-      val date = map.get("date")
-      val nil = map.get("null")
-      val regex = map.get("regex")
-      val dbpointer = map.get("dbpointer")
-      val jscode = map.get("jscode")
-      val symbol = map.get("symbol")
-      val scopedJsCode = map.get("scopedjscode")
-      val integer = map.get("integer")
-      val timestamp = map.get("timestamp")
-      val long = map.get("long")
+      val double = bsonObject.get("double")
+      val string = bsonObject.get("string")
+      val obj = bsonObject.get("obj")
+      val array = bsonObject.get("array")
+      val binary = bsonObject.get("binary")
+      val undefined = bsonObject.get("undefined")
+      val objectid = bsonObject.get("objectid")
+      val boolean = bsonObject.get("boolean")
+      val date = bsonObject.get("date")
+      val nil = bsonObject.get("null")
+      val regex = bsonObject.get("regex")
+      val dbpointer = bsonObject.get("dbpointer")
+      val jscode = bsonObject.get("jscode")
+      val symbol = bsonObject.get("symbol")
+      val scopedJsCode = bsonObject.get("scopedjscode")
+      val integer = bsonObject.get("integer")
+      val timestamp = bsonObject.get("timestamp")
+      val long = bsonObject.get("long")
 
       double.isDefined must beTrue
       string.isDefined must beTrue
@@ -87,7 +86,7 @@ class BSONSpec extends Specification {
       obj.get.value.asInstanceOf[Map[String, BSONValue]] must beEqualTo(
         Map("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four")))
       array.get.value.asInstanceOf[Iterator[BSONValue]].toSeq must beEqualTo(
-        Seq(BSONDouble(42.0D), BSONString("fourty-two")))
+        Seq(BSONDouble(42.0D), BSONDouble(84.0D)))
 
       val pair = binary.get.value.asInstanceOf[(BinarySubtype, Array[Byte])]
       pair._1 must beEqualTo(UserDefinedBinary)
@@ -178,8 +177,8 @@ class BSONSpec extends Specification {
 object Helper {
 
   val data = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
-  val anArray = Seq(42.0D, "fourty-two")
-  val anArraySeq = Seq(BSONDouble(42.0D), BSONString("fourty-two"))
+  val anArray = Seq(42.0D, 84.0D)
+  val anArraySeq = Seq(BSONDouble(42.0D), BSONDouble(84.0D))
   val anArrayBSON : BSONArray = BSONArray(anArray)
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
 
@@ -188,7 +187,7 @@ object Helper {
     b.double("double", 42.0D).
       string("string", "fourty-two").
       obj("obj", anObject).
-      array("array", anArray : _*).
+      array("array", anArray).
       binary("binary", data, UserDefinedBinary).
       undefined("undefined").
       objectID("objectid", data).
@@ -214,7 +213,7 @@ object Helper {
       val kids = for (i ← 1 to width) yield {
         makeObject(width, depth - 1)
       }
-      bldr.array("kids", kids.toSeq : _*)
+      bldr.array("kids", kids.toSeq)
     }
     bldr.toBSONObject
   }

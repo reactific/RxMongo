@@ -30,6 +30,8 @@ class OperatorsSpec extends Specification {
 
   val foo_str = "foo" $eq "bar"
   val foo_str_equiv = BSONObject("foo" -> "bar")
+  val foo_str2 = "foo" $eq "baz"
+  val foo_str2_equiv = BSONObject("foo" → "baz")
   val foo_bool = "foo" $ne false
   val foo_bool_equiv = BSONObject("foo" -> BSONObject("$ne" -> false))
   val foo_int = "foo" $gt 23
@@ -67,21 +69,21 @@ class OperatorsSpec extends Specification {
     }
 
     "construct $in properly" in {
-      val obj = "foo" $in ("bar", false, 23, new Date(42), 42.0)
+      val obj = "foo" $in ("bar", "baz", "bong")
       obj.result must beEqualTo(BSONObject("foo" -> BSONObject("$in" ->
-        BSONArray("bar", false, 23, new Date(42), 42.0)
+        BSONArray("bar", "baz", "bong")
       )))
     }
     "construct $nin properly" in {
-      val obj = "foo" $nin ("bar", false, 23, new Date(42), 42.0)
+      val obj = "foo" $nin ("bar", "baz", "bong")
       obj.result must beEqualTo(BSONObject("foo" -> BSONObject("$nin" ->
-        BSONArray("bar", false, 23, new Date(42), 42.0)
+        BSONArray("bar", "baz", "bong")
       )))
     }
 
     "construct infix $and properly" in {
-      val obj = foo_str $and foo_int
-      obj.result must beEqualTo(BSONObject("$and" -> BSONArray(foo_str_equiv, foo_int_equiv)))
+      val obj = foo_str $and foo_str2
+      obj.result must beEqualTo(BSONObject("$and" -> BSONArray(foo_str_equiv, foo_str2_equiv)))
     }
 
     "construct prefix $and properly" in {

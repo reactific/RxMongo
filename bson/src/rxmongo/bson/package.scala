@@ -130,7 +130,7 @@ package object bson {
       }
     }
 
-    def putDoc(value: BSONBuilder) : ByteStringBuilder = {
+    def putDoc(value : BSONBuilder) : ByteStringBuilder = {
       bldr ++= value.result.buffer
       bldr
     }

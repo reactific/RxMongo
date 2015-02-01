@@ -83,7 +83,7 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
     this
   }
 
-  def obj(key: String, value: BSONBuilder) : BSONBuilder = {
+  def obj(key : String, value : BSONBuilder) : BSONBuilder = {
     putPrefix(ObjectCode, key)
     putObj(value)
   }
@@ -98,11 +98,15 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
     obj(Seq(field1) ++ fields)
   }
 
-  def array(key : String, values : Any*) : BSONBuilder = {
+  def array(key : String, value1 : Any, values: Any*) : BSONBuilder = {
     putPrefix(ArrayCode, key)
-    array(values)
+    array(Seq(value1) ++ values)
   }
 
+  def array[T, B <: BSONValue](key : String, values : Seq[T])(implicit codec : BSONCodec[T, B]) : BSONBuilder = {
+    putPrefix(ArrayCode, key)
+    codecArray[T, B](values)
+  }
   def binary(key : String, blob : Array[Byte], subtype : BinarySubtype) : BSONBuilder = {
     putPrefix(BinaryCode, key)
     binary(blob, subtype)
@@ -190,15 +194,23 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
     this
   }
 
+  def embeddedArray[T, B <: BSONValue](key : String, arrayKey : String, values : Iterable[T])(implicit codec : BSONCodec[T, B]) = {
+    putPrefix(ObjectCode, key)
+    val b = BSONBuilder()
+    b.putPrefix(ArrayCode, arrayKey)
+    b.codecArray(values)
+    putObj(b)
+    this
+  }
+
   def append(key : String, value : BSONValue) : BSONBuilder = {
     putPrefix(value.code, key)
     buffer ++= value.buffer
     this
   }
 
-  private[bson] def appendAs[T, B <: BSONValue](key : String, v : T)(implicit codec : BSONCodec[T, B]) : BSONBuilder = {
-    buffer ++= codec.write(v).buffer
-    this
+  def appendAs[T, B <: BSONValue](key : String, value : T)(implicit codec : BSONCodec[T, B]) : BSONBuilder = {
+    append(key, codec.write(value))
   }
 
   private[bson] def append(key : String, anyVal : Any) : BSONBuilder = {
@@ -220,7 +232,7 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
       case m : Map[String, Any] @unchecked ⇒
         putPrefix(ObjectCode, key); obj(m.toSeq)
       case a : Array[Byte]   ⇒ binary(key, a, UserDefinedBinary)
-      case i : Iterable[Any] ⇒ array(key, i.toSeq : _*)
+      case i : Iterable[Any] ⇒ array(key, i.toSeq)
       case x : Any ⇒
         throw RxMongoError(s"Unable to convert $x into a BSONValue")
     }
@@ -256,6 +268,15 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
     values.zipWithIndex.foreach {
       case (v, i) ⇒
         arrayBuilder.append(i.toString, v)
+    }
+    buffer ++= arrayBuilder.toByteString
+    this
+  }
+
+  private[bson] def codecArray[T, B <: BSONValue](values : Iterable[T])(implicit codec : BSONCodec[T, B]) = {
+    val arrayBuilder = BSONBuilder()
+    values.zipWithIndex.foreach {
+      case (v, i) ⇒ arrayBuilder.append(i.toString, codec.write(v))
     }
     buffer ++= arrayBuilder.toByteString
     this
@@ -334,7 +355,7 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
     this
   }
 
-  private[bson] def putObj(value: BSONBuilder) : BSONBuilder = {
+  private[bson] def putObj(value : BSONBuilder) : BSONBuilder = {
     buffer.putDoc(value)
     this
   }
