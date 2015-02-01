@@ -75,7 +75,7 @@ case class IsMasterReply(
   electionId : Option[Long] = None)
 
 object IsMasterReply {
-  implicit object IsMasterResponseCodec extends BSONCodec[IsMasterReply, BSONObject] {
+  implicit object IsMasterReplyCodec extends BSONCodec[IsMasterReply, BSONObject] {
     override def code : TypeCode = ObjectCode
 
     /** Convert T into BSONValue
@@ -98,9 +98,9 @@ object IsMasterReply {
       value.setName.map { v ⇒ b.string("setName", v) }
       value.setVersion.map { v ⇒ b.integer("setVersion", v) }
       value.me.map { v ⇒ b.string("me", v) }
-      value.hosts.map { v ⇒ b.array("hosts", v.toSeq : _*) }
-      value.passives.map { v ⇒ b.array("passives", v.toSeq : _*) }
-      value.arbiters.map { v ⇒ b.array("arbiters", v.toSeq : _*) }
+      value.hosts.map { v ⇒ b.array("hosts", v.toSeq) }
+      value.passives.map { v ⇒ b.array("passives", v.toSeq) }
+      value.arbiters.map { v ⇒ b.array("arbiters", v.toSeq) }
       value.arbiterOnly.map { v ⇒ b.boolean("arbiterOnly", v) }
       value.passive.map { v ⇒ b.boolean("passive", v) }
       value.hidden.map { v ⇒ b.boolean("hidden", v) }

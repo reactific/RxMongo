@@ -31,7 +31,7 @@ import akka.pattern.ask
 import org.specs2.execute.Result
 import rxmongo.bson.BSONObject
 
-import scala.concurrent.{Future, Await}
+import scala.concurrent.{ Future, Await }
 import scala.concurrent.duration._
 
 class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
@@ -87,7 +87,7 @@ class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
 
     "return 0 for numConnections when first established" in {
       val driver = Driver(None, "numConnections=0")
-      Await.result(driver.numConnections,1.seconds) must beEqualTo(0)
+      Await.result(driver.numConnections, 1.seconds) must beEqualTo(0)
     }
 
     "return 0 before a connection is established, 1 afterwards" in mongoTest { () ⇒
@@ -98,10 +98,9 @@ class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
       conn.isInstanceOf[ActorRef] must beTrue
       val after = driver.numConnections
       val result = Await.result(Future.sequence(Seq(before, after)), 1.second)
-      result must beEqualTo(Seq(0,1))
+      result must beEqualTo(Seq(0, 1))
       driver.close(1.second)
       success
-
     }
   }
 }

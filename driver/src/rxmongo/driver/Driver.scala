@@ -165,7 +165,7 @@ case class Driver(cfg : Option[Config] = None, name : String = "RxMongo") extend
     *
     * @return A Future Map of MongoURI to ActorRef for active connections
     */
-  def connections(implicit timeout : Timeout = Driver.defaultTimeout) : Future[Map[MongoURI,ActorRef]] = {
+  def connections(implicit timeout : Timeout = Driver.defaultTimeout) : Future[Map[MongoURI, ActorRef]] = {
     (supervisorActor ? Supervisor.GetConnections).mapTo[Supervisor.GetConnectionsReply].map { x ⇒ x.connections }
   }
 

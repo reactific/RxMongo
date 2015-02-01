@@ -42,7 +42,7 @@ object Supervisor {
   sealed trait Reply
   case class NumConnectionsReply(num : Int) extends Reply
   case class NoSuchConnection(uri : MongoURI) extends Reply
-  case class GetConnectionsReply(connections: Map[MongoURI,ActorRef]) extends Reply
+  case class GetConnectionsReply(connections : Map[MongoURI, ActorRef]) extends Reply
 }
 
 class Supervisor extends Actor with ActorLogging {
