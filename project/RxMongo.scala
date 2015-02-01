@@ -32,9 +32,9 @@ object RxMongo extends Build {
   lazy val RxMongo =
     Project(BuildSettings.name, file("."),
       settings = buildSettings ++ Seq(
-        libraryDependencies := Dependencies.client
+        libraryDependencies := Dependencies.examples
       )).
-      dependsOn(client).
+      dependsOn(examples, client, driver, bson).
       aggregate(bson, driver, client, examples)
 
   lazy val client = Project(s"${BuildSettings.name}-Client", file("./client"),
