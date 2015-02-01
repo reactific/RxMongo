@@ -50,6 +50,7 @@ object LowLevel extends App {
     println("2: Show DB Stats (dbName)")
     println("3: Check Replica Set ()")
     println("4: Show Server Status ()")
+    println("5: Show Collection Status (db, collection)")
     val line = StdIn.readLine("Your choice: ")
     if (line == null)
       return -1 -> Seq.empty
@@ -81,7 +82,8 @@ object LowLevel extends App {
         case 1  ⇒ printResults(options)
         case 2  ⇒ showDBStats(options)
         case 3  ⇒ checkReplicaSet(options)
-        case 4 ⇒ showServerStatus(options)
+        case 4  ⇒ showServerStatus(options)
+        case 5  ⇒ showCollStats(options)
         case -1 ⇒ shouldExit = true
         case _  ⇒ println("Invalid choice, try again.")
       }
@@ -137,15 +139,27 @@ object LowLevel extends App {
     }
   }
 
-  def showServerStatus(options: Seq[String]) : Unit = {
+  def showServerStatus(options : Seq[String]) : Unit = {
     if (options.size != 0)
       println("showServerStatus does not require options")
     else {
       val result = (connection ? ServerStatus()).mapTo[ReplyMessage] map { reply ⇒
-      { for (doc ← reply.documents) yield { doc.toString() } }.mkString( ", " )
+        { for (doc ← reply.documents) yield { doc.toString() } }.mkString(", ")
       }
       cmdResults.put(cmdId, result)
       println(s"Command #$cmdId (showServerStatus) issued.")
+    }
+  }
+
+  def showCollStats(options : Seq[String]) : Unit = {
+    if (options.size != 2)
+      println("showCollStats requires two arguments: database, collection")
+    else {
+      val result = (connection ? CollStatsCmd(options(0), options(1))).mapTo[ReplyMessage] map { reply ⇒
+        { for (doc ← reply.documents) yield { doc.toString() } }.mkString(", ")
+      }
+      cmdResults.put(cmdId, result)
+      println(s"Command #$cmdId (showCollStats) issued.")
     }
   }
 }
