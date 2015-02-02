@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 import akka.pattern.ask
 import akka.util.Timeout
 
-import rxmongo.bson.{ RxMongoError, BSONObject }
+import rxmongo.bson.{BSONObject, RxMongoError}
 import rxmongo.driver._
 
 import scala.concurrent.{ Await, Future }
@@ -44,18 +44,6 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   extends RxMongoComponent(db.driver) {
 
   val fullName = db.namespace + "." + name
-
-  def query(selector : (String, Any)*) : Future[Seq[BSONObject]] = {
-    val obj = BSONObject(selector : _*)
-    val msg = QueryMessage(fullName, numberToSkip = 0, numberToReturn = 1, obj)
-    db.client.connection.ask(msg) map {
-      case reply : ReplyMessage ⇒
-        if (reply.QueryFailure)
-          throw new RxMongoError("Query Failure")
-        else
-          reply.documents.toSeq
-    }
-  }
 
   private val _stats = new AtomicReference[CollStatsReply](null)
   private val _stats_refreshed_at = new AtomicLong(0)
@@ -122,9 +110,22 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   def explain() = ???
 
   /** Performs a query on a collection and returns a cursor object. */
-  def find(query : Query, projection : Option[Projection] = None) : Cursor = ???
+  def find(
+    selector : Query,
+    projection : Option[Projection] = None,
+    options : QueryOptions = QueryOptions()) : Future[Cursor] = {
+    val msg = QueryMessage(fullName, selector.result, projection.map { p => p.result }, options)
+    db.client.connection.ask(msg) map {
+      case reply : ReplyMessage if reply.QueryFailure ⇒
+        // TODO: extract error message from reply and add to exception
+        throw new RxMongoError("Query Failure")
+      case reply : ReplyMessage =>
+        Cursor(this, db.client.connection, msg, reply)
+    }
+  }
 
-  def findAll(projection : Option[Projection] = None) : Cursor = find(Query(), projection)
+
+  def findAll(projection : Option[Projection] = None) : Future[Cursor] = find(Query(), projection)
 
   /** Atomically modifies and returns a single document. */
   def findAndModify() = ???

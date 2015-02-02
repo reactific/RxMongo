@@ -22,11 +22,34 @@
 
 package rxmongo.client
 
+import akka.actor.ActorRef
+import akka.pattern.ask
+
 import rxmongo.bson.BSONObject
+import rxmongo.driver.{ReplyMessage, QueryMessage}
 
-case class Cursor private[client] (query : Query) extends Iterator[BSONObject] {
+import scala.concurrent.Future
 
-  override def hasNext : Boolean = ???
+case class Cursor private[client] (
+  collection: Collection,
+  connection: ActorRef,
+  private val query : QueryMessage,
+  private var reply: ReplyMessage )
+  extends RxMongoComponent(collection.driver) with Iterator[Future[BSONObject]] {
 
-  override def next() : BSONObject = ???
+  private var list = reply.documents.toList
+
+  override def hasNext : Boolean = list.nonEmpty
+
+  override def next : Future[BSONObject] = {
+    if (list.isEmpty)
+      throw new NoSuchElementException("No more documents in RxMongo Cursor")
+    val result = list.head
+    if (list.isEmpty) {
+      // FIXME: Fetch More
+      Future.successful(result)
+    } else {
+      Future.successful(result)
+    }
+  }
 }

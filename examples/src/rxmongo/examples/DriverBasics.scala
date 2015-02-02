@@ -54,7 +54,7 @@ object DriverBasics extends App {
 
   // [3] Create a query message to find the documents with the name "foo" in the mydb.mycoll namespace.
   // You can also create all of the other kinds of messages that MongoDB supports.
-  val msg = QueryMessage("mydb.mycoll", numberToSkip = 0, numberToReturn = 1, BSONObject("name" -> "foo"))
+  val msg = QueryMessage("mydb.mycoll", BSONObject("name" -> "foo"))
 
   // [4] When the connection is successful, extract the ActorRef and send it the query using the ask pattern
   // which will asynchronously deliver a ReplyMessage when the response comes back from MongoDB.

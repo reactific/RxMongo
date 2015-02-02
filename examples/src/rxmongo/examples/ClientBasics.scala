@@ -22,8 +22,10 @@
 
 package rxmongo.examples
 
-import rxmongo.bson.{ RxMongoError, BSONObject }
-import rxmongo.client.Client
+import rxmongo.bson.BSONObject
+import rxmongo.client.{Query, Client}
+import scala.concurrent.Await
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /** Basic Client Usage Example
@@ -44,13 +46,20 @@ object ClientBasics extends App {
   val coll = db.collection("mycoll")
 
   // [4] Query the collection for documents with the name "foo"
-  coll.query("name" -> "foo") map {
-    case results : Seq[BSONObject] ⇒
-      // [5] We got an answer to our query, print the results
-      println("Results: " + results)
-  } recover {
-    case xcptn : RxMongoError ⇒
-      // [6] We got an error in our query, print the error message
-      println("Error in query: " + xcptn)
+  val cursor = coll.find(Query("name" -> "foo"))
+
+  val future = cursor.map { crsr =>
+    while (crsr.hasNext) {
+      crsr.next.map { results: BSONObject =>
+          // [5] We got an answer to our query, print the results
+          println("Results: " + results)
+      } recover {
+        case xcptn : Throwable ⇒
+          // [6] We got an error in our query, print the error message
+          println("Error in query: " + xcptn)
+      }
+    }
   }
+
+  Await.result(future, 5.seconds)
 }

@@ -70,7 +70,7 @@ class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
       val conn = Await.result(future, Duration(1, "s"))
       conn.isInstanceOf[ActorRef] must beTrue
       val c = conn.asInstanceOf[ActorRef]
-      val future2 = c.ask(QueryMessage("rxmongo.test", 0, 1, BSONObject("foo" -> 1)))
+      val future2 = c.ask(QueryMessage("rxmongo.test", BSONObject("foo" -> 1)))
       val x = Await.result(future2, 1.seconds)
       driver.close(500.millis)
       x.isInstanceOf[ReplyMessage] must beTrue

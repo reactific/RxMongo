@@ -249,4 +249,8 @@ package object bson {
   implicit def logicalExpression(exp1 : BooleanExpression) : LogicalExpression =
     new LogicalExpression(exp1)
 
+  implicit def pairLiteral[T,B<:BSONValue](pair: (String,T ))(implicit codec: BSONCodec[T,B]) : BooleanExpression = {
+    new BooleanFieldExpression(pair._1).$eq[T,B](pair._2)
+  }
+
 }
