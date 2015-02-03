@@ -27,7 +27,7 @@ import rxmongo.bson._
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration
 
-class CollectionSpec extends RxMongoSpec("rxmongo", "collection") {
+class CollectionSpec extends RxMongoTest("rxmongo", "collection") {
 
   val obj1 = BSONObject("key1" → 42.0, "key2" → 42L, "key3" → 42)
 

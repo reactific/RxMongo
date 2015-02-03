@@ -32,7 +32,7 @@ class SimpleTypesSpec extends Specification {
       GenericBinary.code must beEqualTo(0)
       FunctionBinary.code must beEqualTo(1)
       DeprecatedGenericBinary.code must beEqualTo(2)
-      DeprecatedUUIDBinary.code  must beEqualTo(3)
+      DeprecatedUUIDBinary.code must beEqualTo(3)
       UUIDBinary.code must beEqualTo(4)
       MD5SumBinary.code must beEqualTo(5)
       UserDefinedBinary.code must beEqualTo(-128)
@@ -51,9 +51,9 @@ class SimpleTypesSpec extends Specification {
   }
 
   "Delete" should {
-     "construction from boolean expression" in {
-       Delete("a" $ne "b", 1) must beEqualTo(Delete(BSONObject("a" → BSONObject("$ne" -> "b")), 1))
-     }
+    "construction from boolean expression" in {
+      Delete("a" $ne "b", 1) must beEqualTo(Delete(BSONObject("a" → BSONObject("$ne" -> "b")), 1))
+    }
     "construct from Query" in {
       Delete(Query("a" $ne "b"), 1) must beEqualTo(Delete(
         BSONObject("$query" → BSONObject("a" → BSONObject("$ne" -> "b"))), 1))
@@ -117,20 +117,20 @@ class SimpleTypesSpec extends Specification {
 
   "Update" should {
     "construct from BooleanExpression" in {
-      Update("a" $ne "b", "foo" $set "bar", upsert=true, multi=false) must beEqualTo(
+      Update("a" $ne "b", "foo" $set "bar", upsert = true, multi = false) must beEqualTo(
         Update(BSONObject("a" → BSONObject("$ne" → "b")), BSONObject("$set" → BSONObject("foo" → "bar")), true, false)
       )
     }
 
     "construct from Query" in {
-      Update(Query("a" $ne "b"), "foo" $set "bar", upsert=true, multi=false) must beEqualTo(
+      Update(Query("a" $ne "b"), "foo" $set "bar", upsert = true, multi = false) must beEqualTo(
         Update(BSONObject("$query" → BSONObject("a" → BSONObject("$ne" → "b"))),
-               BSONObject("$set" → BSONObject("foo" → "bar")), true, false)
+          BSONObject("$set" → BSONObject("foo" → "bar")), true, false)
       )
     }
 
     "produce correct BSONObject" in {
-      Update.Codec.write(Update("a" $ne "b", "foo" $set "bar", upsert=true, multi=false)) must beEqualTo(
+      Update.Codec.write(Update("a" $ne "b", "foo" $set "bar", upsert = true, multi = false)) must beEqualTo(
         BSONObject(
           "q" → BSONObject("a" → BSONObject("$ne" → "b")),
           "u" → BSONObject("$set" → BSONObject("foo" → "bar")),

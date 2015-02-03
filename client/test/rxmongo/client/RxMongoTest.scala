@@ -28,7 +28,7 @@ import javax.net.SocketFactory
 import org.specs2.execute.Result
 import org.specs2.mutable.Specification
 
-class RxMongoSpec(dbName : String, collName : String) extends Specification {
+abstract class RxMongoTest(dbName : String, collName : String) extends Specification {
 
   val client = Client("mongodb://localhost:27017/" + dbName)
 
