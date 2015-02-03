@@ -62,7 +62,18 @@ class CollectionSpec extends RxMongoTest("rxmongo", "collection") {
       val result = Await.result(collection.deleteOne(del), FiniteDuration(1, "seconds"))
       result.ok must beEqualTo(1)
       result.n must beEqualTo(1)
+    }
 
+    "rename" in mongoTest { () ⇒
+      val result = Await.result(collection.renameCollection("collection2", dropTarget = true), FiniteDuration(1, "seconds"))
+      result.isEmpty must beFalse
+      collection = result.get
+      collection.name must beEqualTo("collection2")
+    }
+
+    "drop" in mongoTest { () ⇒
+      val result = Await.result(collection.drop(), FiniteDuration(1, "seconds"))
+      result must beTrue
     }
   }
 

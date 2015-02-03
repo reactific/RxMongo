@@ -34,8 +34,8 @@ class Command(db : String, val selector : BSONObject) extends GenericQueryMessag
 
 class AdminCommand(query : BSONObject) extends Command("admin", query)
 
-case class IsMasterCmd() extends Command("admin", BSONObject("isMaster" → 1))
-case class ServerStatus() extends Command("admin", BSONObject("serverStatus" → 1))
+case class IsMasterCmd() extends AdminCommand(BSONObject("isMaster" → 1))
+case class ServerStatus() extends AdminCommand(BSONObject("serverStatus" → 1))
 case class GetLastErrorCmd(db : String) extends Command(db, BSONObject("getLastError" → 1))
 case class DBStatsCmd(db : String) extends Command(db, BSONObject("dbStats" → 1))
 case class CollStatsCmd(db : String, collection : String, scale : Int = 1024, verbose : Boolean = true)
@@ -87,16 +87,16 @@ case class DeleteCmd(
   *
   * {{{
   * {
-  *   update: <collection>,
-  *   updates:
-  *      [
-  *         { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *         { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *         { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *         ...
-  *      ],
-  *   ordered: <boolean>,
-  *   writeConcern: { <write concern> }
+  *  update: <collection>,
+  *  updates:
+  *     [
+  *        { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *        { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *        { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *        ...
+  *     ],
+  *  ordered: <boolean>,
+  *  writeConcern: { <write concern> }
   * }
   * }}}
   *
@@ -118,4 +118,19 @@ case class UpdateCmd(
     "updates" → BSONArray[Update, BSONObject](updates),
     "ordered" → ordered,
     "writeConcern" → WriteConcern.Codec.write(writeConcern)
+  ))
+
+case class DropCollectionCmd(
+  db : String,
+  coll : String) extends Command(db, BSONObject("drop" → coll))
+
+case class RenameCollectionCmd(
+  db : String,
+  fromName : String,
+  toName : String,
+  dropTarget : Boolean) extends AdminCommand(
+  BSONObject(
+    "renameCollection" → (db + "." + fromName),
+    "to" → (db + "." + toName),
+    "dropTarget" → dropTarget
   ))

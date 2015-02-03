@@ -32,9 +32,9 @@ abstract class RxMongoTest(dbName : String, collName : String) extends Specifica
 
   val client = Client("mongodb://localhost:27017/" + dbName)
 
-  val database = client.database(dbName)
+  var database = client.database(dbName)
 
-  val collection = database.collection(collName)
+  var collection = database.collection(collName)
 
   val haveLocalMongo : Boolean = {
     val addr = InetAddress.getLoopbackAddress

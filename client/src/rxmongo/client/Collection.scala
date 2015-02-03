@@ -40,7 +40,7 @@ import scala.util.{ Failure, Success, Try }
   * @param name THe name of the collection in the database
   * @param db A database object
   */
-case class Collection(name : String, db : Database, statsRefesh : FiniteDuration = 1.day)(override implicit val timeout : Timeout = db.timeout,
+case class Collection(name : String, db : Database, statsRefresh : FiniteDuration = 1.day)(override implicit val timeout : Timeout = db.timeout,
   override implicit val writeConcern : WriteConcern = db.writeConcern)
   extends RxMongoComponent(db.driver) {
 
@@ -50,7 +50,7 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   private val _stats_refreshed_at = new AtomicLong(0)
   private def getRefreshedStats() : CollStatsReply = Try {
     val timeNow = System.currentTimeMillis()
-    if (_stats_refreshed_at.get() + statsRefesh.toMillis < timeNow) {
+    if (_stats_refreshed_at.get() + statsRefresh.toMillis < timeNow) {
       val result = (db.client.connection ? CollStatsCmd(db.namespace, name)).mapTo[ReplyMessage] map { reply ⇒
         if (reply.numberReturned >= 1) {
           val stats = reply.documents.head.to[CollStatsReply]
@@ -107,14 +107,21 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
 
   /** Returns an array of documents that have distinct values for the specified field. */
   def distinct() = ???
+
   /** Removes the specified collection from the database. */
-  def drop() = ???
+  def drop() : Future[Boolean] = {
+    val drop = DropCollectionCmd(db.name, name)
+    db.client.connection.ask(drop) map processDoubleOkCommandResult(drop)
+  }
+
   /** Removes a specified index on a collection. */
   def dropIndex() = ???
   /** Removes all indexes on a collection. */
   def dropIndexes() = ???
   /** Deprecated. Use db.collection.createIndex(). */
   def ensureIndex() = ???
+
+  def exists() : Future[Boolean] = ???
 
   /** Returns information on the query execution of various methods. */
   def explain() = ???
@@ -188,7 +195,7 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   }
 
   /** Reports if a collection is a capped collection. */
-  def isCapped() : Boolean = getRefreshedStats().capped
+  def isCapped : Boolean = getRefreshedStats().capped
 
   /** Performs map-reduce style data aggregation. */
   def mapReduce() = ???
@@ -206,7 +213,16 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   }
 
   /** Changes the name of a collection. */
-  def renameCollection() = ???
+  def renameCollection(newName : String, dropTarget : Boolean) : Future[Option[Collection]] = {
+    val rename = RenameCollectionCmd(db.name, name, newName, dropTarget)
+    (db.client.connection.ask(rename) map processDoubleOkCommandResult(rename)) map { v ⇒
+      if (v)
+        Some(Collection(newName, db, statsRefresh)(timeout, writeConcern))
+      else
+        None
+    }
+  }
+
   /** Provides a wrapper around an insert() and update() to insert new documents. */
   def save() = ???
   /** Reports on the state of a collection. */
@@ -238,12 +254,25 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
           case Some(msg) ⇒
             throw new RxMongoError(s"Error while processing $cmd: $msg")
           case None ⇒
-            require(reply.numberReturned > 0, "No write result from InsertCmd")
+            require(reply.numberReturned > 0, s"No write result from $cmd")
             WriteResult(reply.documents.head)
         }
       case foo ⇒ {
         throw new RxMongoError(s"Unknown result from Connection: $foo")
       }
+    }
+  }
+
+  private def processDoubleOkCommandResult(cmd : Command)(any : Any) : Boolean = {
+    any match {
+      case reply : ReplyMessage ⇒
+        reply.error match {
+          case Some(msg) ⇒
+            throw new RxMongoError(s"Error while processing $cmd: $msg")
+          case None ⇒
+            require(reply.numberReturned > 0, s"No write result from $cmd")
+            reply.documents.head.getAsDouble("ok") == 1.0
+        }
     }
   }
 }
