@@ -117,27 +117,28 @@ class SimpleTypesSpec extends Specification {
 
   "Update" should {
     "construct from BooleanExpression" in {
-      Update("a" $ne "b", "foo" $set "bar", upsert = true, multi = false) must beEqualTo(
-        Update(BSONObject("a" → BSONObject("$ne" → "b")), BSONObject("$set" → BSONObject("foo" → "bar")), true, false)
+      Update("a" $ne "b", $set("foo" → "bar"), upsert = true, multi = false, isolated = false) must beEqualTo(
+        Update(BSONObject("a" → BSONObject("$ne" → "b")), BSONObject("$set" → BSONObject("foo" → "bar")), true, false, false)
       )
     }
 
     "construct from Query" in {
-      Update(Query("a" $ne "b"), "foo" $set "bar", upsert = true, multi = false) must beEqualTo(
+      Update(Query("a" $ne "b"), $set("foo" → "bar"), upsert = true, multi = false, isolated = false) must beEqualTo(
         Update(BSONObject("$query" → BSONObject("a" → BSONObject("$ne" → "b"))),
-          BSONObject("$set" → BSONObject("foo" → "bar")), true, false)
+          BSONObject("$set" → BSONObject("foo" → "bar")), true, false, false)
       )
     }
 
     "produce correct BSONObject" in {
-      Update.Codec.write(Update("a" $ne "b", "foo" $set "bar", upsert = true, multi = false)) must beEqualTo(
-        BSONObject(
-          "q" → BSONObject("a" → BSONObject("$ne" → "b")),
-          "u" → BSONObject("$set" → BSONObject("foo" → "bar")),
-          "upsert" → true,
-          "multi" → false
+      Update.Codec.write(Update("a" $ne "b", $set("foo" → "bar"), upsert = true, multi = false, isolated = true)) must
+        beEqualTo(
+          BSONObject(
+            "q" → BSONObject("a" → BSONObject("$ne" → "b"), "$isolated" → 1),
+            "u" → BSONObject("$set" → BSONObject("foo" → "bar")),
+            "upsert" → true,
+            "multi" → false
+          )
         )
-      )
     }
   }
 }

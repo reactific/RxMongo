@@ -93,4 +93,23 @@ class OperatorsSpec extends Specification {
       )))
     }
   }
+
+  "UpdateExpression" should {
+    "construct $inc correctly" in {
+      val e = $inc("a", 1)
+      e.result must beEqualTo(BSONObject("$inc" → BSONObject("a" → 1)))
+    }
+    "construct $mul correctly" in {
+      val e = $mul("b", 42.0)
+      e.result must beEqualTo(BSONObject("$mul" → BSONObject("b" → 42.0)))
+    }
+    "join two expression with +" in {
+      val e = $inc("a", 1) + $mul("b", 42.0)
+      e.result must beEqualTo(BSONObject(
+        "$inc" → BSONObject("a" → 1),
+        "$mul" → BSONObject("b" → 42.0)
+      ))
+    }
+
+  }
 }

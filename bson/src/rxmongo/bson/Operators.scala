@@ -27,14 +27,6 @@ import scala.util.matching.Regex
 /** Expression */
 class Expression extends BSONBuilder
 
-trait LiteralExpression extends Expression
-
-class StringLiteral(str : String) extends LiteralExpression { buffer.putStr(str) }
-
-class IntLiteral(int : Int) extends LiteralExpression { buffer.putInt(int) }
-
-class DoubleLiteral(dbl : Double) extends LiteralExpression { buffer.putDouble(dbl) }
-
 class BooleanExpression extends Expression
 
 class BooleanFieldExpression(fieldName : String) extends BooleanExpression {
@@ -283,43 +275,137 @@ object $not extends BooleanExpression {
   }
 }
 
-class UpdateExpression extends Expression
+class UpdateExpression extends Expression {
+  def +(other : UpdateExpression) : UpdateExpression = {
+    buffer ++= other.buffer.result
+    this
+  }
 
-/** TODO: Finish UpdateFieldExpression implementation
-  * @param fieldName The name of the field to which the operator applies
-  */
-class UpdateFieldExpression(fieldName : String) extends UpdateExpression {
+}
 
+object UpdateExpression {
+  def apply() = new UpdateExpression
+
+  private[rxmongo] def apply(operator : String, value : BSONBuilder) : UpdateExpression = {
+    val e = UpdateExpression()
+    e.putPrefix(ObjectCode, operator).
+      putObj(value)
+    e
+  }
+
+  private[rxmongo] def apply[T, B <: BSONValue](operator : String, field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    val e = UpdateExpression()
+    e.putPrefix(ObjectCode, operator)
+    e.putObj(BSONBuilder().append(field, codec.write(value)))
+    e
+  }
+
+  private[rxmongo] def apply[T, B <: BSONValue](operator : String, fields : Iterable[(String, T)])(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    val b = BSONBuilder()
+    for ((name, value) ← fields) {
+      b.append(name, codec.write(value))
+    }
+    val e = UpdateExpression()
+    e.putPrefix(ObjectCode, operator)
+    e.putObj(b)
+    e
+  }
+}
+
+object $inc {
   /** Increments the value of the field by the specified amount.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/inc/#up._S_inc]]
+    * @param pairs The field name and integer increment pairs
+    * @return this
     */
-  def $inc[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply(pairs : (String, AnyVal)*) : UpdateExpression = {
+    val b = BSONBuilder()
+    for ((field, value) ← pairs) {
+      value match {
+        case i : Int ⇒ b.integer(field, i)
+        case l : Long ⇒ b.long(field, l)
+        case d : Double ⇒ b.double(field, d)
+        case f : Float ⇒ b.double(field, f)
+        case s : Short ⇒ b.integer(field, s)
+        case by : Byte ⇒ b.integer(field, by.toInt)
+        case x ⇒ throw new IllegalArgumentException(s"Value $x is not suitable for $$inc operator")
+      }
+    }
+    UpdateExpression("$inc", b)
+  }
+
+  def apply(field : String, value : Int) : UpdateExpression = {
+    UpdateExpression("$inc", field, value)
+  }
+
+  def apply(field : String, value : Long) : UpdateExpression = {
+    UpdateExpression("$inc", field, value)
+  }
+
+  def apply(field : String, value : Double) : UpdateExpression = {
+    UpdateExpression("$inc", field, value)
+  }
+}
+
+object $mul {
 
   /** Multiplies the value of the field by the specified amount.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/mul/]]
+    * @param field The name of the field
+    * @param value The value to multiple tye field by
+    * @return this
     */
-  def $mul[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply(field : String, value : Int) : UpdateExpression = {
+    UpdateExpression("$mul", field, value)
+  }
+
+  /** Multiplies the value of the field by the specified amount.
+    *
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/mul/]]
+    * @param field The name of the field
+    * @param value The value to multiple tye field by
+    * @return this
+    */
+  def apply(field : String, value : Long) : UpdateExpression = {
+    UpdateExpression("$mul", field, value)
+  }
+
+  /** Multiplies the value of the field by the specified amount.
+    *
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/mul/]]
+    * @param field The name of the field
+    * @param value The value to multiple tye field by
+    * @return this
+    */
+  def apply(field : String, value : Double) : UpdateExpression = {
+    UpdateExpression("$mul", field, value)
+  }
+}
+
+object $rename {
 
   /** Renames a field.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/rename/]]
+    * @param fields The name and rename for the fields
+    * @return this
     */
-  def $rename[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply(fields : (String, String)*) : UpdateExpression = {
+    val b = BSONBuilder()
+    for ((field, renameTo) ← fields) {
+      b.string(field, renameTo)
+    }
+    UpdateExpression("$rename", b)
+  }
 
+  def apply(field : String, newName : String) : UpdateExpression = {
+    UpdateExpression("$rename", field, newName)
+  }
+}
+
+object $setOnInsert {
   /** Sets the value of a field if an update results in an insert of a document. Has no effect on update operations
     * that modify existing documents.
     *
@@ -329,189 +415,309 @@ class UpdateFieldExpression(fieldName : String) extends UpdateExpression {
     * @tparam B
     * @return
     */
-  def $setOnInsert[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
-
-  /** Sets the value of a field in a document.
-    *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
-    */
-  def $set[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
-    obj("$set", fieldName → value)
-    this
+  def apply[T, B <: BSONValue](fieldName : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$setOnInsert", fieldName, value)(codec)
   }
 
-  /** Removes the specified field from a document.
+  def apply[T, B <: BSONValue](pairs : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$setOnInsert", pairs)(codec)
+  }
+}
+
+object $set {
+  /** Sets the value of a field in a document.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/set/]]
+    * @param fieldName Name of field to set
+    * @param value Value to set field to
+    * @param codec codec to use to turn value into BSONValue
+    * @tparam T Scala type for the value
+    * @tparam B BSONType for the value
+    * @return this
     */
-  def $unset[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply[T, B <: BSONValue](fieldName : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$set", fieldName, value)(codec)
+  }
+
+  /** Sets the value of multiple fields in a document, of a given type
+    *
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/set/]]
+    * @param fields The name/value pairs to set in the updated document
+    * @param codec codec to use to turn value into BSONValue
+    * @tparam T Scala type for the value
+    * @tparam B BSONType for the value
+    * @return this
+    */
+  def apply[T, B <: BSONValue](fields : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$set", fields)(codec)
+  }
+
+}
+
+object $unset {
+
+  /** Removes the specified fields from a document.
+    *
+    * @param fields The names of the fields to remove (unset) from the document
+    * @return this
+    */
+  def apply(fields : String*) : UpdateExpression = {
+    UpdateExpression("$unset", fields.map { s ⇒ s → "" })
+  }
+}
+
+object $min {
+  /** Only updates the field if the specified value is less than the existing field value.
+    *
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/min/]]
+    * @param field The name of the field to update
+    * @param value The value to use for updating the field
+    * @param codec The codec to use to conver the value to a BSONValue
+    * @tparam T The scala type of the value
+    * @tparam B The BSONValue type of the value
+    * @return this
+    */
+  def apply[T, B <: BSONValue](field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$min", field, value)(codec)
+  }
 
   /** Only updates the field if the specified value is less than the existing field value.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/min/]]
+    * @param pairs The name/value pairs of the fields to update
+    * @param codec The codec to use to conver the value to a BSONValue
+    * @tparam T The scala type of the value
+    * @tparam B The BSONValue type of the value
+    * @return this
     */
-  def $min[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply[T, B <: BSONValue](pairs : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$min", pairs)(codec)
+  }
+}
+
+object $max {
 
   /** Only updates the field if the specified value is greater than the existing field value.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    *
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/max/]]
+    * @param field The name of the field to update
+    * @param value The value to use for updating the field
+    * @param codec The codec to use to conver the value to a BSONValue
+    * @tparam T The scala type of the value
+    * @tparam B The BSONValue type of the value
+    * @return this
     */
-  def $max[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply[T, B <: BSONValue](field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$max", field, value)(codec)
+  }
+
+  /** Only updates the field if the specified value is greater than the existing field value.
+    *
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/max/]]
+    * @param fields The name/value pairs of the fields to update
+    * @param codec The codec to use to conver the value to a BSONValue
+    * @tparam T The scala type of the value
+    * @tparam B The BSONValue type of the value
+    * @return this
+    */
+  def apply[T, B <: BSONValue](fields : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$max", fields)
+  }
+}
+
+object $currentDate {
 
   /** Sets the value of a field to current date, either as a Date or a Timestamp.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/currentDate/]]
+    * @param field THe name of the field to set
+    * @param wantDate True to set as a Date value, false to set as a Timestamp value
+    * @return this
     */
-  def $currentDate[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply(field : String, wantDate : Boolean = false) : UpdateExpression = {
+    UpdateExpression("$currentDate", field, wantDate)
+  }
 
-  /** Acts as a placeholder to update the first element that matches the query condition in an update.
+  /** Sets the value of a field to current date, either as a Date or a Timestamp.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/currentDate/]]
+    * @param fields The field/Boolean pairs to specify how to set the current date (or timestamp)
+    * @return this
     */
-  def $[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply(fields : (String, Boolean)*) : UpdateExpression = {
+    UpdateExpression[Boolean, BSONBoolean]("$currentDate", fields)
+  }
+}
 
-  /** Adds elements to an array only if they do not already exist in the set.
+object $addToSet {
+
+  /** Add an element to an array only if it does not already exist in the set.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/addToSet/]]
+    * @param field The name of the array field to which the element will be added
+    * @param value The value to add to the array field
+    * @param codec The codec to use to conver the value to a BSONValue
+    * @tparam T The Scala type of the value
+    * @tparam B The BSONValue type of the value
+    * @return this
     */
-  def $addToSet[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply[T, B <: BSONValue](field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$addToSet", field, value)(codec)
+  }
+
+  /** Add elements to an array only if they do not already exist in the set.
+    *
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/addToSet/]]
+    * @param field The name of the array field to which the element will be added
+    * @param values The value to add to the array field
+    * @param codec The codec to use to conver the value to a BSONValue
+    * @tparam T The Scala type of the value
+    * @tparam B The BSONValue type of the value
+    * @return this
+    */
+  def apply[T, B <: BSONValue](field : String, values : Seq[T])(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    val e = UpdateExpression()
+    e.putPrefix(ObjectCode, "$addToSet")
+    val bldr = BSONBuilder()
+    bldr.putPrefix(ObjectCode, field)
+    bldr.array("$each", values)
+    e.putObj(bldr)
+    e
+  }
+}
+
+object $pop {
 
   /** Removes the first or last item of an array.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/pop/]]
+    * @param field Name of the field from which to pop a value
+    * @param head True to pop from the head (lowest index) or false to pop from the tail (highest index)
+    * @return Å new UpdateExpression containing the $pop operator
     */
-  def $pop[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply(field : String, head : Boolean = true) : UpdateExpression = {
+    val e = UpdateExpression()
+    e.obj("$pop", field → (if (head) -1 else 1))
+    e
+  }
+
+  def head(field : String) = apply(field, head = true)
+
+  def tail(field : String) = apply(field, head = false)
+
+}
+
+object $pullAll {
 
   /** Removes all matching values from an array.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @see [[http://docs.mongodb.org/master/reference/operator/update/pullAll/]]
+    * @param field The name of the field from which the values will be pulled
+    * @param values The values of the field that will be removed
+    * @param codec A codec for translating the values
+    * @tparam T The scala type of the values
+    * @tparam B The BSONValue type of the values
+    * @return A new UpdateExpression containing the $pull operator
     */
-  def $pullAll[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply[T, B <: BSONValue](field : String, values : Seq[T])(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    val e = UpdateExpression()
+    e.putPrefix(ObjectCode, "$pull")
+    val b = BSONBuilder()
+    b.array(field, values)(codec)
+    e.putObj(b)
+    e
+  }
+}
+
+object $pull {
 
   /** Removes all array elements that match a specified query.
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @param field The name of the array field from which values should be pulled
+    * @param value The value that should be pulled
+    * @param codec A codec for translating the values
+    * @tparam T The scala type of the values
+    * @tparam B The BSONValue type of the values
+    * @return A new UpdateExpression with the $pull operator
     */
-  def $pull[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply[T, B <: BSONValue](field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$pull", field, value)(codec)
+  }
 
-  /** Deprecated. Adds several items to an array.
+  /** Removes all array elements that match a set of field/value pairs
     *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @param fields The values of the array fields that should be pulled from the document
+    * @param codec A codec for translating the values
+    * @tparam T The scala type of the values
+    * @tparam B The BSONValue type of the values
+    * @return A new UpdateExpression with the $pull operator
     */
-  def $pushAll[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply[T, B <: BSONValue](fields : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$pull", fields)(codec)
+  }
+
+  /** Removes all array elements that match a query
+    *
+    * @param fields The values of the array fields that should be pulled from the document
+    * @return A new UpdateExpression with the $pull operator
+    */
+  def apply(fields : (String, Query)*) : UpdateExpression = {
+    val b = BSONBuilder()
+    for ((field, query) ← fields) {
+      b.obj(field, query.result)
+    }
+    UpdateExpression("$pull", b)
+  }
+}
+
+object $push {
 
   /** Adds an item to an array.
     *
-    * @param value
+    * @param fields The array fields and values to be pushed
     * @param codec
     * @tparam T
     * @tparam B
     * @return
     */
-  def $push[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def apply[T, B <: BSONValue](fields : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    UpdateExpression("$push", fields)(codec)
+  }
 
-  /** Modifies the $push and $addToSet operators to append multiple items for array updates.
-    *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
-    */
+  def apply[T, B <: BSONValue](fieldName : String, each : Seq[T], slice : Int = Int.MinValue,
+    position : Int = -1, sort : Int = 0)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    val b2 = BSONBuilder()
+    b2.array("$each", each)
+    if (slice != Int.MinValue)
+      b2.integer("$slice", slice)
+    if (position >= 0)
+      b2.integer("$position", position)
+    if (position != 0)
+      b2.integer("$sort", if (position < 0) -1 else 1)
+    val b1 = BSONBuilder()
+    b1.obj(fieldName, b2)
+    val e = UpdateExpression()
+    e.obj("$push", b1)
+    e
+  }
+}
 
-  def $each[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+object $bit {
 
-  /** Modifies the $push operator to limit the size of updated arrays.
-    *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
-    */
-  def $slice[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  private def bitwise(operator : String, fieldName : String, value : Int) : UpdateExpression = {
+    val b = BSONBuilder()
+    b.integer(operator, value)
+    val b2 = BSONBuilder()
+    b2.obj(fieldName, b)
+    val e = UpdateExpression()
+    e.obj("$bit", b2)
+    e
+  }
 
-  /** Modifies the $push operator to reorder documents stored in an array.
-    *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
-    */
-  def $sort[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def and(fieldName : String, value : Int) : UpdateExpression = bitwise("and", fieldName, value)
 
-  /** Modifies the $push operator to specify the position in the array to add elements.
-    *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
-    */
-  def $position[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def or(fieldName : String, value : Int) : UpdateExpression = bitwise("or", fieldName, value)
 
-  /** Performs bitwise AND, OR, and XOR updates of integer values.
-    *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
-    */
-  def $bit[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
-
-  /** Modifies the behavior of a write operation to increase the isolation of the operation.
-    *
-    * @param value
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
-    */
-  def $isolated[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+  def xor(fieldName : String, value : Int) : UpdateExpression = bitwise("xor", fieldName, value)
 }

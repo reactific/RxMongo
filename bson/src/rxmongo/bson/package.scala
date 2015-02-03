@@ -101,18 +101,18 @@ package object bson {
         // and 'u' to make \w, \W, etc. match unicode.
         // 'x' for verbose mode,
         val flags = r.pattern.flags()
-        var result = ""
+        var str : String = ""
         if ((flags & Pattern.CASE_INSENSITIVE) != 0)
-          result += "i"
+          str = str + "i"
         if ((flags & Pattern.MULTILINE) != 0)
-          result += "m"
+          str = str + "m"
         if ((flags & Pattern.DOTALL) != 0)
-          result += "s"
+          str = str + "s"
         if ((flags & Pattern.UNICODE_CHARACTER_CLASS) != 0)
-          result += "u"
+          str = str + "u"
         if ((flags & Pattern.COMMENTS) != 0)
-          result += "x"
-        result
+          str = str + "x"
+        str
       }
       putRegex(pattern, options)
     }
@@ -241,16 +241,11 @@ package object bson {
 
   }
 
-  implicit def stringLiteral(str : String) : StringLiteral = new StringLiteral(str)
-  implicit def intLiteral(int : Int) : IntLiteral = new IntLiteral(int)
-  implicit def doubleLiteral(dbl : Double) : DoubleLiteral = new DoubleLiteral(dbl)
-  implicit def conditionalExpression(fieldName : String) : BooleanFieldExpression =
+  implicit def booleanFieldExpression(fieldName : String) : BooleanFieldExpression =
     new BooleanFieldExpression(fieldName)
+
   implicit def logicalExpression(exp1 : BooleanExpression) : LogicalExpression =
     new LogicalExpression(exp1)
-
-  implicit def updateExpression(fieldName : String) : UpdateFieldExpression =
-    new UpdateFieldExpression(fieldName)
 
   implicit def pairLiteral[T, B <: BSONValue](pair : (String, T))(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
     new BooleanFieldExpression(pair._1).$eq[T, B](pair._2)

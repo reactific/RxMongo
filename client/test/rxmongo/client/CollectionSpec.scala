@@ -51,7 +51,7 @@ class CollectionSpec extends RxMongoTest("rxmongo", "collection") {
     }
 
     "update" in mongoTest { () ⇒
-      val upd = Update("key1" → 42.0, "key2" $set 84L, upsert = false, multi = false)
+      val upd = Update("key1" → 42.0, $set("key2", 84L), upsert = false, multi = false, isolated = false)
       val result = Await.result(collection.updateOne(upd), FiniteDuration(1, "seconds"))
       result.ok must beEqualTo(1)
       result.n must beEqualTo(1)

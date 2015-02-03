@@ -22,23 +22,24 @@
 
 package rxmongo.bson
 
-case class Update(selector : BSONObject, updater : BSONObject, upsert : Boolean, multi : Boolean)
+case class Update(selector : BSONObject, updater : BSONObject, upsert : Boolean, multi : Boolean, isolated : Boolean)
 
 object Update {
-  def apply(selector : BooleanExpression, updater : UpdateExpression, upsert : Boolean, multi : Boolean) : Update = {
-    Update(selector.result, updater.result, upsert, multi)
+  def apply(selector : BooleanExpression, updater : UpdateExpression, upsert : Boolean, multi : Boolean, isolated : Boolean) : Update = {
+    Update(selector.result, updater.result, upsert, multi, isolated)
   }
 
-  def apply(selector : Query, updater : UpdateExpression, upsert : Boolean, multi : Boolean) : Update = {
-    Update(selector.result, updater.result, upsert, multi)
+  def apply(selector : Query, updater : UpdateExpression, upsert : Boolean, multi : Boolean, isolated : Boolean) : Update = {
+    Update(selector.result, updater.result, upsert, multi, isolated)
   }
 
   implicit object Codec extends BSONCodec[Update, BSONObject] {
     def code : TypeCode = ObjectCode
 
     def write(value : Update) : BSONObject = {
+      val selector = if (value.isolated) value.selector + ("$isolated" → BSONInteger(1)) else value.selector
       BSONBuilder().
-        obj("q", value.selector).
+        obj("q", selector).
         obj("u", value.updater).
         boolean("upsert", value.upsert).
         boolean("multi", value.multi).
@@ -46,7 +47,14 @@ object Update {
     }
 
     def read(value : BSONObject) : Update = {
-      Update(value.getObj("q"), value.getObj("u"), value.getAsBoolean("upsert"), value.getAsBoolean("multi"))
+      val q = value.getObj("q")
+      val (selector, isolated) = {
+        if (q.contains("$isolated"))
+          (q - "$isolated") → true
+        else
+          q → false
+      }
+      Update(selector, value.getObj("u"), value.getAsBoolean("upsert"), value.getAsBoolean("multi"), isolated)
     }
   }
 }
