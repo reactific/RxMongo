@@ -29,7 +29,7 @@ import akka.actor._
 import akka.event.LoggingReceive
 import akka.routing.{ Broadcast, DefaultResizer, SmallestMailboxPool }
 
-import rxmongo.bson.{ BSONObject }
+import rxmongo.bson.{RxMongoError, BSONObject}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -354,6 +354,15 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
       if (msg.responseTo == cmd.requestId) {
         if (msg.numberReturned > 0) {
           val doc = msg.documents.head
+          if (doc.contains("$err")) {
+            val error = new RxMongoError(
+              s"Error result from MongoDB: ${doc.getAsString("$err")} (${doc.getAsInt("code")})")
+            log.error(error, "Invalid response from MongoDB")
+            for (client ← replicaSetClients) {
+              client ! akka.actor.Status.Failure(error)
+            }
+            replicaSetClients = Set.empty[ActorRef]
+          }
           handleReplicaSetUpdate(doc) match {
             case Success(response) ⇒
               // We are in business!

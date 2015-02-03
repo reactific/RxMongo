@@ -20,9 +20,7 @@
  * SOFTWARE.
  */
 
-package rxmongo.client
-
-import rxmongo.bson._
+package rxmongo.bson
 
 /** Represent a MongoDB Query
   *

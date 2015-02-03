@@ -22,8 +22,8 @@
 
 package rxmongo.examples
 
-import rxmongo.bson.BSONObject
-import rxmongo.client.{Query, Client}
+import rxmongo.bson.{Query, BSONObject}
+import rxmongo.client.Client
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -39,27 +39,39 @@ object ClientBasics extends App {
   // [1] Make a connection to the mydb database on the local host
   val client = Client("mongodb://localhost/mydb")
 
-  // [2] Obtain a database from the client
-  val db = client.database("mydb")
+  try {
 
-  // [3] Obtain a collection from the database
-  val coll = db.collection("mycoll")
+    // [2] Obtain a database from the client
+    val db = client.database("mydb")
 
-  // [4] Query the collection for documents with the name "foo"
-  val cursor = coll.find(Query("name" -> "foo"))
+    // [3] Obtain a collection from the database
+    val coll = db.collection("mycoll")
 
-  val future = cursor.map { crsr =>
-    while (crsr.hasNext) {
-      crsr.next.map { results: BSONObject =>
-          // [5] We got an answer to our query, print the results
+    // [4] Obtain a cursor for finding the documents with field name set to "foo"
+    val cursor = coll.find(Query("name" -> "foo"))
+
+    // [5] When the results are ready, open them
+    val future = cursor.map { crsr =>
+      // [6] For each result
+      while (crsr.hasNext) {
+        crsr.next.map { results : BSONObject =>
+          // [7] We got an answer to our query, print the results
           println("Results: " + results)
-      } recover {
-        case xcptn : Throwable ⇒
-          // [6] We got an error in our query, print the error message
-          println("Error in query: " + xcptn)
+        } recover {
+          case xcptn : Throwable ⇒
+            // [8] We got an error in our query, print the error message
+            println("Error in query: " + xcptn)
+        }
       }
     }
-  }
 
-  Await.result(future, 5.seconds)
+    // [9] Wait for all the asynchronous processing to complete, within 5 seconds.
+    Await.result(future, 5.seconds)
+  }
+  finally {
+    // [10] Close the client and its driver, releasing background threads
+    client.close()
+  }
+  // [11] Terminate the program.
+  println(s"Finished.")
 }

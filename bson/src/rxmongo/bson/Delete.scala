@@ -20,42 +20,31 @@
  * SOFTWARE.
  */
 
-package rxmongo.client
+package rxmongo.bson
 
-import java.io.Closeable
+case class Delete(query: BSONObject, limit: Int)
 
-import akka.actor.ActorRef
+object Delete {
 
-import rxmongo.bson.BSONObject
-import rxmongo.driver.{ReplyMessage, QueryMessage}
-
-import scala.concurrent.Future
-
-case class Cursor private[client] (
-  collection: Collection,
-  connection: ActorRef,
-  private val query : QueryMessage,
-  private var reply: ReplyMessage )
-  extends RxMongoComponent(collection.driver) with Iterator[Future[BSONObject]] with Closeable {
-
-  private var list = reply.documents.toList
-
-  override def hasNext : Boolean = list.nonEmpty
-  def hasMore : Boolean = hasNext
-
-  override def next() : Future[BSONObject] = {
-    if (list.isEmpty)
-      throw new NoSuchElementException("No more documents in RxMongo Cursor")
-    val result = list.head
-    if (list.isEmpty) {
-      // FIXME: Fetch More
-      Future.successful(result)
-    } else {
-      Future.successful(result)
-    }
+  def apply(selector: BooleanExpression, limit: Int) : Delete = {
+    Delete(selector.result, limit)
   }
 
-  def getNextDocument : Future[BSONObject] = next()
+  def apply(query: Query, limit: Int = 0) : Delete = {
+    Delete(query.result, limit)
+  }
 
-  def close() = {}
+  implicit object Codec extends BSONCodec[Delete, BSONObject] {
+    def code : TypeCode = ObjectCode
+    def write(value : Delete) : BSONObject = {
+      BSONBuilder().
+        obj("q", value.query).
+        integer("limit", value.limit).
+        result
+    }
+    def read(value : BSONObject) : Delete = {
+      Delete(value.getObj("q"), value.getAsInt("limit"))
+    }
+  }
 }
+

@@ -24,7 +24,7 @@ package rxmongo.client
 
 import akka.event.{ Logging, LoggingAdapter }
 import akka.util.Timeout
-import rxmongo.driver.Driver
+import rxmongo.driver.{WriteConcern, Driver}
 
 import scala.concurrent.ExecutionContext
 
@@ -32,4 +32,5 @@ abstract class RxMongoComponent(private[rxmongo] val driver : Driver) {
   val log : LoggingAdapter = Logging.getLogger(driver.system, this.getClass)
   implicit val executionContext : ExecutionContext = driver.system.dispatcher
   implicit val timeout : Timeout = Driver.defaultTimeout
+  implicit val writeConcern : WriteConcern = WriteConcern.default
 }

@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 import akka.pattern.ask
 import akka.util.Timeout
 
-import rxmongo.bson.{BSONObject, RxMongoError}
+import rxmongo.bson._
 import rxmongo.driver._
 
 import scala.concurrent.{ Await, Future }
@@ -40,7 +40,9 @@ import scala.util.{ Failure, Success, Try }
   * @param name THe name of the collection in the database
   * @param db A database object
   */
-case class Collection(name : String, db : Database, statsRefesh : FiniteDuration = 1.day)(implicit timeout : Timeout = Driver.defaultTimeout)
+case class Collection(name : String, db : Database, statsRefesh : FiniteDuration = 1.day)
+  (override implicit val timeout : Timeout = db.timeout,
+   override implicit val writeConcern : WriteConcern = db.writeConcern)
   extends RxMongoComponent(db.driver) {
 
   val fullName = db.namespace + "." + name
@@ -96,6 +98,16 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   def indexStats() = ???
   /** Returns the size of the collection. Wraps the size field in the output of the collStats. */
   def dataSize() = ???
+
+  def deleteOne(delete: Delete, ordered: Boolean = true)
+    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+    remove(Seq(delete), ordered)(to, wc)
+  }
+  def delete(deletes: Seq[Delete], ordered: Boolean = true)
+    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+    remove(deletes, ordered)(to,wc)
+  }
+
   /** Returns an array of documents that have distinct values for the specified field. */
   def distinct() = ???
   /** Removes the specified collection from the database. */
@@ -106,31 +118,55 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   def dropIndexes() = ???
   /** Deprecated. Use db.collection.createIndex(). */
   def ensureIndex() = ???
+
   /** Returns information on the query execution of various methods. */
   def explain() = ???
 
-  /** Performs a query on a collection and returns a cursor object. */
+  /** Performs a query on a collection and returns a cursor object.
+    *
+    * @param selector The Query that selects the documents to return.
+    * @param projection Optional. The Projection that selects the fields in the documents to return.
+    * @param options Options that control how the query is done and the kind of cursor returned.
+    * @return A Cursor to allow iteration over the result set.
+    */
   def find(
     selector : Query,
     projection : Option[Projection] = None,
-    options : QueryOptions = QueryOptions()) : Future[Cursor] = {
+    options : QueryOptions = QueryOptions()
+  ) : Future[Cursor] = {
     val msg = QueryMessage(fullName, selector.result, projection.map { p => p.result }, options)
     db.client.connection.ask(msg) map {
-      case reply : ReplyMessage if reply.QueryFailure ⇒
-        // TODO: extract error message from reply and add to exception
-        throw new RxMongoError("Query Failure")
-      case reply : ReplyMessage =>
-        Cursor(this, db.client.connection, msg, reply)
+      case reply : ReplyMessage ⇒
+        reply.error match {
+          case Some(msg) ⇒ throw new RxMongoError(s"Error while processing query {$selector}: $msg")
+          case None ⇒ Cursor(this, db.client.connection, msg, reply)
+        }
     }
   }
 
-
+  /** Performs a query to return all documents in a collection
+    *
+    * @param projection Optional. The Projectiont hat selects the fields in the documents to return.
+    * @return
+    */
   def findAll(projection : Option[Projection] = None) : Future[Cursor] = find(Query(), projection)
+
+  /** Performs a query and returns a single document.
+    * This is simply a convenience function for calling find with the options.numberToReturn set to 1
+    * @param selector The Query that selects the documents to return.
+    * @param projection Optional. The Projection that selects the fields in the documents to return.
+    * @param options Options that control how the query is done and the kind of cursor returned.
+    * @return A Cursor to allow iteration over the result set.
+    */
+  def findOne(selector: Query, projection: Option[Projection] = None, options: QueryOptions = QueryOptions())
+    : Future[Cursor] = {
+    find(selector, projection, options.withNumberToReturn(1))
+  }
 
   /** Atomically modifies and returns a single document. */
   def findAndModify() = ???
-  /** Performs a query and returns a single document. */
-  def findOne() = ???
+
+
   /** Returns an array of documents that describe the existing indexes on a collection. */
   def getIndexes() = ???
   /** For collections in sharded clusters, db.collection.getShardDistribution() reports data of chunk distribution. */
@@ -143,8 +179,23 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
     */
   def group() = ???
   /** Creates a new document in a collection. */
-  def insert() = ???
-  /** Reports if a collection is a capped collection. */
+  def insertRaw(objs : Seq[BSONObject], ordered : Boolean = true) : Unit = {
+    val msg = InsertMessage(fullName, objs, ordered)
+    db.client.connection ! msg
+  }
+
+  def insertOne(obj: BSONObject)
+    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern): Future[WriteResult] = {
+    insert(Seq(obj), ordered=true)(to,wc)
+  }
+
+  def insert(objs: Seq[BSONObject], ordered : Boolean = true)
+    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern): Future[WriteResult] = {
+    val insert = InsertCmd(db.name, name, objs, ordered, wc)
+    db.client.connection.ask(insert)(to) map processWriteCommandResult(insert)
+  }
+
+    /** Reports if a collection is a capped collection. */
   def isCapped() : Boolean = getRefreshedStats().capped
 
   /** Performs map-reduce style data aggregation. */
@@ -152,7 +203,17 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   /** Rebuilds all existing indexes on a collection. */
   def reIndex() = ???
   /** Deletes documents from a collection. */
-  def remove() = ???
+  def removeRaw(selector: Query) : Unit = {
+    val delete = DeleteMessage(fullName, selector.result)
+    db.client.connection ! delete
+  }
+
+  def remove(deletes: Seq[Delete], ordered: Boolean = true)
+    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+    val delete = DeleteCmd(db.name, name, deletes, ordered, wc)
+    db.client.connection.ask(delete)(to) map processWriteCommandResult(delete)
+  }
+
   /** Changes the name of a collection. */
   def renameCollection() = ???
   /** Provides a wrapper around an insert() and update() to insert new documents. */
@@ -168,7 +229,32 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   def totalIndexSize() = getRefreshedStats().totalIndexSize
 
   /** Modifies a document in a collection. */
-  def update() = ???
-  /** Performs diagnostic operations on a collection. */
+  def update(updates: Seq[Update], ordered: Boolean = true)
+    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+    val update = UpdateCmd(db.name, name, updates, ordered, wc)
+    db.client.connection.ask(update)(to) map processWriteCommandResult(update)
+  }
+
+  def updateOne(u: Update, ordered: Boolean = true)
+    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+    update(Seq(u), ordered)(to,wc)
+  }
+    /** Performs diagnostic operations on a collection. */
   def validate() = ???
+
+  private def processWriteCommandResult(cmd: Command)(any: Any) : WriteResult = {
+    any match {
+      case reply: ReplyMessage ⇒
+        reply.error match {
+          case Some(msg) ⇒
+            throw new RxMongoError(s"Error while processing $cmd: $msg")
+          case None ⇒
+            require(reply.numberReturned > 0, "No write result from InsertCmd")
+            WriteResult(reply.documents.head)
+        }
+      case foo ⇒ {
+        throw new RxMongoError(s"Unknown result from Connection: $foo")
+      }
+    }
+  }
 }

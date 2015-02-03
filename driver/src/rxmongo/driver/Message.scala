@@ -393,7 +393,14 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
     b.setLength(b.length - 2)
     b.append(" }")
     b.toString()
+  }
 
+  def error : Option[String] = {
+    if (QueryFailure && documents.nonEmpty) {
+      documents.head.getOptionalString("$err")
+    } else {
+      None
+    }
   }
 }
 

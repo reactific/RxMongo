@@ -20,42 +20,33 @@
  * SOFTWARE.
  */
 
-package rxmongo.client
+package rxmongo.bson
 
-import java.io.Closeable
+case class Update(selector: BSONObject, updater: BSONObject, upsert: Boolean, multi: Boolean)
 
-import akka.actor.ActorRef
-
-import rxmongo.bson.BSONObject
-import rxmongo.driver.{ReplyMessage, QueryMessage}
-
-import scala.concurrent.Future
-
-case class Cursor private[client] (
-  collection: Collection,
-  connection: ActorRef,
-  private val query : QueryMessage,
-  private var reply: ReplyMessage )
-  extends RxMongoComponent(collection.driver) with Iterator[Future[BSONObject]] with Closeable {
-
-  private var list = reply.documents.toList
-
-  override def hasNext : Boolean = list.nonEmpty
-  def hasMore : Boolean = hasNext
-
-  override def next() : Future[BSONObject] = {
-    if (list.isEmpty)
-      throw new NoSuchElementException("No more documents in RxMongo Cursor")
-    val result = list.head
-    if (list.isEmpty) {
-      // FIXME: Fetch More
-      Future.successful(result)
-    } else {
-      Future.successful(result)
-    }
+object Update {
+  def apply(selector : BooleanExpression, updater : UpdateExpression, upsert : Boolean, multi : Boolean) : Update = {
+    Update(selector.result, updater.result, upsert, multi)
   }
 
-  def getNextDocument : Future[BSONObject] = next()
+  def apply(selector: Query, updater: UpdateExpression, upsert: Boolean, multi: Boolean) : Update = {
+    Update(selector.result, updater.result, upsert, multi)
+  }
 
-  def close() = {}
+  implicit object Codec extends BSONCodec[Update, BSONObject] {
+    def code : TypeCode = ObjectCode
+
+    def write(value : Update) : BSONObject = {
+      BSONBuilder().
+        obj("q", value.selector).
+        obj("u", value.updater).
+        boolean("upsert", value.upsert).
+        boolean("multi", value.multi).
+        result
+    }
+
+    def read(value : BSONObject) : Update = {
+      Update(value.getObj("q"), value.getObj("u"), value.getAsBoolean("upsert"), value.getAsBoolean("multi"))
+    }
+  }
 }

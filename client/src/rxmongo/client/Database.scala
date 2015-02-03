@@ -22,6 +22,9 @@
 
 package rxmongo.client
 
+import akka.util.Timeout
+import rxmongo.driver.{WriteConcern}
+
 /** Represents A MongoDB Database
   *
   * The methods of this class align with the mongo shell's naming.
@@ -30,10 +33,16 @@ package rxmongo.client
   * @param name
   * @param client
   */
-case class Database(name : String, client : Client) extends RxMongoComponent(client.driver) {
+case class Database(name : String, client : Client)
+  (override implicit val timeout : Timeout = client.timeout,
+   override implicit val writeConcern: WriteConcern = client.writeConcern)
+  extends RxMongoComponent(client.driver) {
 
   def namespace = name
-  def collection(name : String) = Collection(name, this)
+  def collection(name : String)
+    (implicit to: Timeout = timeout, wc: WriteConcern = writeConcern) : Collection = {
+    Collection(name, this)(to, wc)
+  }
 
   /** Authenticates a user to a database. */
   def auth() = ???

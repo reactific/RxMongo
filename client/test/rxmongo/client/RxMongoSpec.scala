@@ -22,40 +22,16 @@
 
 package rxmongo.client
 
-import java.io.Closeable
+import org.specs2.mutable.Specification
 
-import akka.actor.ActorRef
+class RxMongoSpec(dbName: String, collName: String) extends Specification {
 
-import rxmongo.bson.BSONObject
-import rxmongo.driver.{ReplyMessage, QueryMessage}
+  val client = Client("mongodb://localhost:27017/" + dbName)
 
-import scala.concurrent.Future
+  val database = client.database(dbName)
 
-case class Cursor private[client] (
-  collection: Collection,
-  connection: ActorRef,
-  private val query : QueryMessage,
-  private var reply: ReplyMessage )
-  extends RxMongoComponent(collection.driver) with Iterator[Future[BSONObject]] with Closeable {
+  val collection = database.collection(collName)
 
-  private var list = reply.documents.toList
+  sequential
 
-  override def hasNext : Boolean = list.nonEmpty
-  def hasMore : Boolean = hasNext
-
-  override def next() : Future[BSONObject] = {
-    if (list.isEmpty)
-      throw new NoSuchElementException("No more documents in RxMongo Cursor")
-    val result = list.head
-    if (list.isEmpty) {
-      // FIXME: Fetch More
-      Future.successful(result)
-    } else {
-      Future.successful(result)
-    }
-  }
-
-  def getNextDocument : Future[BSONObject] = next()
-
-  def close() = {}
 }

@@ -206,11 +206,29 @@ case class BSONObject private[bson] (buffer : ByteString)
     }
   }
 
+  def getTypeCode(keyToFind : String) : TypeCode = {
+    iterator.find {
+      case (key, value) ⇒ key == keyToFind
+    } map {
+      case (key, value) ⇒ value.code
+    } match {
+      case Some(tc) ⇒ tc
+      case None ⇒ NotACode
+    }
+  }
+
   def getObject(keyToFind : String) : Option[BSONObject] = {
     iterator.find {
       case (key, value) ⇒ value.code == ObjectCode && key == keyToFind
     } map {
       case (key, value) ⇒ value.asInstanceOf[BSONObject]
+    }
+  }
+
+  def getObj(keyToFind : String) : BSONObject = {
+    getObject(keyToFind) match {
+      case Some(obj) ⇒ obj
+      case _ ⇒ throw new NoSuchElementException(keyToFind)
     }
   }
 
@@ -259,33 +277,34 @@ case class BSONObject private[bson] (buffer : ByteString)
 
   def getAsString(key : String) : String = getAs[String, BSONString](key)
   def getAsInt(key : String) : Int = getAs[Int, BSONInteger](key)
+  def getAsLong(key: String) : Long = getAs[Long, BSONLong](key)
   def getAsDouble(key : String) : Double = getAs[Double, BSONDouble](key)
   def getAsDate(key : String) : Date = getAs[Date, BSONDate](key)
   def getAsBoolean(key : String) : Boolean = getAs[Boolean, BSONBoolean](key)
+  def getAsArray[T, B<:BSONValue](key: String)(implicit codec : BSONCodec[T, B]) : Seq[T] = {
+    getAsSeq[T,B](key).toSeq
+  }
 
   def getOptionalObject[T](key : String)(implicit codec : BSONCodec[T, BSONObject]) : Option[T] = {
-    try { Some(getAs[T, BSONObject](key)(codec)) }
-    catch { case x : Exception ⇒ None }
+    try { Some(getAs[T, BSONObject](key)(codec)) } catch { case x : Exception ⇒ None }
+  }
+  def getOptionalArray[T, B<:BSONValue](key: String)(implicit codec : BSONCodec[T, B]) : Option[Seq[T]] = {
+    try { Some(getAsArray[T,B](key)(codec)) } catch { case x : Exception ⇒ None }
   }
   def getOptionalString(key : String) : Option[String] = {
-    try { Some(getAs[String, BSONString](key)) }
-    catch { case x : Exception ⇒ None }
+    try { Some(getAs[String, BSONString](key)) } catch { case x : Exception ⇒ None }
   }
   def getOptionalInt(key : String) : Option[Int] = {
-    try { Some(getAs[Int, BSONInteger](key)) }
-    catch { case x : Exception ⇒ None }
+    try { Some(getAs[Int, BSONInteger](key)) } catch { case x : Exception ⇒ None }
   }
   def getOptionalDouble(key : String) : Option[Double] = {
-    try { Some(getAs[Double, BSONDouble](key)) }
-    catch { case x : Exception ⇒ None }
+    try { Some(getAs[Double, BSONDouble](key)) } catch { case x : Exception ⇒ None }
   }
   def getOptionalDate(key : String) : Option[Date] = {
-    try { Some(getAs[Date, BSONDate](key)) }
-    catch { case x : Exception ⇒ None }
+    try { Some(getAs[Date, BSONDate](key)) } catch { case x : Exception ⇒ None }
   }
   def getOptionalBoolean(key : String) : Option[Boolean] = {
-    try { Some(getAs[Boolean, BSONBoolean](key)) }
-    catch { case x : Exception ⇒ None }
+    try { Some(getAs[Boolean, BSONBoolean](key)) } catch { case x : Exception ⇒ None }
   }
 
   override def empty : BSONObject = BSONObject.empty

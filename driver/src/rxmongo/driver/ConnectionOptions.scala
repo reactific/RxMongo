@@ -26,7 +26,9 @@ import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
 import akka.http.model.Uri.Query
+import rxmongo.bson._
 
+import scala.annotation.switch
 import scala.concurrent.duration._
 
 /** Options for connecting to a Mongo Replica Set.
@@ -169,9 +171,7 @@ case class ConnectionOptions(
   maxIdleTimeMS : Long = 60000, // One minute
   waitQueueMultiple : Int = 0, // Unconstrained
   waitQueueTimeoutMS : Long = 60000, // One minute
-  w : WriteConcern = BasicAcknowledgmentWC,
-  wtimeoutMS : Long = 0,
-  journal : Boolean = false,
+  writeConcern : WriteConcern = WriteConcern(),
   readPreference : ReadPreference = PrimaryRP,
   readPreferenceTags : Seq[Seq[(String, String)]] = Seq.empty[Seq[(String, String)]],
   authSource : Option[String] = None,
@@ -197,7 +197,8 @@ case class ConnectionOptions(
     require(minPoolSize > 0, "minPoolSize must be positive")
     require(maxPoolSize > minPoolSize, "maxPoolSize must be larger than minPoolSize")
     require(maxIdleTimeMS >= 0 && maxIdleTimeMS < 1.days.toMillis, "maxIdleTimeMS must be between 0 and 1 day")
-    require(wtimeoutMS >= 0 && wtimeoutMS < 1.days.toMillis, "wtimeoutMS must be between 0 and 1 day")
+    require(writeConcern.timeout >= 0.millis && writeConcern.timeout < 1.days,
+      "writeConcern.timeout must be between 0 and 1 day")
     require(rampupRate > 0.0 && rampupRate <= 1.0, "rampupRate must be between 0.0 and 1.0 ")
     require(backoffThreshold > 0.0 && backoffThreshold < 1.0, "backoffThreshold must be between 0.0 and 1.0")
     require(backoffRate > 0.0 && backoffRate <= 1.0, "backoffRate must be between 0.0 and 1.0")
@@ -229,9 +230,10 @@ object ConnectionOptions {
     r = addOption("maxIdleTimeMS") { v ⇒ r.copy(maxIdleTimeMS = v.toLong) }
     r = addOption("waitQueueMultiple") { v ⇒ r.copy(waitQueueMultiple = v.toInt) }
     r = addOption("waitQueueTimeoutMS") { v ⇒ r.copy(waitQueueTimeoutMS = v.toLong) }
-    r = addOption("w") { v ⇒ r.copy(w = WriteConcern(v)) }
-    r = addOption("wtimeoutMS") { v ⇒ r.copy(wtimeoutMS = v.toLong) }
-    r = addOption("journal") { v ⇒ r.copy(journal = v.toBoolean) }
+    r = addOption("w") { v ⇒ r.copy(writeConcern = WriteConcern(v)) }
+    r = addOption("wtimeoutMS") { v ⇒
+      r.copy(writeConcern = r.writeConcern.copy(timeout = FiniteDuration(v.toLong, TimeUnit.MILLISECONDS))) }
+    r = addOption("journal") { v ⇒ r.copy(writeConcern = r.writeConcern.copy(journal = v.toBoolean)) }
     r = addOption("readPreference") { v ⇒ r.copy(readPreference = ReadPreference(v)) }
     r = r.copy(readPreferenceTags = q.getAll("readPreferenceTags").map { s ⇒ ReadPreference.tags(s).toList }.toList)
     r = r.copy(authSource = q.get("authSource"))
@@ -246,29 +248,91 @@ object ConnectionOptions {
     r = addOption("backoffThreshold") { v ⇒ r.copy(backoffThreshold = v.toDouble) }
     r = addOption("backoffRate") { v ⇒ r.copy(backoffRate = v.toDouble) }
     r = addOption("messagesPerResize") { v ⇒ r.copy(messagesPerResize = v.toInt) }
-    r = addOption("replicaSetCheckPeriod") {
-      v ⇒ r.copy(replicaSetCheckPeriod = FiniteDuration(v.toLong, TimeUnit.MILLISECONDS))
+    r = addOption("replicaSetCheckPeriod") { v ⇒
+      r.copy(replicaSetCheckPeriod = FiniteDuration(v.toLong, TimeUnit.MILLISECONDS))
     }
-    r = addOption("channelReconnectPeriod") {
-      v ⇒ r.copy(channelReconnectPeriod = FiniteDuration(v.toLong, TimeUnit.MILLISECONDS))
+    r = addOption("channelReconnectPeriod") { v ⇒
+      r.copy(channelReconnectPeriod = FiniteDuration(v.toLong, TimeUnit.MILLISECONDS))
     }
     r.validate
   }
 }
 
-sealed trait WriteConcern
-case object NoAcknowledgmentWC extends WriteConcern { override def toString = "-1" }
-case object ErrorsOnlyWC extends WriteConcern { override def toString = "0" }
-case object BasicAcknowledgmentWC extends WriteConcern { override def toString = "1" }
-case object MajorityWC extends WriteConcern { override def toString = "majority" }
-case class WaitForMembersWC(numMembers : Int) extends WriteConcern { override def toString = numMembers.toString }
-case class MembersWithTagWC(tag : String) extends WriteConcern { override def toString = tag }
+sealed trait WriteConcernKind
+case object NoAcknowledgmentWC extends WriteConcernKind { override def toString = "-1" }
+case object ErrorsOnlyWC extends WriteConcernKind { override def toString = "0" }
+case object BasicAcknowledgmentWC extends WriteConcernKind { override def toString = "1" }
+case object MajorityWC extends WriteConcernKind { override def toString = "majority" }
+case class WaitForMembersWC(numMembers : Int) extends WriteConcernKind { override def toString = numMembers.toString }
+case class MembersWithTagWC(tag : String) extends WriteConcernKind { override def toString = tag }
+
+/** MongoDB Write Concern
+  * This represents the WriteConcern values that are part of driver, client, database, collection
+  * and write operation specifications. The Write Concern controls isolation and durability requirements for a write.
+ * @see [[http://docs.mongodb.org/master/reference/write-concern/]]
+ * @param kind How writes should be done.
+ * @param timeout The timeout for the replica set (when WaitForMembersWC.numMbers > 1) to complete the write.
+ * @param journal Whether journaling of the write must be finished before return (guarantees durability)
+ */
+case class WriteConcern(
+  kind: WriteConcernKind,
+  timeout: FiniteDuration,
+  journal: Boolean
+)
 
 object WriteConcern {
-  def apply(str : String) : WriteConcern = {
-    str.trim match {
+  val default = WriteConcern()
+
+  private def int2WCK(i: Int) : WriteConcernKind = {
+    (i : @switch) match {
+      case -1 ⇒ NoAcknowledgmentWC
+      case 0 ⇒ ErrorsOnlyWC
+      case 1 ⇒ BasicAcknowledgmentWC
+      case x : Int ⇒ WaitForMembersWC(x)
+    }
+  }
+
+  private def str2WCK(s: String) : WriteConcernKind = {
+    s match {
+      case "majority" ⇒ MajorityWC
+      case tag : String if tag.length > 0 ⇒ MembersWithTagWC(tag)
+      case _ ⇒ BasicAcknowledgmentWC
+    }
+  }
+
+  implicit object Codec extends BSONCodec[WriteConcern, BSONObject] {
+    def code : TypeCode = ObjectCode
+    def write(value : WriteConcern) : BSONObject = {
+      val b = BSONBuilder()
+      value.kind match {
+        case NoAcknowledgmentWC ⇒ b.integer("w", -1)
+        case ErrorsOnlyWC ⇒ b.integer("w", 0)
+        case BasicAcknowledgmentWC ⇒ b.integer("w", 1)
+        case MajorityWC ⇒ b.string("w", "majority")
+        case WaitForMembersWC(num) ⇒ b.integer("w", num)
+        case MembersWithTagWC(tag) ⇒ b.string("w", tag)
+        case k ⇒ throw new RxMongoError(s"Invalid WriteConcernKind: $k" )
+      }
+      b.integer("wtimeout", value.timeout.toMillis.toInt)
+      b.boolean("j", value.journal)
+      b.result
+    }
+    def read(value : BSONObject) : WriteConcern = {
+      val kind = {
+        value.getTypeCode("q") match {
+          case StringCode ⇒ str2WCK(value.getAsString("q"))
+          case IntegerCode ⇒ int2WCK(value.getAsInt("q"))
+          case c ⇒ throw new RxMongoError(s"Invalid TypeCode for WriteConcerKind: $c")
+        }
+      }
+      WriteConcern(kind, Duration(value.getAsInt("wtimeout"), TimeUnit.MILLISECONDS), value.getAsBoolean("j"))
+    }
+  }
+
+  def apply(str : String = "", timeout: FiniteDuration = 10.seconds, journal: Boolean = false) : WriteConcern = {
+    val kind = str.trim match {
       case num : String if num.length > 0 && (num forall { ch ⇒ ch.isDigit | ch == '-' }) ⇒
-        num.toInt match {
+        (num.toInt : @switch) match {
           case -1 ⇒ NoAcknowledgmentWC
           case 0 ⇒ ErrorsOnlyWC
           case 1 ⇒ BasicAcknowledgmentWC
@@ -278,7 +342,12 @@ object WriteConcern {
       case tag : String if tag.length > 0 ⇒ MembersWithTagWC(tag)
       case _ ⇒ BasicAcknowledgmentWC
     }
+    WriteConcern(kind, timeout, journal)
   }
+
+  def apply(wck : WriteConcernKind) : WriteConcern = WriteConcern(wck, 10.seconds, journal=false)
+
+  def apply(wck: WriteConcernKind, timeout: FiniteDuration) : WriteConcern = WriteConcern(wck, timeout, journal=false)
 }
 
 sealed trait ReadPreference

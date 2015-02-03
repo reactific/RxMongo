@@ -111,6 +111,12 @@ object BSONCodec {
     def write(value : Int) : BSONInteger = BSONInteger(value)
   }
 
+  implicit object LongCodec extends BSONCodec[Long, BSONLong] {
+    def code = LongCode
+    def read(value : BSONLong) : Long = value.value
+    def write(value : Long) : BSONLong = BSONLong(value)
+  }
+
   implicit object DoubleCodec extends BSONCodec[Double, BSONDouble] {
     def code = DoubleCode
     def read(value : BSONDouble) : Double = value.value

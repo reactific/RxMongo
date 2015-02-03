@@ -54,14 +54,14 @@ import rxmongo.bson._
   * @param partial Get partial results from a mongos if some shards are down (instead of throwing an error)
   */
 case class QueryOptions(
- numberToSkip : Int = 0,
- numberToReturn : Int = 0,
- tailableCursor: Boolean = false,
- slaveOk : Boolean = false,
- noCursorTimeout : Boolean = false,
- awaitData : Boolean = false,
- exhaust : Boolean = false,
- partial : Boolean = false
+  numberToSkip : Int = 0,
+  numberToReturn : Int = 1,
+  tailableCursor: Boolean = false,
+  slaveOk : Boolean = false,
+  noCursorTimeout : Boolean = false,
+  awaitData : Boolean = false,
+  exhaust : Boolean = false,
+  partial : Boolean = false
 ) {
 
   def writeToByteString(bs: ByteStringBuilder, fullCollectionName: String) = {

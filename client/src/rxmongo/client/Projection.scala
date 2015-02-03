@@ -22,7 +22,7 @@
 
 package rxmongo.client
 
-import rxmongo.bson.{ BSONProvider, BSONBuilder }
+import rxmongo.bson.{Query, BSONProvider, BSONBuilder}
 
 /** Represents A MongoDB Query Projection
   *

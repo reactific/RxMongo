@@ -22,11 +22,14 @@
 
 package rxmongo.client
 
+import java.io.Closeable
+
 import akka.actor.ActorRef
 import akka.util.Timeout
 import com.typesafe.config.Config
+import rxmongo.bson.Query
 
-import rxmongo.driver.{ Driver, MongoURI }
+import rxmongo.driver.{WriteConcern, Driver, MongoURI}
 
 import scala.concurrent.Await
 import scala.util.{ Failure, Success }
@@ -42,12 +45,21 @@ import scala.util.{ Failure, Success }
   *
   * The Client is a wrapper around the [[rxmongo.driver.Driver]] object that allow you to avoid the low level
   * interface of the Driver. Instead of dealing directly with connections to a MongoDB server, you deal with
-  * abstractions like [[rxmongo.client.Database]], [[rxmongo.client.Collection]], [[rxmongo.client.Query]] and
+  * abstractions like [[rxmongo.client.Database]], [[rxmongo.client.Collection]], [[Query]] and
   * [[rxmongo.client.Cursor]].
   */
-case class Client(uri : MongoURI, config : Option[Config], name : String)(implicit connectionTimeout : Timeout) extends RxMongoComponent(Driver(config, name)) {
+case class Client
+  (uri : MongoURI, config : Option[Config], name : String)
+  (override implicit val timeout : Timeout,
+   override implicit val writeConcern: WriteConcern)
+  extends RxMongoComponent(Driver(config, name)) with Closeable {
+
   private[client] val connection : ActorRef = {
-    Await.result(driver.connect(uri, None)(connectionTimeout), connectionTimeout.duration)
+    Await.result(driver.connect(uri, None)(timeout), timeout.duration)
+  }
+
+  def close() = {
+    driver.close()
   }
 
   /** Get a Database Object.
@@ -58,7 +70,10 @@ case class Client(uri : MongoURI, config : Option[Config], name : String)(implic
     * @param name The name of the database
     * @return A lightweight interface to a MongoDB Database.
     */
-  def database(name : String) : Database = Database(name, this)
+  def database(name : String)
+    (implicit to: Timeout = timeout, wc: WriteConcern = writeConcern) : Database = {
+    Database(name, this)(to, wc)
+  }
 
   /** Get a Collection Object.
     *
@@ -70,7 +85,10 @@ case class Client(uri : MongoURI, config : Option[Config], name : String)(implic
     * @param collName The name of the collection
     * @return
     */
-  def collection(dbName : String, collName : String) : Collection = Database(dbName, this).collection(collName)
+  def collection(dbName : String, collName : String)
+    (implicit to: Timeout = timeout, wc: WriteConcern = writeConcern) : Collection = {
+    Database(dbName, this)(to, wc).collection(collName)(to, wc)
+  }
 
 }
 
@@ -85,9 +103,11 @@ object Client {
     * @param name The name for this client
     * @return An instance of [[rxmongo.client.Client]] for interacting with MongoDB
     */
-  def apply(uri : String, config : Option[Config] = None, name : String = "RxMongo")(implicit connectionTimeout : Timeout = Driver.defaultTimeout) = {
+  def apply(uri : String, config : Option[Config] = None, name : String = "RxMongo")
+    (implicit to : Timeout = Driver.defaultTimeout,
+     wc : WriteConcern = WriteConcern.default) = {
     MongoURI(uri) match {
-      case Success(u) ⇒ new Client(u, config, name)(connectionTimeout)
+      case Success(u) ⇒ new Client(u, config, name)(to,wc)
       case Failure(x) ⇒ throw x
     }
   }

@@ -22,8 +22,48 @@
 
 package rxmongo.client
 
-import org.specs2.mutable.Specification
+import rxmongo.bson._
 
-class CollectionSpec extends Specification {
+import scala.concurrent.Await
+import scala.concurrent.duration.FiniteDuration
+
+class CollectionSpec extends RxMongoSpec("rxmongo", "collection") {
+
+  val obj1 = BSONObject("key1" → 42.0, "key2" → 42L, "key3" → 42)
+
+  "Collection" should {
+    "insert" in {
+      val result = Await.result(collection.insertOne(obj1), FiniteDuration(1,"seconds"))
+      result.ok must beEqualTo(1)
+      result.n must beEqualTo(1)
+    }
+
+    "find" in {
+      val result = Await.result(collection.findOne(Query("key1" $eq 42.0)), FiniteDuration(1,"seconds"))
+      result.hasNext must beEqualTo(true)
+      val obj = Await.result(result.next(), FiniteDuration(1,"seconds"))
+      obj.contains("key1") must beTrue
+      obj.contains("key2") must beTrue
+      obj.contains("key3") must beTrue
+      obj.getAsDouble("key1") must beEqualTo(42.0)
+      obj.getAsLong("key2") must beEqualTo(42L)
+      obj.getAsInt("key3") must beEqualTo(42)
+    }
+
+    "update" in {
+      val upd = Update("key1" → 42.0, "key2" $set 84L, upsert=false, multi=false)
+      val result = Await.result(collection.updateOne(upd), FiniteDuration(1,"seconds"))
+      result.ok must beEqualTo(1)
+      result.n must beEqualTo(1)
+    }
+
+    "delete" in {
+      val del = Delete("key1" → 42.0, limit=1)
+      val result = Await.result(collection.deleteOne(del), FiniteDuration(1,"seconds"))
+      result.ok must beEqualTo(1)
+      result.n must beEqualTo(1)
+
+    }
+  }
 
 }

@@ -22,33 +22,35 @@
 
 package rxmongo.driver
 
+import java.util.concurrent.TimeUnit
+
 import org.specs2.mutable.Specification
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 class ConnectionOptionsSpec extends Specification {
 
   "WriteConcern" should {
     "yield NoAcknowledgement for -1" in {
-      WriteConcern("-1") must beEqualTo(NoAcknowledgmentWC)
+      WriteConcern("-1") must beEqualTo(WriteConcern(NoAcknowledgmentWC))
     }
     "yield ErrorsOnly for 0" in {
-      WriteConcern(" 0") must beEqualTo(ErrorsOnlyWC)
+      WriteConcern(" 0") must beEqualTo(WriteConcern(ErrorsOnlyWC))
     }
     "yield BasicAcknowledgment for 1" in {
-      WriteConcern("1 ") must beEqualTo(BasicAcknowledgmentWC)
+      WriteConcern("1 ") must beEqualTo(WriteConcern(BasicAcknowledgmentWC))
     }
     "yield WaitForMembers for > 1" in {
-      WriteConcern(" 2 ") must beEqualTo(WaitForMembersWC(2))
+      WriteConcern(" 2 ") must beEqualTo(WriteConcern(WaitForMembersWC(2)))
     }
     "yield Majority for 'majority'" in {
-      WriteConcern("majority") must beEqualTo(MajorityWC)
+      WriteConcern("majority") must beEqualTo(WriteConcern(MajorityWC))
     }
     "yield MembersWithTag for other strings" in {
-      WriteConcern(" foo ") must beEqualTo(MembersWithTagWC("foo"))
+      WriteConcern(" foo ") must beEqualTo(WriteConcern(MembersWithTagWC("foo")))
     }
     "yield BasicAck for empty string" in {
-      WriteConcern("") must beEqualTo(BasicAcknowledgmentWC)
+      WriteConcern("") must beEqualTo(WriteConcern(BasicAcknowledgmentWC))
     }
   }
 
@@ -72,7 +74,9 @@ class ConnectionOptionsSpec extends Specification {
       ConnectionOptions(maxIdleTimeMS = 24 * 3600 * 1000 + 1).validate should throwA[IllegalArgumentException]
     }
     "validate wtimeoutMS" in {
-      ConnectionOptions(wtimeoutMS = -1).validate should throwA[IllegalArgumentException]
+      ConnectionOptions(writeConcern =
+        WriteConcern(BasicAcknowledgmentWC, timeout = Duration(-1, TimeUnit.MILLISECONDS))).validate should
+        throwA[IllegalArgumentException]
     }
     "validate rampupRate" in {
       ConnectionOptions(rampupRate = 2).validate should throwA[IllegalArgumentException]

@@ -282,3 +282,237 @@ object $not extends BooleanExpression {
     e
   }
 }
+
+class UpdateExpression extends Expression
+
+/**
+ * TODO: Finish UpdateFieldExpression implementation
+ * @param fieldName The name of the field to which the operator applies
+ */
+class UpdateFieldExpression(fieldName : String) extends UpdateExpression {
+
+  /** Increments the value of the field by the specified amount.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $inc[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Multiplies the value of the field by the specified amount.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $mul[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Renames a field.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $rename[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Sets the value of a field if an update results in an insert of a document. Has no effect on update operations
+    * that modify existing documents.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $setOnInsert[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Sets the value of a field in a document.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $set[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+    obj("$set", fieldName → value)
+    this
+  }
+
+  /** Removes the specified field from a document.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $unset[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Only updates the field if the specified value is less than the existing field value.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $min[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Only updates the field if the specified value is greater than the existing field value.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $max[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Sets the value of a field to current date, either as a Date or a Timestamp.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $currentDate[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Acts as a placeholder to update the first element that matches the query condition in an update.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Adds elements to an array only if they do not already exist in the set.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $addToSet[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Removes the first or last item of an array.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $pop[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Removes all matching values from an array.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $pullAll[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Removes all array elements that match a specified query.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $pull[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Deprecated. Adds several items to an array.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $pushAll[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Adds an item to an array.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $push[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Modifies the $push and $addToSet operators to append multiple items for array updates.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+
+  def $each[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Modifies the $push operator to limit the size of updated arrays.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $slice[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Modifies the $push operator to reorder documents stored in an array.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $sort[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Modifies the $push operator to specify the position in the array to add elements.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $position[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Performs bitwise AND, OR, and XOR updates of integer values.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $bit[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+
+  /** Modifies the behavior of a write operation to increase the isolation of the operation.
+    *
+    * @param value
+    * @param codec
+    * @tparam T
+    * @tparam B
+    * @return
+    */
+  def $isolated[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = ???
+}
