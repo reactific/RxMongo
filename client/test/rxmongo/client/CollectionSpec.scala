@@ -32,16 +32,16 @@ class CollectionSpec extends RxMongoSpec("rxmongo", "collection") {
   val obj1 = BSONObject("key1" → 42.0, "key2" → 42L, "key3" → 42)
 
   "Collection" should {
-    "insert" in {
-      val result = Await.result(collection.insertOne(obj1), FiniteDuration(1,"seconds"))
+    "insert" in mongoTest { () ⇒
+      val result = Await.result(collection.insertOne(obj1), FiniteDuration(1, "seconds"))
       result.ok must beEqualTo(1)
       result.n must beEqualTo(1)
     }
 
-    "find" in {
-      val result = Await.result(collection.findOne(Query("key1" $eq 42.0)), FiniteDuration(1,"seconds"))
+    "find" in mongoTest { () ⇒
+      val result = Await.result(collection.findOne(Query("key1" $eq 42.0)), FiniteDuration(1, "seconds"))
       result.hasNext must beEqualTo(true)
-      val obj = Await.result(result.next(), FiniteDuration(1,"seconds"))
+      val obj = Await.result(result.next(), FiniteDuration(1, "seconds"))
       obj.contains("key1") must beTrue
       obj.contains("key2") must beTrue
       obj.contains("key3") must beTrue
@@ -50,16 +50,16 @@ class CollectionSpec extends RxMongoSpec("rxmongo", "collection") {
       obj.getAsInt("key3") must beEqualTo(42)
     }
 
-    "update" in {
-      val upd = Update("key1" → 42.0, "key2" $set 84L, upsert=false, multi=false)
-      val result = Await.result(collection.updateOne(upd), FiniteDuration(1,"seconds"))
+    "update" in mongoTest { () ⇒
+      val upd = Update("key1" → 42.0, "key2" $set 84L, upsert = false, multi = false)
+      val result = Await.result(collection.updateOne(upd), FiniteDuration(1, "seconds"))
       result.ok must beEqualTo(1)
       result.n must beEqualTo(1)
     }
 
-    "delete" in {
-      val del = Delete("key1" → 42.0, limit=1)
-      val result = Await.result(collection.deleteOne(del), FiniteDuration(1,"seconds"))
+    "delete" in mongoTest { () ⇒
+      val del = Delete("key1" → 42.0, limit = 1)
+      val result = Await.result(collection.deleteOne(del), FiniteDuration(1, "seconds"))
       result.ok must beEqualTo(1)
       result.n must beEqualTo(1)
 

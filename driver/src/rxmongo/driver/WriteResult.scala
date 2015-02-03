@@ -24,10 +24,10 @@ package rxmongo.driver
 
 import rxmongo.bson._
 
-case class WriteError(index: Int, code: Int, errmsg: String)
+case class WriteError(index : Int, code : Int, errmsg : String)
 
 object WriteError {
-  implicit object Codec extends BSONCodec[WriteError,BSONObject] {
+  implicit object Codec extends BSONCodec[WriteError, BSONObject] {
     override def code : TypeCode = ObjectCode
     override def write(value : WriteError) : BSONObject = {
       BSONBuilder().
@@ -42,10 +42,10 @@ object WriteError {
   }
 }
 
-case class WriteConcernError(code: Int, errmsg: String)
+case class WriteConcernError(code : Int, errmsg : String)
 
 object WriteConcernError {
-  implicit object Codec extends BSONCodec[WriteConcernError,BSONObject] {
+  implicit object Codec extends BSONCodec[WriteConcernError, BSONObject] {
     override def code : TypeCode = ObjectCode
     override def write(value : WriteConcernError) : BSONObject = {
       BSONBuilder().
@@ -59,9 +59,9 @@ object WriteConcernError {
   }
 }
 
-case class WriteResult private[rxmongo](obj: BSONObject) {
+case class WriteResult private[rxmongo] (obj : BSONObject) {
   val ok : Int = obj.getAsInt("ok")
-  val n: Int = obj.getAsInt("n")
-  val writeErrors = obj.getOptionalArray[WriteError,BSONObject]("writeErrors")
+  val n : Int = obj.getAsInt("n")
+  val writeErrors = obj.getOptionalArray[WriteError, BSONObject]("writeErrors")
   val writeConcernError = obj.getOptionalObject[WriteConcernError]("writeConcernError")
 }

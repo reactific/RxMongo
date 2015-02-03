@@ -23,7 +23,7 @@
 package rxmongo.client
 
 import akka.util.Timeout
-import rxmongo.driver.{WriteConcern}
+import rxmongo.driver.{ WriteConcern }
 
 /** Represents A MongoDB Database
   *
@@ -33,14 +33,12 @@ import rxmongo.driver.{WriteConcern}
   * @param name
   * @param client
   */
-case class Database(name : String, client : Client)
-  (override implicit val timeout : Timeout = client.timeout,
-   override implicit val writeConcern: WriteConcern = client.writeConcern)
+case class Database(name : String, client : Client)(override implicit val timeout : Timeout = client.timeout,
+  override implicit val writeConcern : WriteConcern = client.writeConcern)
   extends RxMongoComponent(client.driver) {
 
   def namespace = name
-  def collection(name : String)
-    (implicit to: Timeout = timeout, wc: WriteConcern = writeConcern) : Collection = {
+  def collection(name : String)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Collection = {
     Collection(name, this)(to, wc)
   }
 

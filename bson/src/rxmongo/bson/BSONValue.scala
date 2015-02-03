@@ -213,7 +213,7 @@ case class BSONObject private[bson] (buffer : ByteString)
       case (key, value) ⇒ value.code
     } match {
       case Some(tc) ⇒ tc
-      case None ⇒ NotACode
+      case None     ⇒ NotACode
     }
   }
 
@@ -277,19 +277,19 @@ case class BSONObject private[bson] (buffer : ByteString)
 
   def getAsString(key : String) : String = getAs[String, BSONString](key)
   def getAsInt(key : String) : Int = getAs[Int, BSONInteger](key)
-  def getAsLong(key: String) : Long = getAs[Long, BSONLong](key)
+  def getAsLong(key : String) : Long = getAs[Long, BSONLong](key)
   def getAsDouble(key : String) : Double = getAs[Double, BSONDouble](key)
   def getAsDate(key : String) : Date = getAs[Date, BSONDate](key)
   def getAsBoolean(key : String) : Boolean = getAs[Boolean, BSONBoolean](key)
-  def getAsArray[T, B<:BSONValue](key: String)(implicit codec : BSONCodec[T, B]) : Seq[T] = {
-    getAsSeq[T,B](key).toSeq
+  def getAsArray[T, B <: BSONValue](key : String)(implicit codec : BSONCodec[T, B]) : Seq[T] = {
+    getAsSeq[T, B](key).toSeq
   }
 
   def getOptionalObject[T](key : String)(implicit codec : BSONCodec[T, BSONObject]) : Option[T] = {
     try { Some(getAs[T, BSONObject](key)(codec)) } catch { case x : Exception ⇒ None }
   }
-  def getOptionalArray[T, B<:BSONValue](key: String)(implicit codec : BSONCodec[T, B]) : Option[Seq[T]] = {
-    try { Some(getAsArray[T,B](key)(codec)) } catch { case x : Exception ⇒ None }
+  def getOptionalArray[T, B <: BSONValue](key : String)(implicit codec : BSONCodec[T, B]) : Option[Seq[T]] = {
+    try { Some(getAsArray[T, B](key)(codec)) } catch { case x : Exception ⇒ None }
   }
   def getOptionalString(key : String) : Option[String] = {
     try { Some(getAs[String, BSONString](key)) } catch { case x : Exception ⇒ None }

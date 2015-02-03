@@ -22,7 +22,7 @@
 
 package rxmongo.examples
 
-import rxmongo.bson.{Query, BSONObject}
+import rxmongo.bson.{ Query, BSONObject }
 import rxmongo.client.Client
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -51,10 +51,10 @@ object ClientBasics extends App {
     val cursor = coll.find(Query("name" -> "foo"))
 
     // [5] When the results are ready, open them
-    val future = cursor.map { crsr =>
+    val future = cursor.map { crsr ⇒
       // [6] For each result
       while (crsr.hasNext) {
-        crsr.next.map { results : BSONObject =>
+        crsr.next.map { results : BSONObject ⇒
           // [7] We got an answer to our query, print the results
           println("Results: " + results)
         } recover {
@@ -67,8 +67,7 @@ object ClientBasics extends App {
 
     // [9] Wait for all the asynchronous processing to complete, within 5 seconds.
     Await.result(future, 5.seconds)
-  }
-  finally {
+  } finally {
     // [10] Close the client and its driver, releasing background threads
     client.close()
   }

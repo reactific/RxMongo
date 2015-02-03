@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
 
 import org.specs2.mutable.Specification
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.{ Duration, FiniteDuration }
 
 class ConnectionOptionsSpec extends Specification {
 

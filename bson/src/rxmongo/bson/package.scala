@@ -252,8 +252,8 @@ package object bson {
   implicit def updateExpression(fieldName : String) : UpdateFieldExpression =
     new UpdateFieldExpression(fieldName)
 
-  implicit def pairLiteral[T,B<:BSONValue](pair: (String,T ))(implicit codec: BSONCodec[T,B]) : BooleanExpression = {
-    new BooleanFieldExpression(pair._1).$eq[T,B](pair._2)
+  implicit def pairLiteral[T, B <: BSONValue](pair : (String, T))(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
+    new BooleanFieldExpression(pair._1).$eq[T, B](pair._2)
   }
 
 }

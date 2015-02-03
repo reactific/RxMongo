@@ -285,10 +285,9 @@ object $not extends BooleanExpression {
 
 class UpdateExpression extends Expression
 
-/**
- * TODO: Finish UpdateFieldExpression implementation
- * @param fieldName The name of the field to which the operator applies
- */
+/** TODO: Finish UpdateFieldExpression implementation
+  * @param fieldName The name of the field to which the operator applies
+  */
 class UpdateFieldExpression(fieldName : String) extends UpdateExpression {
 
   /** Increments the value of the field by the specified amount.

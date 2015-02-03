@@ -27,15 +27,15 @@ import java.io.Closeable
 import akka.actor.ActorRef
 
 import rxmongo.bson.BSONObject
-import rxmongo.driver.{ReplyMessage, QueryMessage}
+import rxmongo.driver.{ ReplyMessage, QueryMessage }
 
 import scala.concurrent.Future
 
 case class Cursor private[client] (
-  collection: Collection,
-  connection: ActorRef,
+  collection : Collection,
+  connection : ActorRef,
   private val query : QueryMessage,
-  private var reply: ReplyMessage )
+  private var reply : ReplyMessage)
   extends RxMongoComponent(collection.driver) with Iterator[Future[BSONObject]] with Closeable {
 
   private var list = reply.documents.toList

@@ -29,7 +29,7 @@ import akka.util.Timeout
 import com.typesafe.config.Config
 import rxmongo.bson.Query
 
-import rxmongo.driver.{WriteConcern, Driver, MongoURI}
+import rxmongo.driver.{ WriteConcern, Driver, MongoURI }
 
 import scala.concurrent.Await
 import scala.util.{ Failure, Success }
@@ -48,10 +48,7 @@ import scala.util.{ Failure, Success }
   * abstractions like [[rxmongo.client.Database]], [[rxmongo.client.Collection]], [[Query]] and
   * [[rxmongo.client.Cursor]].
   */
-case class Client
-  (uri : MongoURI, config : Option[Config], name : String)
-  (override implicit val timeout : Timeout,
-   override implicit val writeConcern: WriteConcern)
+case class Client(uri : MongoURI, config : Option[Config], name : String)(override implicit val timeout : Timeout, override implicit val writeConcern : WriteConcern)
   extends RxMongoComponent(Driver(config, name)) with Closeable {
 
   private[client] val connection : ActorRef = {
@@ -70,8 +67,7 @@ case class Client
     * @param name The name of the database
     * @return A lightweight interface to a MongoDB Database.
     */
-  def database(name : String)
-    (implicit to: Timeout = timeout, wc: WriteConcern = writeConcern) : Database = {
+  def database(name : String)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Database = {
     Database(name, this)(to, wc)
   }
 
@@ -85,8 +81,7 @@ case class Client
     * @param collName The name of the collection
     * @return
     */
-  def collection(dbName : String, collName : String)
-    (implicit to: Timeout = timeout, wc: WriteConcern = writeConcern) : Collection = {
+  def collection(dbName : String, collName : String)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Collection = {
     Database(dbName, this)(to, wc).collection(collName)(to, wc)
   }
 
@@ -103,11 +98,9 @@ object Client {
     * @param name The name for this client
     * @return An instance of [[rxmongo.client.Client]] for interacting with MongoDB
     */
-  def apply(uri : String, config : Option[Config] = None, name : String = "RxMongo")
-    (implicit to : Timeout = Driver.defaultTimeout,
-     wc : WriteConcern = WriteConcern.default) = {
+  def apply(uri : String, config : Option[Config] = None, name : String = "RxMongo")(implicit to : Timeout = Driver.defaultTimeout, wc : WriteConcern = WriteConcern.default) = {
     MongoURI(uri) match {
-      case Success(u) ⇒ new Client(u, config, name)(to,wc)
+      case Success(u) ⇒ new Client(u, config, name)(to, wc)
       case Failure(x) ⇒ throw x
     }
   }

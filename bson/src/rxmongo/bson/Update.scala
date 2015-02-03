@@ -22,14 +22,14 @@
 
 package rxmongo.bson
 
-case class Update(selector: BSONObject, updater: BSONObject, upsert: Boolean, multi: Boolean)
+case class Update(selector : BSONObject, updater : BSONObject, upsert : Boolean, multi : Boolean)
 
 object Update {
   def apply(selector : BooleanExpression, updater : UpdateExpression, upsert : Boolean, multi : Boolean) : Update = {
     Update(selector.result, updater.result, upsert, multi)
   }
 
-  def apply(selector: Query, updater: UpdateExpression, upsert: Boolean, multi: Boolean) : Update = {
+  def apply(selector : Query, updater : UpdateExpression, upsert : Boolean, multi : Boolean) : Update = {
     Update(selector.result, updater.result, upsert, multi)
   }
 

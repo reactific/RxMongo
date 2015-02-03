@@ -22,15 +22,15 @@
 
 package rxmongo.bson
 
-case class Delete(query: BSONObject, limit: Int)
+case class Delete(query : BSONObject, limit : Int)
 
 object Delete {
 
-  def apply(selector: BooleanExpression, limit: Int) : Delete = {
+  def apply(selector : BooleanExpression, limit : Int) : Delete = {
     Delete(selector.result, limit)
   }
 
-  def apply(query: Query, limit: Int = 0) : Delete = {
+  def apply(query : Query, limit : Int = 0) : Delete = {
     Delete(query.result, limit)
   }
 

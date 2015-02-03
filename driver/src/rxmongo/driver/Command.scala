@@ -42,25 +42,24 @@ case class CollStatsCmd(db : String, collection : String, scale : Int = 1024, ve
   extends Command(db, BSONObject("collStats" → collection, "scale" → scale, "verbose" → verbose))
 
 /** Represents A MongoDB Write Command
- * @see [[http://docs.mongodb.org/master/reference/command/insert/#dbcmd.insert]]
- * @param db
- * @param coll
- * @param documents
- * @param ordered
- * @param writeConcern
- */
+  * @see [[http://docs.mongodb.org/master/reference/command/insert/#dbcmd.insert]]
+  * @param db
+  * @param coll
+  * @param documents
+  * @param ordered
+  * @param writeConcern
+  */
 case class InsertCmd(
-  db: String,
-  coll: String,
-  documents: Seq[BSONObject],
-  ordered: Boolean,
-  writeConcern: WriteConcern
-) extends Command(db,  BSONObject(
-    "insert" → coll,
-    "documents" → BSONArray(documents),
-    "ordered" → ordered,
-    "writeConcern" → WriteConcern.Codec.write(writeConcern)
-  ))
+  db : String,
+  coll : String,
+  documents : Seq[BSONObject],
+  ordered : Boolean,
+  writeConcern : WriteConcern) extends Command(db, BSONObject(
+  "insert" → coll,
+  "documents" → BSONArray(documents),
+  "ordered" → ordered,
+  "writeConcern" → WriteConcern.Codec.write(writeConcern)
+))
 
 /** Represents a MongoDB Delete Command
   *
@@ -72,15 +71,14 @@ case class InsertCmd(
   * @param writeConcern
   */
 case class DeleteCmd(
-  db: String,
-  coll: String,
-  deletes: Seq[Delete],
-  ordered: Boolean,
-  writeConcern: WriteConcern
-) extends Command(db,
+  db : String,
+  coll : String,
+  deletes : Seq[Delete],
+  ordered : Boolean,
+  writeConcern : WriteConcern) extends Command(db,
   BSONObject(
     "delete" → coll,
-    "deletes" → BSONArray[Delete,BSONObject](deletes),
+    "deletes" → BSONArray[Delete, BSONObject](deletes),
     "ordered" → ordered,
     "writeConcern" → WriteConcern.Codec.write(writeConcern)
   ))
@@ -89,16 +87,16 @@ case class DeleteCmd(
   *
   * {{{
   * {
-  *    update: <collection>,
-  *    updates:
-  *       [
-  *          { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *          { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *          { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *          ...
-  *       ],
-  *    ordered: <boolean>,
-  *    writeConcern: { <write concern> }
+  *   update: <collection>,
+  *   updates:
+  *      [
+  *         { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *         { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *         { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *         ...
+  *      ],
+  *   ordered: <boolean>,
+  *   writeConcern: { <write concern> }
   * }
   * }}}
   *
@@ -111,14 +109,13 @@ case class DeleteCmd(
   */
 case class UpdateCmd(
   db : String,
-  coll: String,
+  coll : String,
   updates : Seq[Update],
-  ordered: Boolean,
-  writeConcern : WriteConcern
-) extends Command(db,
+  ordered : Boolean,
+  writeConcern : WriteConcern) extends Command(db,
   BSONObject(
     "update" → coll,
-    "updates" → BSONArray[Update,BSONObject](updates),
+    "updates" → BSONArray[Update, BSONObject](updates),
     "ordered" → ordered,
     "writeConcern" → WriteConcern.Codec.write(writeConcern)
   ))

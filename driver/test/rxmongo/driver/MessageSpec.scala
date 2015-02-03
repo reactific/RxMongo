@@ -99,8 +99,8 @@ class MessageSpec extends Specification {
 
       val msg = QueryMessage(
         "db.coll", selector, None,
-        QueryOptions(numberToSkip=0, numberToReturn=1, tailableCursor = true, slaveOk = true,
-        noCursorTimeout = true, awaitData = true, exhaust = true, partial = true))
+        QueryOptions(numberToSkip = 0, numberToReturn = 1, tailableCursor = true, slaveOk = true,
+          noCursorTimeout = true, awaitData = true, exhaust = true, partial = true))
 
       // struct OP_QUERY {
       //   MsgHeader header;                   // standard message header

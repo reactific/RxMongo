@@ -40,9 +40,8 @@ import scala.util.{ Failure, Success, Try }
   * @param name THe name of the collection in the database
   * @param db A database object
   */
-case class Collection(name : String, db : Database, statsRefesh : FiniteDuration = 1.day)
-  (override implicit val timeout : Timeout = db.timeout,
-   override implicit val writeConcern : WriteConcern = db.writeConcern)
+case class Collection(name : String, db : Database, statsRefesh : FiniteDuration = 1.day)(override implicit val timeout : Timeout = db.timeout,
+  override implicit val writeConcern : WriteConcern = db.writeConcern)
   extends RxMongoComponent(db.driver) {
 
   val fullName = db.namespace + "." + name
@@ -99,13 +98,11 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   /** Returns the size of the collection. Wraps the size field in the output of the collStats. */
   def dataSize() = ???
 
-  def deleteOne(delete: Delete, ordered: Boolean = true)
-    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def deleteOne(delete : Delete, ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
     remove(Seq(delete), ordered)(to, wc)
   }
-  def delete(deletes: Seq[Delete], ordered: Boolean = true)
-    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
-    remove(deletes, ordered)(to,wc)
+  def delete(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+    remove(deletes, ordered)(to, wc)
   }
 
   /** Returns an array of documents that have distinct values for the specified field. */
@@ -132,9 +129,8 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   def find(
     selector : Query,
     projection : Option[Projection] = None,
-    options : QueryOptions = QueryOptions()
-  ) : Future[Cursor] = {
-    val msg = QueryMessage(fullName, selector.result, projection.map { p => p.result }, options)
+    options : QueryOptions = QueryOptions()) : Future[Cursor] = {
+    val msg = QueryMessage(fullName, selector.result, projection.map { p ⇒ p.result }, options)
     db.client.connection.ask(msg) map {
       case reply : ReplyMessage ⇒
         reply.error match {
@@ -158,14 +154,12 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
     * @param options Options that control how the query is done and the kind of cursor returned.
     * @return A Cursor to allow iteration over the result set.
     */
-  def findOne(selector: Query, projection: Option[Projection] = None, options: QueryOptions = QueryOptions())
-    : Future[Cursor] = {
+  def findOne(selector : Query, projection : Option[Projection] = None, options : QueryOptions = QueryOptions()) : Future[Cursor] = {
     find(selector, projection, options.withNumberToReturn(1))
   }
 
   /** Atomically modifies and returns a single document. */
   def findAndModify() = ???
-
 
   /** Returns an array of documents that describe the existing indexes on a collection. */
   def getIndexes() = ???
@@ -184,18 +178,16 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
     db.client.connection ! msg
   }
 
-  def insertOne(obj: BSONObject)
-    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern): Future[WriteResult] = {
-    insert(Seq(obj), ordered=true)(to,wc)
+  def insertOne(obj : BSONObject)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+    insert(Seq(obj), ordered = true)(to, wc)
   }
 
-  def insert(objs: Seq[BSONObject], ordered : Boolean = true)
-    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern): Future[WriteResult] = {
+  def insert(objs : Seq[BSONObject], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
     val insert = InsertCmd(db.name, name, objs, ordered, wc)
     db.client.connection.ask(insert)(to) map processWriteCommandResult(insert)
   }
 
-    /** Reports if a collection is a capped collection. */
+  /** Reports if a collection is a capped collection. */
   def isCapped() : Boolean = getRefreshedStats().capped
 
   /** Performs map-reduce style data aggregation. */
@@ -203,13 +195,12 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   /** Rebuilds all existing indexes on a collection. */
   def reIndex() = ???
   /** Deletes documents from a collection. */
-  def removeRaw(selector: Query) : Unit = {
+  def removeRaw(selector : Query) : Unit = {
     val delete = DeleteMessage(fullName, selector.result)
     db.client.connection ! delete
   }
 
-  def remove(deletes: Seq[Delete], ordered: Boolean = true)
-    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def remove(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
     val delete = DeleteCmd(db.name, name, deletes, ordered, wc)
     db.client.connection.ask(delete)(to) map processWriteCommandResult(delete)
   }
@@ -229,22 +220,20 @@ case class Collection(name : String, db : Database, statsRefesh : FiniteDuration
   def totalIndexSize() = getRefreshedStats().totalIndexSize
 
   /** Modifies a document in a collection. */
-  def update(updates: Seq[Update], ordered: Boolean = true)
-    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def update(updates : Seq[Update], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
     val update = UpdateCmd(db.name, name, updates, ordered, wc)
     db.client.connection.ask(update)(to) map processWriteCommandResult(update)
   }
 
-  def updateOne(u: Update, ordered: Boolean = true)
-    (implicit to: Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
-    update(Seq(u), ordered)(to,wc)
+  def updateOne(u : Update, ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+    update(Seq(u), ordered)(to, wc)
   }
-    /** Performs diagnostic operations on a collection. */
+  /** Performs diagnostic operations on a collection. */
   def validate() = ???
 
-  private def processWriteCommandResult(cmd: Command)(any: Any) : WriteResult = {
+  private def processWriteCommandResult(cmd : Command)(any : Any) : WriteResult = {
     any match {
-      case reply: ReplyMessage ⇒
+      case reply : ReplyMessage ⇒
         reply.error match {
           case Some(msg) ⇒
             throw new RxMongoError(s"Error while processing $cmd: $msg")

@@ -22,15 +22,41 @@
 
 package rxmongo.client
 
+import java.net.{ Socket, InetSocketAddress, InetAddress }
+import javax.net.SocketFactory
+
+import org.specs2.execute.Result
 import org.specs2.mutable.Specification
 
-class RxMongoSpec(dbName: String, collName: String) extends Specification {
+class RxMongoSpec(dbName : String, collName : String) extends Specification {
 
   val client = Client("mongodb://localhost:27017/" + dbName)
 
   val database = client.database(dbName)
 
   val collection = database.collection(collName)
+
+  val haveLocalMongo : Boolean = {
+    val addr = InetAddress.getLoopbackAddress
+    val port = 27017
+    val socketAddress = new InetSocketAddress(addr, port)
+    try {
+      val socket : Socket = SocketFactory.getDefault.createSocket
+      socket.connect(socketAddress, 1000)
+      socket.close()
+      true
+    } catch {
+      case x : Throwable ⇒ false
+    }
+  }
+
+  def mongoTest(f : () ⇒ Result) : Result = {
+    if (haveLocalMongo) {
+      f()
+    } else {
+      skipped(": no local mongo")
+    }
+  }
 
   sequential
 

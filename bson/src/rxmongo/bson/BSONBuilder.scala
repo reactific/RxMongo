@@ -112,7 +112,7 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
     binary(blob, subtype)
   }
 
-  def binary(key: String, blob: Iterator[Byte], subtype: BinarySubtype) : BSONBuilder = {
+  def binary(key : String, blob : Iterator[Byte], subtype : BinarySubtype) : BSONBuilder = {
     putPrefix(BinaryCode, key)
     binary(blob, subtype)
   }
@@ -295,7 +295,7 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
     this
   }
 
-  private[bson] def binary(blob: Iterator[Byte], subtype: BinarySubtype) : BSONBuilder = {
+  private[bson] def binary(blob : Iterator[Byte], subtype : BinarySubtype) : BSONBuilder = {
     buffer.sizeHint(buffer.length + blob.length + 5)
     buffer.
       putInt(blob.length).

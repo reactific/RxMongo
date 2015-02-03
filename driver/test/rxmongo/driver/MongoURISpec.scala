@@ -91,7 +91,7 @@ class MongoURISpec extends Specification {
         maxIdleTimeMS = 30000, // One minute
         waitQueueMultiple = 4, // Unconstrained
         waitQueueTimeoutMS = 30000, // One minute
-        WriteConcern(WaitForMembersWC(7), Duration(10000, TimeUnit.MILLISECONDS), journal=true),
+        WriteConcern(WaitForMembersWC(7), Duration(10000, TimeUnit.MILLISECONDS), journal = true),
         readPreference = PrimaryPreferredRP,
         readPreferenceTags = List(List("a" -> "b", "c" -> "d"), List("k" -> "v", "l" -> "w")),
         authSource = Some("other"),
