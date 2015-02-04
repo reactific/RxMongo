@@ -41,12 +41,14 @@ case class Cursor private[client] (
   private var list = reply.documents.toList
 
   override def hasNext : Boolean = list.nonEmpty
+
   def hasMore : Boolean = hasNext
 
   override def next() : Future[BSONObject] = {
     if (list.isEmpty)
       throw new NoSuchElementException("No more documents in RxMongo Cursor")
     val result = list.head
+    list = list.tail
     if (list.isEmpty) {
       // FIXME: Fetch More
       Future.successful(result)
@@ -58,4 +60,8 @@ case class Cursor private[client] (
   def getNextDocument : Future[BSONObject] = next()
 
   def close() = {}
+
+  override def toSeq : Seq[Future[BSONObject]] = { for (f ← this) yield { f } }.toSeq
+
+  def toFlatSeq : Future[Seq[BSONObject]] = Future.sequence(toSeq)
 }

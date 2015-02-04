@@ -22,8 +22,42 @@
 
 package rxmongo.client
 
-import org.specs2.mutable.Specification
+import rxmongo.bson._
+import rxmongo.driver.QueryOptions
 
-class CursorSpec extends Specification {
+import scala.concurrent.{Future, Await}
+import scala.concurrent.duration.FiniteDuration
 
+class CursorSpec extends RxMongoTest("rxmongo", "cursor") {
+
+  val objs = Seq(
+    BSONObject("a" → 21.0, "b" → 21L, "c" → 21),
+    BSONObject("a" → 28.0, "b" → 28L, "c" → 28),
+    BSONObject("a" → 35.0, "b" → 35L, "c" → 35),
+    BSONObject("a" → 42.0, "b" → 42L, "c" → 42),
+    BSONObject("a" → 49.0, "b" → 49L, "c" → 49),
+    BSONObject("a" → 56.0, "b" → 56L, "c" → 56)
+  )
+
+
+  "Cursor" should {
+    "drop collection before populating" in mongoTest { () ⇒
+      val result = Await.result(collection.drop(), FiniteDuration(1,"seconds"))
+      result must beTrue
+    }
+
+    "insert 6 records to test" in mongoTest { () ⇒
+      val result = Await.result(collection.insert(objs), FiniteDuration(1, "seconds"))
+      result.ok must beEqualTo(1)
+      result.n must beEqualTo(6)
+    }
+
+    "find all 6 documents" in mongoTest { () ⇒
+      val result = Await.result(collection.find(Query("a" $gte 21.0),
+        options=QueryOptions(numberToReturn=10)), FiniteDuration(1, "seconds"))
+      result.hasNext must beEqualTo(true)
+      val contents = Await.result(result.toFlatSeq, FiniteDuration(1, "seconds"))
+      contents.length must beEqualTo(6)
+    }
+  }
 }
