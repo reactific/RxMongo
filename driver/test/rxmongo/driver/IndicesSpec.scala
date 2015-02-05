@@ -20,10 +20,9 @@
  * SOFTWARE.
  */
 
-package rxmongo.client
+package rxmongo.driver
 
 import org.specs2.mutable.Specification
-
 import rxmongo.bson._
 
 /** Test Case For Indices module */

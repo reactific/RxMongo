@@ -411,13 +411,14 @@ object BSONArray {
 
   def apply() : BSONArray = empty
 
-  /*
-  def apply(data : Any, data2 : Any*) : BSONArray = {
-    val bldr = BSONBuilder()
-    bldr.array(Seq(data) ++ data2)
-    new BSONArray(bldr.buffer.result())
+  def apply(objs : BSONObject*) : BSONArray = {
+    val arrayBuilder = BSONBuilder()
+    objs.zipWithIndex.foreach {
+      case (v, i) ⇒
+        arrayBuilder.append(i.toString, v)
+    }
+    BSONArray(arrayBuilder.toByteString)
   }
-  */
 
   def apply(data : Array[Any]) : BSONArray = {
     val bldr = BSONBuilder()

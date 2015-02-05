@@ -89,8 +89,22 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
 
   /** Wraps eval to copy data between collections in a single MongoDB instance. */
   def copyTo() = ???
+
   /** Builds an index on a collection. */
-  def createIndex() = ???
+  def createIndex(keys : Index, options : IndexOptions) : Future[BSONObject] = {
+    options.name.map { name ⇒ require(name.length + fullName.length + 1 < 128, "Full index name must be < 128 characters") }
+    val cmd = CreateIndicesCmd(db.name, name, Seq(keys -> options))
+    db.client.connection.ask(cmd) map processReplyMessage(cmd) { doc ⇒ doc }
+  }
+
+  def createIndices(indices : (Index, IndexOptions)*) : Future[BSONObject] = {
+    for ((index, options) ← indices) {
+      options.name.map { name ⇒ require(name.length + fullName.length + 1 < 128, "Full index name must be < 128 characters") }
+    }
+    val cmd = CreateIndicesCmd(db.name, name, indices)
+    db.client.connection.ask(cmd) map processReplyMessage(cmd) { doc ⇒ doc }
+  }
+
   /** Renders a human-readable view of the data collected by indexStats which reflects B-tree utilization. */
   def getIndexStats() = ???
   /** Renders a human-readable view of the data collected by indexStats which reflects B-tree utilization. */
@@ -247,7 +261,7 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
   /** Performs diagnostic operations on a collection. */
   def validate() = ???
 
-  private def processWriteCommandResult(cmd : Command)(any : Any) : WriteResult = {
+  private def processReplyMessage[T](cmd : Command)(f : (BSONObject) ⇒ T)(any : Any) = {
     any match {
       case reply : ReplyMessage ⇒
         reply.error match {
@@ -255,7 +269,7 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
             throw new RxMongoError(s"Error while processing $cmd: $msg")
           case None ⇒
             require(reply.numberReturned > 0, s"No write result from $cmd")
-            WriteResult(reply.documents.head)
+            f(reply.documents.head)
         }
       case foo ⇒ {
         throw new RxMongoError(s"Unknown result from Connection: $foo")
@@ -263,16 +277,12 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     }
   }
 
-  private def processDoubleOkCommandResult(cmd : Command)(any : Any) : Boolean = {
-    any match {
-      case reply : ReplyMessage ⇒
-        reply.error match {
-          case Some(msg) ⇒
-            throw new RxMongoError(s"Error while processing $cmd: $msg")
-          case None ⇒
-            require(reply.numberReturned > 0, s"No write result from $cmd")
-            reply.documents.head.getAsDouble("ok") == 1.0
-        }
-    }
+  private def processWriteCommandResult(cmd : Command)(any : Any) : WriteResult = {
+    processReplyMessage(cmd) { doc ⇒ WriteResult(doc) } (any)
   }
+
+  private def processDoubleOkCommandResult(cmd : Command)(any : Any) : Boolean = {
+    processReplyMessage(cmd) { doc ⇒ doc.getAsDouble("ok") == 1.0 } (any)
+  }
+
 }

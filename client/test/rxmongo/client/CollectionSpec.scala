@@ -23,6 +23,7 @@
 package rxmongo.client
 
 import rxmongo.bson._
+import rxmongo.driver.{ IndexOptions, Index }
 
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration
@@ -31,17 +32,27 @@ class CollectionSpec extends RxMongoTest("rxmongo", "collection") {
 
   val obj1 = BSONObject("key1" → 42.0, "key2" → 42L, "key3" → 42)
 
+  val atMost = FiniteDuration(2, "seconds")
+
   "Collection" should {
+
     "insert" in mongoTest { () ⇒
-      val result = Await.result(collection.insertOne(obj1), FiniteDuration(1, "seconds"))
+      val result = Await.result(collection.insertOne(obj1), atMost)
       result.ok must beEqualTo(1)
       result.n must beEqualTo(1)
     }
 
+    "create index" in mongoTest { () ⇒
+      val index = Index("key1", ascending = true)
+      val options = IndexOptions()
+      val result = Await.result(collection.createIndex(index, options), atMost)
+      result.getAsDouble("ok") must beEqualTo(1.0)
+    }
+
     "find" in mongoTest { () ⇒
-      val result = Await.result(collection.findOne(Query("key1" $eq 42.0)), FiniteDuration(1, "seconds"))
+      val result = Await.result(collection.findOne(Query("key1" $eq 42.0)), atMost)
       result.hasNext must beEqualTo(true)
-      val obj = Await.result(result.next(), FiniteDuration(1, "seconds"))
+      val obj = Await.result(result.next(), atMost)
       obj.contains("key1") must beTrue
       obj.contains("key2") must beTrue
       obj.contains("key3") must beTrue
@@ -52,27 +63,27 @@ class CollectionSpec extends RxMongoTest("rxmongo", "collection") {
 
     "update" in mongoTest { () ⇒
       val upd = Update("key1" → 42.0, $set("key2", 84L), upsert = false, multi = false, isolated = false)
-      val result = Await.result(collection.updateOne(upd), FiniteDuration(1, "seconds"))
+      val result = Await.result(collection.updateOne(upd), atMost)
       result.ok must beEqualTo(1)
       result.n must beEqualTo(1)
     }
 
     "delete" in mongoTest { () ⇒
       val del = Delete("key1" → 42.0, limit = 1)
-      val result = Await.result(collection.deleteOne(del), FiniteDuration(1, "seconds"))
+      val result = Await.result(collection.deleteOne(del), atMost)
       result.ok must beEqualTo(1)
       result.n must beEqualTo(1)
     }
 
     "rename" in mongoTest { () ⇒
-      val result = Await.result(collection.renameCollection("collection2", dropTarget = true), FiniteDuration(1, "seconds"))
+      val result = Await.result(collection.renameCollection("collection2", dropTarget = true), atMost)
       result.isEmpty must beFalse
       collection = result.get
       collection.name must beEqualTo("collection2")
     }
 
     "drop" in mongoTest { () ⇒
-      val result = Await.result(collection.drop(), FiniteDuration(1, "seconds"))
+      val result = Await.result(collection.drop(), atMost)
       result must beTrue
     }
   }

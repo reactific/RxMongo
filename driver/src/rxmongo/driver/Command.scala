@@ -22,9 +22,8 @@
 
 package rxmongo.driver
 
-import java.util
-
 import rxmongo.bson._
+import rxmongo.bson.BSONCodec._
 
 class Command(db : String, val selector : BSONObject) extends GenericQueryMessage {
   val fullCollectionName = s"$db.$$cmd"
@@ -89,12 +88,12 @@ case class DeleteCmd(
   * {
   * update: <collection>,
   * updates:
-  *   [
-  *      { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *      { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *      { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *      ...
-  *   ],
+  *  [
+  *     { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *     { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *     { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *     ...
+  *  ],
   * ordered: <boolean>,
   * writeConcern: { <write concern> }
   * }
@@ -133,4 +132,22 @@ case class RenameCollectionCmd(
     "renameCollection" → (db + "." + fromName),
     "to" → (db + "." + toName),
     "dropTarget" → dropTarget
+  ))
+
+case class CreateIndicesCmd(
+  db : String,
+  coll : String,
+  indices : Iterable[(Index, IndexOptions)]) extends Command(db,
+  BSONObject(
+    "createIndexes" -> coll,
+    "indexes" -> BSONArray(
+      for ((keys, options) ← indices) yield {
+        val obj : BSONObject = options.result + ("key" -> keys.result)
+        if (obj.contains("name"))
+          obj
+        else {
+          obj + ("name" -> BSONString(db + "." + coll + "." + keys.name))
+        }
+      }
+    )
   ))
