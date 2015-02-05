@@ -87,16 +87,16 @@ case class DeleteCmd(
   *
   * {{{
   * {
-  *  update: <collection>,
-  *  updates:
-  *     [
-  *        { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *        { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *        { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *        ...
-  *     ],
-  *  ordered: <boolean>,
-  *  writeConcern: { <write concern> }
+  * update: <collection>,
+  * updates:
+  *   [
+  *      { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *      { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *      { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *      ...
+  *   ],
+  * ordered: <boolean>,
+  * writeConcern: { <write concern> }
   * }
   * }}}
   *
