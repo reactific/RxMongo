@@ -307,6 +307,16 @@ case class BSONObject private[bson] (buffer : ByteString)
     try { Some(getAs[Boolean, BSONBoolean](key)) } catch { case x : Exception ⇒ None }
   }
 
+  def matches(other: BSONObject) : Boolean = {
+    for ( (k,v) ← other) {
+      get(k) match {
+        case Some(value) ⇒ if (value != v) return false
+        case None ⇒ return false
+      }
+    }
+    true
+  }
+
   override def empty : BSONObject = BSONObject.empty
 
   override def seq : Map[String, BSONValue] = iterator.toMap

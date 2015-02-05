@@ -25,7 +25,7 @@ package rxmongo.client
 import rxmongo.bson._
 import rxmongo.driver.QueryOptions
 
-import scala.concurrent.{ Future, Await }
+import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration
 
 class CursorSpec extends RxMongoTest("rxmongo", "cursor") {
@@ -57,6 +57,12 @@ class CursorSpec extends RxMongoTest("rxmongo", "cursor") {
       result.hasNext must beEqualTo(true)
       val contents = Await.result(result.toFlatSeq, FiniteDuration(1, "seconds"))
       contents.length must beEqualTo(6)
+      contents.exists( obj ⇒ obj.matches(BSONObject("a" → 21.0, "b" → 21L, "c" → 21))) must beTrue
+      contents.exists( obj ⇒ obj.matches(BSONObject("a" → 28.0, "b" → 28L, "c" → 28))) must beTrue
+      contents.exists( obj ⇒ obj.matches(BSONObject("a" → 35.0, "b" → 35L, "c" → 35))) must beTrue
+      contents.exists( obj ⇒ obj.matches(BSONObject("a" → 42.0, "b" → 42L, "c" → 42))) must beTrue
+      contents.exists( obj ⇒ obj.matches(BSONObject("a" → 49.0, "b" → 49L, "c" → 49))) must beTrue
+      contents.exists( obj ⇒ obj.matches(BSONObject("a" → 56.0, "b" → 56L, "c" → 56))) must beTrue
     }
   }
 }
