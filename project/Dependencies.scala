@@ -52,5 +52,7 @@ object Dependencies {
 
   val client = common ++ Seq( )
 
+  val gridfs = common ++ Seq( )
+
   val examples = common ++ Seq( logback_prod )
 }

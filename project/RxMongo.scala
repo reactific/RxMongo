@@ -37,25 +37,37 @@ object RxMongo extends Build {
       dependsOn(examples, client, driver, bson).
       aggregate(bson, driver, client, examples)
 
-  lazy val client = Project(s"${BuildSettings.name}-Client", file("./client"),
+  lazy val gridfs =
+    Project(s"${BuildSettings.name}-GridFS", file("./gridfs"),
+      settings = buildSettings ++ Seq(
+        libraryDependencies ++= Dependencies.gridfs
+      )).
+    dependsOn(client,bson,driver)
+
+  lazy val client =
+    Project(s"${BuildSettings.name}-Client", file("./client"),
       settings = buildSettings ++ Seq(
         libraryDependencies ++= Dependencies.client
       )).
-      dependsOn(bson,driver)
+    dependsOn(bson,driver)
 
-  lazy val driver = Project(s"${BuildSettings.name}-Driver", file("./driver"),
-    settings = buildSettings ++ Seq(
-      libraryDependencies := Dependencies.driver
-    )).
+  lazy val driver =
+    Project(s"${BuildSettings.name}-Driver", file("./driver"),
+      settings = buildSettings ++ Seq(
+        libraryDependencies := Dependencies.driver
+      )).
     dependsOn(bson)
 
-  lazy val bson = Project(s"${BuildSettings.name}-BSON", file("./bson"),
-    settings = buildSettings ++ Seq(
-      libraryDependencies ++= Dependencies.bson
-    ))
+  lazy val bson =
+    Project(s"${BuildSettings.name}-BSON", file("./bson"),
+      settings = buildSettings ++ Seq(
+        libraryDependencies ++= Dependencies.bson
+      ))
 
-  lazy val examples = Project(s"${BuildSettings.name}-Examples", file("./examples"),
-    settings = buildSettings ++ Seq(
-      libraryDependencies ++= Dependencies.examples
-    )).dependsOn(client,driver)
+  lazy val examples =
+    Project(s"${BuildSettings.name}-Examples", file("./examples"),
+      settings = buildSettings ++ Seq(
+        libraryDependencies ++= Dependencies.examples
+      )).
+    dependsOn(client,driver)
 }
