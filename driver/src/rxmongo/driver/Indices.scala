@@ -49,37 +49,37 @@ case class MMapV1Config(doc : BSONObject) extends { val name : String = "mmapv1"
 /** Options For Index Creation
   * @see [[http://docs.mongodb.org/v3.0/reference/method/db.collection.createIndex/#ensureindex-options]]
   * @param unique Creates a unique index so that the collection will not accept insertion of documents where the
-  *          index key or keys match an existing value in the index. Specify true to create a unique index.
-  *          The default value is false. The option is unavailable for hashed indexes.
+  *         index key or keys match an existing value in the index. Specify true to create a unique index.
+  *         The default value is false. The option is unavailable for hashed indexes.
   * @param sparse If true, the index only references documents with the specified field. These indexes use less
-  *          space but behave differently in some situations (particularly sorts). The default value is false.
-  *          2dsphere indexes are sparse by default and ignore this option. For a compound index that includes
-  *          2dsphere index key(s) along with keys of other types, only the 2dsphere index fields determine
-  *          whether the index references a document. 2d, geoHaystack, and text indexes behave similarly to
-  *          the 2dsphere indexes.
+  *         space but behave differently in some situations (particularly sorts). The default value is false.
+  *         2dsphere indexes are sparse by default and ignore this option. For a compound index that includes
+  *         2dsphere index key(s) along with keys of other types, only the 2dsphere index fields determine
+  *         whether the index references a document. 2d, geoHaystack, and text indexes behave similarly to
+  *         the 2dsphere indexes.
   * @param background Builds the index in the background so that building an index does not block other database
-  *              activities. Specify true to build in the background. The default value is false.
+  *             activities. Specify true to build in the background. The default value is false.
   * @param name The name of the index. If unspecified, MongoDB generates an index name by concatenating the names of
-  *        the indexed fields and the sort order. Whether user specified or MongoDB generated, index names
-  *        including their full namespace (i.e. database.collection) cannot be longer than the Index Name Limit.
+  *       the indexed fields and the sort order. Whether user specified or MongoDB generated, index names
+  *       including their full namespace (i.e. database.collection) cannot be longer than the Index Name Limit.
   * @param expireAfterSeconds Specifies a value, in seconds, as a TTL to control how long MongoDB retains documents in
-  *                      this collection. This applies only to TTL indexes.
+  *                     this collection. This applies only to TTL indexes.
   * @param storageEngine Allows users to specify configuration to the storage engine on a per-index basis when
-  *                 creating an index. Storage engine configuration specified when creating indexes are validated
-  *                 and logged to the oplog during replication to support replica sets with members that use
-  *                 different storage engines.
+  *                creating an index. Storage engine configuration specified when creating indexes are validated
+  *                and logged to the oplog during replication to support replica sets with members that use
+  *                different storage engines.
   * @param weights For Text indices, specifies the weights to assign fields in the document
   * @param default_language For Text indices, specifies the default language for the text
   * @param language_override For Text indices, specifies the field name that provides the language of the text
   * @param bits For 2d indices, the number of precision of the stored geohash value of the location data. The bits
-  *        value ranges from 1 to 32 inclusive. The default value is 26.
+  *       value ranges from 1 to 32 inclusive. The default value is 26.
   * @param min For 2d indices, the lower inclusive boundary for the longitude and latitude values. The default
-  *       value is -180.0.
+  *      value is -180.0.
   * @param max For 2d indices, the upper inclusive boundary for the longitude and latitude values. The default
-  *       value is 180.0.
+  *      value is 180.0.
   * @param bucketSize For geoHaystack indexes, specify the number of units within which to group the location
-  *              values; i.e. group in the same bucket those location values that are within the specified
-  *              number of units to each other. The value must be greater than 0.
+  *             values; i.e. group in the same bucket those location values that are within the specified
+  *             number of units to each other. The value must be greater than 0.
   */
 case class IndexOptions(
   unique : Option[Boolean] = None,
