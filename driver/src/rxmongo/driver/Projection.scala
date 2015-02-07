@@ -20,9 +20,9 @@
  * SOFTWARE.
  */
 
-package rxmongo.client
+package rxmongo.driver
 
-import rxmongo.bson.{ Query, BSONProvider, BSONBuilder }
+import rxmongo.bson.{ BSONBuilder, BSONProvider, Query }
 
 /** Represents A MongoDB Query Projection
   *
@@ -104,7 +104,7 @@ class Projection extends BSONProvider {
     * @param skip The number of elements of the array to skip, from the start
     * @param count The number of elements of the array to return, from the skip point
     * @return A projection that returns the `count` elements of the array named `name` starting at
-    *  `skip` elements from the start
+    * `skip` elements from the start
     */
   def slice(name : String, skip : Int, count : Int) : Projection = {
     builder.obj(name, BSONBuilder().array("$slice", skip, count))
@@ -118,7 +118,7 @@ class Projection extends BSONProvider {
     * @param skip The number of elements of the array to skip, from the start
     * @param count The number of elements of the array to return, from the skip point
     * @return A projection that returns the `count` elements of the array named `name` starting at
-    *  `skip` elements from the start
+    * `skip` elements from the start
     */
   def sliceFromStart(name : String, skip : Int, count : Int) : Projection = slice(name, skip, count)
 
@@ -129,7 +129,7 @@ class Projection extends BSONProvider {
     * @param skip The number of elements of the array to skip, from the end
     * @param count The number of elements of the array to return, from the skip point
     * @return A projection that returns `count` elements of the array named `name` starting from
-    *  `skip` elements from the end.
+    * `skip` elements from the end.
     */
   def sliceFromEnd(name : String, skip : Int, count : Int) : Projection = {
     builder.obj(name, BSONBuilder().array("$slice", -skip, count))

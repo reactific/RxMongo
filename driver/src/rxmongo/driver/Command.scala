@@ -85,10 +85,10 @@ case class DeleteCmd(
   * update: <collection>,
   * updates:
   * [
-  *    { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *    { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *    { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *    ...
+  *  { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *  { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *  { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
+  *  ...
   * ],
   * ordered: <boolean>,
   * writeConcern: { <write concern> }
@@ -114,4 +114,29 @@ case class UpdateCmd(
     "ordered" → ordered,
     "writeConcern" → WriteConcern.Codec.write(writeConcern)
   ))
+
+case class FindAndModifyCmd(
+  db : String,
+  coll : String,
+  query : Option[Query] = None,
+  sortBy : Seq[(String, Boolean)] = Seq.empty[(String, Boolean)],
+  update : Option[BSONObject] = None,
+  remove : Option[Boolean] = None,
+  returnNew : Option[Boolean] = None,
+  upsert : Option[Boolean] = None,
+  fields : Option[Projection] = None) extends Command(db, {
+  val b = BSONBuilder()
+  b.string("findAndModify", coll)
+  query.map { q ⇒ b.obj("query", q.result) }
+  if (sortBy.nonEmpty) {
+    val s = BSONBuilder()
+    sortBy.map { case (field, ascending) ⇒ s.integer(field, if (ascending) 1 else -1) }
+  }
+  update.map { u ⇒ b.obj("update", u) }
+  remove.map { r ⇒ b.boolean("remove", r) }
+  upsert.map { u ⇒ b.boolean("upsert", u) }
+  returnNew.map { rn ⇒ b.boolean("new", rn) }
+  fields.map { f ⇒ b.obj("fields", f.result) }
+  b.result
+})
 

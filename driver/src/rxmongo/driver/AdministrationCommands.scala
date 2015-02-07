@@ -78,6 +78,9 @@ case class CopyDbCmd(
   b.result
 })
 
+case class CopyDbGetNonceCmd(
+  db : String) extends Command(db, BSONObject("copydbgetnonce" -> 1))
+
 /** clone
   * @see [[http://docs.mongodb.org/master/reference/command/clone/]]
   * @param dbSpec The database/hostname/port to clone from

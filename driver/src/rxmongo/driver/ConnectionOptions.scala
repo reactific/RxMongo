@@ -146,18 +146,18 @@ import scala.concurrent.duration._
   * 0.25 or 25% of maxPoolSize (rounded up). For example, if maxPoolSize is 10 then whenever the
   * pool needs to grow (all channels are busy), it will grow by 3.
   * @param backoffThreshold The threshold of the Channel pool that is busy below which the pools size is decreased. The
-  *       default is 0.25 or 25% of maxPoolSize (rounded up). For example if maxPoolSize is 10 then
-  *       the pool size will only be lowered when 3 or fewer Channels are busy.
+  *      default is 0.25 or 25% of maxPoolSize (rounded up). For example if maxPoolSize is 10 then
+  *      the pool size will only be lowered when 3 or fewer Channels are busy.
   * @param backoffRate The rate at which we remove channels from the pool when we are backing off. The default value
-  *  is 0.10 or 10% of maxPoolSize (rounded up). FOr example, if maxPoolSize is 10 then whenever we
-  *  are removing channels, we remove 1 at a time
+  * is 0.10 or 10% of maxPoolSize (rounded up). FOr example, if maxPoolSize is 10 then whenever we
+  * are removing channels, we remove 1 at a time
   * @param messagesPerResize The number of messages flowing into the connection between size checks. Increasing this
-  *        value decreases the overhead of the resizing logic at the expense of potentially increasing
-  *        processing delays because channels were not created quickly enough. The default is 10
+  *       value decreases the overhead of the resizing logic at the expense of potentially increasing
+  *       processing delays because channels were not created quickly enough. The default is 10
   * @param channelReconnectPeriod When all access to a replica set fails, RxMongo tries to regularly reconnect using
-  *                the information it has. This value controls the period of time between reconnection
-  *                attempts. The default is 10,000 milliseconds (10 seconds). A value of 0 means fail
-  *                instead of attempting reconnection.
+  *               the information it has. This value controls the period of time between reconnection
+  *               attempts. The default is 10,000 milliseconds (10 seconds). A value of 0 means fail
+  *               instead of attempting reconnection.
   */
 
 case class ConnectionOptions(
@@ -277,7 +277,10 @@ case class MembersWithTagWC(tag : String) extends WriteConcernKind { override de
 case class WriteConcern(
   kind : WriteConcernKind,
   timeout : FiniteDuration,
-  journal : Boolean)
+  journal : Boolean) extends BSONProvider {
+  def toByteString = { WriteConcern.Codec.write(this).buffer }
+  override def toBSONObject = { WriteConcern.Codec.write(this) }
+}
 
 object WriteConcern {
   val default = WriteConcern()
