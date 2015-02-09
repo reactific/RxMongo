@@ -20,16 +20,15 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.driver.cmds
 
-import rxmongo.bson.{ Query, BSONBuilder, BSONObject }
+import rxmongo.bson.{ BSONBuilder, BSONObject }
+import rxmongo.driver.{ AdminCommand, Command }
 
-class AdminCommand(query : BSONObject) extends Command("admin", query)
-
-case class IsMasterCmd() extends AdminCommand(BSONObject("isMaster" → 1))
 case class ServerStatus() extends AdminCommand(BSONObject("serverStatus" → 1))
 
 /** renameCollection
+  * Changes the name of an existing collection.
   * @see [[http://docs.mongodb.org/master/reference/command/renameCollection/#dbcmd.renameCollection]]
   * @param db Database in which source collection exists
   * @param fromName Name of existing collection
@@ -48,7 +47,7 @@ case class RenameCollectionCmd(
   ))
 
 /** copyDb
-  *
+  * Copies a database from a remote host to the current host.
   * @see [[http://docs.mongodb.org/master/reference/command/copydb/]]
   * @param fromdb The name of the database from which the copy is made
   * @param todb The name of the newly copied database
@@ -78,60 +77,32 @@ case class CopyDbCmd(
   b.result
 })
 
-case class CopyDbGetNonceCmd(
-  db : String) extends Command(db, BSONObject("copydbgetnonce" -> 1))
+/** dropDatabase
+  * Removes the current database.
+  * @see [[http://docs.mongodb.org/master/reference/command/dropDatabase/]]
+  * @param db the database to drop
+  */
+case class DropDatabaseCmd(db : String) extends Command(db, BSONObject("dropDatabase" → 1))
 
 /** clone
+  * Copies a database from a remote host to the current host.
   * @see [[http://docs.mongodb.org/master/reference/command/clone/]]
   * @param dbSpec The database/hostname/port to clone from
   */
 case class CloneCmd(dbSpec : String) extends AdminCommand(BSONObject("clone" → dbSpec))
 
-/** cloneCollection
-  * @see [[http://docs.mongodb.org/master/reference/command/cloneCollection/]]
-  * @param db The database name containing the collection to clone
-  * @param coll The name of the collection to clone
-  * @param host The host on which the source collection resides
-  * @param query A query to filter the documents cloned
-  */
-case class CloneCollectionCmd(db : String, coll : String, host : String, query : Query)
-  extends AdminCommand(BSONObject("cloneCollection" → (db + "." + coll), "host" → host, "query" → query.result))
-
-/** cloneCollectionAsCapped
-  *
-  * @param db The database name to operate on
-  * @param existing THe existing collection to clone documents from
-  * @param target The name of the new capped collection
-  * @param size The maximum size of the new capped collection (bytes not # of documents)
-  */
-case class CloneCollectionAsCapped(db : String, existing : String, target : String, size : Int)
-  extends AdminCommand(
-    BSONObject("cloneCollectionAsCapped" → (db + "." + existing), "toCollection" → (db + "." + target), "size" → size)
-  )
-
-/** convertToCapped
-  * @see [[http://docs.mongodb.org/master/reference/command/convertToCapped/]]
-  * @param db The database name to operate on
-  * @param coll The name of an existing collectiont to be converted to a capped collection
-  * @param size The maximum size, in bytes, of the new capped collection
-  */
-case class ConvertToCapped(db : String, coll : String, size : Int)
-  extends AdminCommand(
-    BSONObject("convertToCapped" → (db + "." + coll), "size" → size)
-  )
-
 /** fsync
+  * Flushes pending writes to the storage layer and locks the database to allow backups.
   * @see [[http://docs.mongodb.org/master/reference/command/fsync/]]
   * @param async Do fsync asynchronously
   */
 case class FSyncCmd(async : Boolean = false)
   extends AdminCommand(BSONObject("fsync" → 1, "async" → async))
 
-/** logRotate
-  * @see [[http://docs.mongodb.org/master/reference/command/logRotate/]]
+/** connectionStatus
+  * Reports the authentication state for the current connection.
+  * @see [[http://docs.mongodb.org/master/reference/command/connectionStatus/#dbcmd.connectionStatus]]
   */
-case object LogRotateCmd extends AdminCommand(BSONObject("logRotate" → 1))
-
 case class ConnectionStatus()
   extends AdminCommand(BSONObject("connectionStatus" → 1))
 
@@ -287,3 +258,9 @@ case object WriteLogger extends MongoLoggers { override def toString = "write" }
 case class SetLogComponentVerbosity(default : Int, components : (MongoLoggers, Int)*)
   extends AdminCommand(
     BSONObject((components.map { case (l, v) ⇒ l.toString -> v }) : _*) + ("verbosity" → default))
+
+/** logRotate
+  * Rotates the MongoDB logs to prevent a single file from taking too much space.
+  * @see [[http://docs.mongodb.org/master/reference/command/logRotate/]]
+  */
+case object LogRotateCmd extends AdminCommand(BSONObject("logRotate" → 1))

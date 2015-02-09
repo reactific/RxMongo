@@ -200,10 +200,10 @@ abstract class GenericQueryMessage extends RequestMessage(Message.OP_QUERY) {
   * elements, all of which must match for a document to be included in the result set. Possible elements
   * include $query, $orderby, $hint, $explain, and $snapshot.
   * @param returnFieldsSelector Optional. Selector indicating the fields to return. BSON document that limits the
-  *  fields in the returned documents. The returnFieldsSelector contains one or more
-  *  elements, each of which is the name of a field that should be returned, and and the
-  *  integer value 1. In JSON notation, a returnFieldsSelector to limit to the fields
-  *  a, b and c would be: `{ a : 1, b : 1, c : 1}`.
+  * fields in the returned documents. The returnFieldsSelector contains one or more
+  * elements, each of which is the name of a field that should be returned, and and the
+  * integer value 1. In JSON notation, a returnFieldsSelector to limit to the fields
+  * a, b and c would be: `{ a : 1, b : 1, c : 1}`.
   * @param options The options for the query. See [[rxmongo.driver.QueryOptions]].
   *
   * The database will respond to an OP_QUERY message with an OP_REPLY message.

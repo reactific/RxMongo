@@ -20,9 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.driver.cmds
 
 import rxmongo.bson.{ BSONObject, BSONObjectID }
+import rxmongo.driver.AdminCommand
 
 /** filemd5
   * @see [[http://docs.mongodb.org/master/reference/command/filemd5/]]

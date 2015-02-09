@@ -29,6 +29,7 @@ import akka.util.Timeout
 
 import rxmongo.bson._
 import rxmongo.driver._
+import rxmongo.driver.cmds._
 
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration._

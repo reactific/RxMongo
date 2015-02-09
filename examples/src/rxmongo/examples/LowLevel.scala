@@ -29,6 +29,7 @@ import akka.util.Timeout
 import rxmongo.driver.Connection.CheckReplicaSet
 
 import rxmongo.driver._
+import rxmongo.driver.cmds._
 
 import scala.collection.mutable
 import scala.concurrent.{ Future, Await }
@@ -119,7 +120,7 @@ object LowLevel extends App {
     if (options.size != 1)
       println("You must specify exactly one database name as an argument to getDBStats")
     else {
-      val result = (connection ? DBStatsCmd(options(0))).mapTo[ReplyMessage] map { reply ⇒
+      val result = (connection ? DbStatsCmd(options(0))).mapTo[ReplyMessage] map { reply ⇒
         reply.toString()
       }
       cmdResults.put(cmdId, result)

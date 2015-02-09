@@ -23,120 +23,22 @@
 package rxmongo.driver
 
 import rxmongo.bson._
-import rxmongo.bson.BSONCodec._
 
+/** Generic command issued on a database
+  * Commands are basically query commands issued to the "$cmd" collection. The selector of the query forms the
+  * content of the command and its parameters. Subclasses of this class form all the standard commands tthat
+  * MongoDB knows to process from a driver.
+  * @param db The name of the database towards which the command should be directed.
+  * @param selector The content of the command.
+  */
 class Command(db : String, val selector : BSONObject) extends GenericQueryMessage {
   val fullCollectionName = s"$db.$$cmd"
   val options = QueryOptions.default
   val returnFieldsSelector : Option[BSONObject] = None
 }
 
-case class GetLastErrorCmd(db : String) extends Command(db, BSONObject("getLastError" → 1))
-case class DBStatsCmd(db : String) extends Command(db, BSONObject("dbStats" → 1))
-case class CollStatsCmd(db : String, collection : String, scale : Int = 1024, verbose : Boolean = true)
-  extends Command(db, BSONObject("collStats" → collection, "scale" → scale, "verbose" → verbose))
-
-/** Represents A MongoDB Write Command
-  * @see [[http://docs.mongodb.org/master/reference/command/insert/#dbcmd.insert]]
-  * @param db
-  * @param coll
-  * @param documents
-  * @param ordered
-  * @param writeConcern
+/** An Administrative Command
+  * This is like a generic command but it is always directed towards the database named "admin".
+  * @param query
   */
-case class InsertCmd(
-  db : String,
-  coll : String,
-  documents : Seq[BSONObject],
-  ordered : Boolean,
-  writeConcern : WriteConcern) extends Command(db, BSONObject(
-  "insert" → coll,
-  "documents" → BSONArray(documents),
-  "ordered" → ordered,
-  "writeConcern" → WriteConcern.Codec.write(writeConcern)
-))
-
-/** Represents a MongoDB Delete Command
-  *
-  * @see [[http://docs.mongodb.org/master/reference/command/delete/]]
-  * @param db
-  * @param coll
-  * @param deletes
-  * @param ordered
-  * @param writeConcern
-  */
-case class DeleteCmd(
-  db : String,
-  coll : String,
-  deletes : Seq[Delete],
-  ordered : Boolean,
-  writeConcern : WriteConcern) extends Command(db,
-  BSONObject(
-    "delete" → coll,
-    "deletes" → BSONArray[Delete, BSONObject](deletes),
-    "ordered" → ordered,
-    "writeConcern" → WriteConcern.Codec.write(writeConcern)
-  ))
-
-/** Representation Of An Update Command
-  *
-  * {{{
-  * {
-  * update: <collection>,
-  * updates:
-  * [
-  *  { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *  { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *  { q: <query>, u: <update>, upsert: <boolean>, multi: <boolean> },
-  *  ...
-  * ],
-  * ordered: <boolean>,
-  * writeConcern: { <write concern> }
-  * }
-  * }}}
-  *
-  * @see [[http://docs.mongodb.org/master/reference/command/update/]]
-  * @param db
-  * @param coll
-  * @param updates
-  * @param ordered
-  * @param writeConcern
-  */
-case class UpdateCmd(
-  db : String,
-  coll : String,
-  updates : Seq[Update],
-  ordered : Boolean,
-  writeConcern : WriteConcern) extends Command(db,
-  BSONObject(
-    "update" → coll,
-    "updates" → BSONArray[Update, BSONObject](updates),
-    "ordered" → ordered,
-    "writeConcern" → WriteConcern.Codec.write(writeConcern)
-  ))
-
-case class FindAndModifyCmd(
-  db : String,
-  coll : String,
-  query : Option[Query] = None,
-  sortBy : Seq[(String, Boolean)] = Seq.empty[(String, Boolean)],
-  update : Option[BSONObject] = None,
-  remove : Option[Boolean] = None,
-  returnNew : Option[Boolean] = None,
-  upsert : Option[Boolean] = None,
-  fields : Option[Projection] = None) extends Command(db, {
-  val b = BSONBuilder()
-  b.string("findAndModify", coll)
-  query.map { q ⇒ b.obj("query", q.result) }
-  if (sortBy.nonEmpty) {
-    val s = BSONBuilder()
-    sortBy.map { case (field, ascending) ⇒ s.integer(field, if (ascending) 1 else -1) }
-  }
-  update.map { u ⇒ b.obj("update", u) }
-  remove.map { r ⇒ b.boolean("remove", r) }
-  upsert.map { u ⇒ b.boolean("upsert", u) }
-  returnNew.map { rn ⇒ b.boolean("new", rn) }
-  fields.map { f ⇒ b.obj("fields", f.result) }
-  b.result
-})
-
+class AdminCommand(query : BSONObject) extends Command("admin", query)

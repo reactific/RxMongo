@@ -20,15 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.driver.cmds
 
 import rxmongo.bson._
-
-/** dropDatabase
-  * @see [[http://docs.mongodb.org/master/reference/command/dropDatabase/]]
-  * @param db the database to drop
-  */
-case class DropDatabaseCmd(db : String) extends Command(db, BSONObject("dropDatabase" → 1))
+import rxmongo.driver.{ AdminCommand, Index, IndexOptions, Command }
 
 /** listCollections
   * @see [[http://docs.mongodb.org/master/reference/command/listCollections/]]
@@ -77,6 +72,41 @@ case class CreateCollectionCmd(
   size : Option[Int] = None,
   max : Option[Int] = None,
   usePowerOf2Sizes : Int = 1) extends Command(db, BSONObject())
+
+/** cloneCollection
+  * Copies a collection from a remote host to the current host.
+  * @see [[http://docs.mongodb.org/master/reference/command/cloneCollection/]]
+  * @param db The database name containing the collection to clone
+  * @param coll The name of the collection to clone
+  * @param host The host on which the source collection resides
+  * @param query A query to filter the documents cloned
+  */
+case class CloneCollectionCmd(db : String, coll : String, host : String, query : Query)
+  extends AdminCommand(BSONObject("cloneCollection" → (db + "." + coll), "host" → host, "query" → query.result))
+
+/** cloneCollectionAsCapped
+  * Copies a non-capped collection as a new capped collection.
+  * @param db The database name to operate on
+  * @param existing THe existing collection to clone documents from
+  * @param target The name of the new capped collection
+  * @param size The maximum size of the new capped collection (bytes not # of documents)
+  */
+case class CloneCollectionAsCapped(db : String, existing : String, target : String, size : Int)
+  extends AdminCommand(
+    BSONObject("cloneCollectionAsCapped" → (db + "." + existing), "toCollection" → (db + "." + target), "size" → size)
+  )
+
+/** convertToCapped
+  * Converts a non-capped collection to a capped collection.
+  * @see [[http://docs.mongodb.org/master/reference/command/convertToCapped/]]
+  * @param db The database name to operate on
+  * @param coll The name of an existing collectiont to be converted to a capped collection
+  * @param size The maximum size, in bytes, of the new capped collection
+  */
+case class ConvertToCapped(db : String, coll : String, size : Int)
+  extends AdminCommand(
+    BSONObject("convertToCapped" → (db + "." + coll), "size" → size)
+  )
 
 /** createIndexes
   * @see [[http://docs.mongodb.org/master/reference/command/createIndexes/]]
@@ -132,18 +162,18 @@ case class DropAllIndicesCmd(db : String, coll : String)
   extends Command(db, BSONObject("dropIndexes" → coll, "index" → "*"))
 
 /** compact
-  *
+  * Defragments a collection and rebuilds the indexes.
   * @param db The name of the database.
   * @param coll The name of the collection.
   * @param force If true, compact can run on the primary in a replica set. If false, compact returns an error when
-  *            run on a primary, because the command blocks all other activity. Compact blocks activity only for
-  *            the database it is compacting.
+  *         run on a primary, because the command blocks all other activity. Compact blocks activity only for
+  *         the database it is compacting.
   * @param paddingFactor Describes the record size allocated for each document as a factor of the document size for
-  *                    all records compacted during the compact operation. The paddingFactor does not affect
-  *                    the padding of subsequent record allocations after compact completes.
+  *                 all records compacted during the compact operation. The paddingFactor does not affect
+  *                 the padding of subsequent record allocations after compact completes.
   * @param paddingBytes Sets the padding as an absolute number of bytes for all records compacted during the compact
-  *                   operation. After compact completes, paddingBytes does not affect the padding of subsequent
-  *                   record allocations.
+  *                operation. After compact completes, paddingBytes does not affect the padding of subsequent
+  *                record allocations.
   */
 case class CompactCmd(
   db : String,
@@ -208,14 +238,3 @@ case class TouchCmd(
   data : Boolean = false,
   index : Boolean = false) extends Command(db, BSONObject("touch" -> coll, "data" -> data, "index" -> index))
 
-/** parallelCollectionScan
-  *
-  * @see [[http://docs.mongodb.org/master/reference/command/parallelCollectionScan/#dbcmd.parallelCollectionScan]]
-  * @param db The database containing the collection
-  * @param coll The collection to scan in parallel
-  * @param numCursors The number of cursors to return for scanning in parallel
-  */
-case class ParallelCollectionScan(
-  db : String,
-  coll : String,
-  numCursors : Int) extends Command(db, BSONObject("parallelCollectionScan" -> coll, "numCursors" -> numCursors))
