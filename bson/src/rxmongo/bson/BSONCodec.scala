@@ -199,4 +199,13 @@ object BSONCodec {
       BSONArray(value)
     }
   }
+
+  implicit object ArrayOfByteCodec extends BSONCodec[Array[Byte], BSONBinary] {
+    def code = BinaryCode
+    def read(value : BSONBinary) : Array[Byte] = { value.value._2 }
+    def write(value : Array[Byte]) : BSONBinary = {
+      BSONBinary(value, UserDefinedBinary)
+    }
+
+  }
 }

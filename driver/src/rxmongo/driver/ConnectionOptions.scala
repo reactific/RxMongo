@@ -62,10 +62,10 @@ import scala.concurrent.duration._
   * default, 0, indicates that the requests are only constrained by memory size
   * @param waitQueueTimeoutMS The maximum time in milliseconds that a request can wait for a connection to become
   * available. The default is 60,000
-  * @param w The Write Concern option. Write concern describes the kind of assurances that the mongod and the driver
-  * provide to the application regarding the success and durability of the write operation. This option defines
-  * the level and kind of write concern. This option can take either a number or a string as a value, as
-  * follows:
+  * @param writeConcern The Write Concern option. Write concern describes the kind of assurances that the mongod and
+  *                   the driver provide to the application regarding the success and durability of the write
+  *                   operation. This option defines the level and kind of write concern. This option can take either
+  *                   a number or a string as a value, as follows:
   * {{{
   * Option	Type	  Description
   * -1      number  The driver will not acknowledge write operations and will suppress all network or socket errors.
@@ -122,7 +122,7 @@ import scala.concurrent.duration._
   * @param authSource Specify the database name associated with the user’s credentials, if the users collection do
   * not exist in the database where the client is connecting. authSource defaults to the database
   * specified in the connection string. For authentication mechanisms that delegate credential
-  * storage to other services, the authSource value should be $external as with the
+  * storage to other services, the authSource value should be \$external as with the
   * PLAIN (LDAP) and GSSAPI (Kerberos) authentication mechanisms. MongoDB will ignore authSource
   * values if the connection string specifies no user name.
   * @param authMechanism Support for the PLAIN and MONGODB-X509 authentication mechanisms. Specify the authentication
@@ -146,18 +146,18 @@ import scala.concurrent.duration._
   * 0.25 or 25% of maxPoolSize (rounded up). For example, if maxPoolSize is 10 then whenever the
   * pool needs to grow (all channels are busy), it will grow by 3.
   * @param backoffThreshold The threshold of the Channel pool that is busy below which the pools size is decreased. The
-  *    default is 0.25 or 25% of maxPoolSize (rounded up). For example if maxPoolSize is 10 then
-  *    the pool size will only be lowered when 3 or fewer Channels are busy.
+  * default is 0.25 or 25% of maxPoolSize (rounded up). For example if maxPoolSize is 10 then
+  * the pool size will only be lowered when 3 or fewer Channels are busy.
   * @param backoffRate The rate at which we remove channels from the pool when we are backing off. The default value
   * is 0.10 or 10% of maxPoolSize (rounded up). FOr example, if maxPoolSize is 10 then whenever we
   * are removing channels, we remove 1 at a time
   * @param messagesPerResize The number of messages flowing into the connection between size checks. Increasing this
-  *     value decreases the overhead of the resizing logic at the expense of potentially increasing
-  *     processing delays because channels were not created quickly enough. The default is 10
+  *  value decreases the overhead of the resizing logic at the expense of potentially increasing
+  *  processing delays because channels were not created quickly enough. The default is 10
   * @param channelReconnectPeriod When all access to a replica set fails, RxMongo tries to regularly reconnect using
-  *             the information it has. This value controls the period of time between reconnection
-  *             attempts. The default is 10,000 milliseconds (10 seconds). A value of 0 means fail
-  *             instead of attempting reconnection.
+  *          the information it has. This value controls the period of time between reconnection
+  *          attempts. The default is 10,000 milliseconds (10 seconds). A value of 0 means fail
+  *          instead of attempting reconnection.
   */
 
 case class ConnectionOptions(

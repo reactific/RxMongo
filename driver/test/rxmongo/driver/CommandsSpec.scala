@@ -20,37 +20,25 @@
  * SOFTWARE.
  */
 
-import sbt._
-import sbt.Keys._
-import scala.language.postfixOps
+package rxmongo.driver
 
-object Publish {
-  def targetRepository: Def.Initialize[Option[Resolver]] = Def.setting {
-    val nexus = "https://oss.sonatype.org/"
-    val snapshotsR = "snapshots" at nexus + "content/repositories/snapshots"
-    val releasesR  = "releases"  at nexus + "service/local/staging/deploy/maven2"
-    val resolver = if (isSnapshot.value) snapshotsR else releasesR
-    Some(resolver)
+import org.specs2.mutable.Specification
+
+import rxmongo.bson._
+import rxmongo.driver.cmds.FindAndModifyCmd
+
+class CommandsSpec extends Specification {
+
+  sequential
+
+  "Commands" should {
+    "print themselves out" in {
+      val cmd = new Command("db", BSONObject("cmd" → 1))
+      cmd.toString must beEqualTo("Command(opcode=OP_QUERY,requestId=1,requiresResponse=true,db=db,options=QueryOptions(0,1,false,false,false,false,false,false),selector={ cmd->1 },returnFieldsSelector=None)")
+    }
+    "print out case class subclasses" in {
+      val cmd = FindAndModifyCmd("db", "coll", Some(Query("a" $eq "b")), Seq("a" → true), None, Some(true))
+      cmd.toString must beEqualTo("FindAndModifyCmd(opcode=OP_QUERY,requestId=2,requiresResponse=true,db=db,options=QueryOptions(0,1,false,false,false,false,false,false),selector={ findAndModify->coll, query->{ $query->{ a->b } }, remove->true },returnFieldsSelector=None)")
+    }
   }
-
-  lazy val settings = Seq(
-    publishMavenStyle := true,
-    publishTo := targetRepository.value,
-    publishArtifact in Test := false,
-    pomIncludeRepository := { _ => false },
-    licenses := Seq("MIT" -> url("http://opensource.org/licenses/MIT")),
-    homepage := Some(url("http://rxmongo.org")),
-    pomExtra :=
-      <scm>
-        <url>git://github.com/reactific/RxMongo.git</url>
-        <connection>scm:git://github.com/reactific/RxMongo.git</connection>
-      </scm>
-      <developers>
-        <developer>
-          <id>reid-spencer</id>
-          <name>Reid Spencer</name>
-          <url>https://github.com/reid-spencer</url>
-        </developer>
-      </developers>
-  )
 }

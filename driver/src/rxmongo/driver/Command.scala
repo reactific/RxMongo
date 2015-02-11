@@ -25,16 +25,25 @@ package rxmongo.driver
 import rxmongo.bson._
 
 /** Generic command issued on a database
-  * Commands are basically query commands issued to the "$cmd" collection. The selector of the query forms the
-  * content of the command and its parameters. Subclasses of this class form all the standard commands tthat
+  * Commands are basically query commands issued to the "\$cmd" collection. The selector of the query forms the
+  * content of the command and its parameters. Subclasses of this class form all the standard commands that
   * MongoDB knows to process from a driver.
   * @param db The name of the database towards which the command should be directed.
   * @param selector The content of the command.
   */
-class Command(db : String, val selector : BSONObject) extends GenericQueryMessage {
+class Command(
+  db : String,
+  val selector : BSONObject) extends GenericQueryMessage {
   val fullCollectionName = s"$db.$$cmd"
   val options = QueryOptions.default
   val returnFieldsSelector : Option[BSONObject] = None
+  override def appendTo(builder : StringBuilder) : StringBuilder = {
+    super.appendTo(builder).
+      append(",db=").append(db).
+      append(",options=").append(options).
+      append(",selector=").append(selector).
+      append(",returnFieldsSelector=").append(returnFieldsSelector)
+  }
 }
 
 /** An Administrative Command

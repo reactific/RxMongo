@@ -28,6 +28,8 @@ import akka.actor._
 import akka.event.LoggingReceive
 import akka.io.Inet.SocketOption
 import akka.io.{ IO, Tcp }
+import akka.stream.scaladsl.StreamTcp
+import akka.stream.scaladsl.StreamTcp.OutgoingConnection
 import akka.util.ByteString
 import rxmongo.driver.Channel.{ ConnectionSucceeded, Ack, ConnectionFailed }
 
@@ -60,6 +62,21 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
 
   import Tcp._
   import context.system
+
+  /** TODO: Convert Channel to use StreamTCP instead of Akka.IO
+    *
+    * val streamTcp = StreamTcp(context.system)
+    * val connection : OutgoingConnection = streamTcp.outgoingConnection(
+    * remoteAddress = remote,
+    * localAddress = Some(new InetSocketAddress(options.localIP.orNull, options.localPort)),
+    * options = List[SocketOption](
+    * SO.KeepAlive(options.tcpKeepAlive),
+    * SO.OOBInline(options.tcpOOBInline),
+    * SO.TcpNoDelay(options.tcpNoDelay)
+    * ),
+    * connectTimeout = options.connectTimeoutMS match { case 0 ⇒ Duration.Inf; case x : Long ⇒ Duration(x, "ms") },
+    * )
+    */
 
   val manager = IO(Tcp)
 
@@ -117,7 +134,6 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
       log.debug(s"Connected to $remote_addr at $local_addr")
       val connection = sender()
       connection ! Register(self)
-      context become connected(connection)
       listener ! ConnectionSucceeded(connectionMsg)
 
     case Terminated(actor) ⇒ // The TCP
@@ -131,9 +147,6 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
 
     case Channel.GetStatistics ⇒
       sender() ! Channel.Statistics(msgCounter, replyCounter, writeFailures)
-
-    case x : Channel.SendMessage ⇒
-      log.debug(s"Not ready to send message to mongo yet, connection not registered: $x")
 
     case x : Any ⇒
       log.debug(s"Got other message: $x")
@@ -159,7 +172,7 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
         pendingResponses.put(message.requestId, replyTo)
 
     case Ack ⇒ // Receive Write Ack from connection actor
-      connection ! ResumeReading // Tell connection actor we can read more now
+      log.warning("Got Ack in connected state")
 
     case Received(data : ByteString) ⇒ // Receive a reply from Mongo
       replyCounter += 1
@@ -183,6 +196,8 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
       // O/S buffer was full
       listener ! "write failed"
 
+    case x : Any ⇒
+      log.debug(s"In connected, got other message: $x")
   }
 
   def closing : Receive = LoggingReceive {
@@ -195,34 +210,36 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
     case Received(data : ByteString) ⇒
       doReply(data)
 
-    case Closed ⇒
+    case Tcp.Closed ⇒
       log.debug("Closed")
       /** The connection has been closed normally in response to a [[Close]] command.
         */
       context stop self
-    case Aborted ⇒
+    case Tcp.Aborted ⇒
       log.debug("Aborted")
       /** The connection has been aborted in response to an [[Abort]] command.
         */
       context stop self
-    case ConfirmedClosed ⇒
+    case Tcp.ConfirmedClosed ⇒
       log.debug("ConfirmedClosed")
       /** The connection has been half-closed by us and then half-close by the peer
         * in response to a [[ConfirmedClose]] command.
         */
       context stop self
-    case PeerClosed ⇒
+    case Tcp.PeerClosed ⇒
       log.debug("PeerClosed")
       /** The peer has closed its writing half of the connection.
         */
       context stop self
-    case ErrorClosed(cause : String) ⇒
+    case Tcp.ErrorClosed(cause : String) ⇒
       log.debug(s"ErrorClosed: $cause")
       /** The connection has been closed due to an IO error.
         */
       context stop self
-    case _ : ConnectionClosed ⇒
+    case _ : Tcp.ConnectionClosed ⇒
       log.debug("Other ConnectionClosed")
       context stop self
+    case x : Any ⇒
+      log.debug(s"In closing, got other message: $x")
   }
 }

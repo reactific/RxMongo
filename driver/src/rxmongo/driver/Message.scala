@@ -22,8 +22,6 @@
 
 package rxmongo.driver
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import akka.util.{ ByteStringBuilder, ByteString }
 import rxmongo.bson._
 import rxmongo.driver.Message.OP_NOT_A_MESSAGE
@@ -43,16 +41,25 @@ object Message {
   case object OP_DELETE extends OpCode { val id = 2006 }
   case object OP_KILL_CURSORS extends OpCode { val id = 2007 }
 
-  private val _requestId = new AtomicInteger(0)
-  def nextRequestId : Int = _requestId.incrementAndGet()
-
+  @volatile private var _requestId : Int = 0
+  def nextRequestId : Int = {
+    this.synchronized {
+      if (_requestId == Int.MaxValue)
+        _requestId = 0
+      else
+        _requestId += 1
+      _requestId
+    }
+  }
   val Upsert_Flag = 1
   val MultiUpdate_Flag = 2
 }
 
 trait Message {
-  val opcode : Message.OpCode
   def build : ByteStringBuilder = ByteString.newBuilder
+  val opcode : Message.OpCode
+  def requestId : Int
+
   /** {{{
     * struct MsgHeader {
     * int32   messageLength; // total message size, including this
@@ -63,7 +70,6 @@ trait Message {
     * }}}
     * @return
     */
-  lazy val requestId = Message.nextRequestId
   lazy val finish : ByteString = {
     val content = build.result()
     val header = ByteString.newBuilder
@@ -74,14 +80,31 @@ trait Message {
     header ++= content
     header.result()
   }
+
+  def appendTo(builder : StringBuilder) : StringBuilder = {
+    builder.
+      append("opcode=").append(opcode).
+      append(",requestId=").append(requestId)
+  }
+
+  final override def toString : String = {
+    val builder = StringBuilder.newBuilder
+    builder.append(this.getClass.getSimpleName).append("(")
+    appendTo(builder).append(")").toString()
+  }
+
 }
 
 /** MessageHeader
   *
   * This header is standard for all messages sent to MongoDB and so it is the base class of all mongo messages.
   */
-class RequestMessage(val opcode : Message.OpCode) extends Message {
+abstract class RequestMessage(val opcode : Message.OpCode) extends Message {
+  override def appendTo(builder : StringBuilder) : StringBuilder = {
+    super.appendTo(builder).append(",requiresResponse=").append(requiresResponse)
+  }
   def requiresResponse : Boolean = false
+  final val requestId : Int = Message.nextRequestId
 }
 
 /** The Mongo Update Message
@@ -115,12 +138,23 @@ case class UpdateMessage(
   //   document  selector;           // the query to select the document
   //   document  update;             // specification of the update to perform
   // }
-  override def build = super.build.
-    putInt(0).
-    putCStr(fullCollectionName).
-    putInt(flags).
-    putDoc(selector).
-    putDoc(update)
+  override def build = {
+    super.build.
+      putInt(0).
+      putCStr(fullCollectionName).
+      putInt(flags).
+      putDoc(selector).
+      putDoc(update)
+  }
+
+  override def appendTo(builder : StringBuilder) : StringBuilder = {
+    super.appendTo(builder).
+      append(",fullCollectionName=").append(fullCollectionName).
+      append(",selector=").append(selector).
+      append(",update=").append(update).
+      append(",upsert=").append(upsert).
+      append(",multiUpdate=").append(multiUpdate)
+  }
 }
 
 /** The Mongo Insert Message
@@ -149,10 +183,19 @@ case class InsertMessage(
   //   cstring   fullCollectionName; // "dbname.collectionname"
   //   document* documents;          // one or more documents to insert into the collection
   // }
-  override def build = super.build.
-    putInt(flags). // bit vector - see arguments
-    putCStr(fullCollectionName). // "dbname.collectionname"
-    putDocs(documents) // one or more documents to insert into the collection
+  override def build = {
+    super.build.
+      putInt(flags). // bit vector - see arguments
+      putCStr(fullCollectionName). // "dbname.collectionname"
+      putDocs(documents)
+  } // one or more documents to insert into the collection
+
+  override def appendTo(builder : StringBuilder) : StringBuilder = {
+    super.appendTo(builder).
+      append(",fullCollectionName=").append(fullCollectionName).
+      append(",documents=").append(documents).
+      append(",continueOnError=").append(continueOnError)
+  }
 }
 
 /** Base class of the QueryMessage and Command
@@ -198,7 +241,7 @@ abstract class GenericQueryMessage extends RequestMessage(Message.OP_QUERY) {
   * collection bar, the full collection name is foo.bar.
   * @param selector The query object. BSON document that represents the query. The query will contain one or more
   * elements, all of which must match for a document to be included in the result set. Possible elements
-  * include $query, $orderby, $hint, $explain, and $snapshot.
+  * include \$query, \$orderby, \$hint, \$explain, and \$snapshot.
   * @param returnFieldsSelector Optional. Selector indicating the fields to return. BSON document that limits the
   * fields in the returned documents. The returnFieldsSelector contains one or more
   * elements, each of which is the name of a field that should be returned, and and the
@@ -212,7 +255,15 @@ case class QueryMessage(
   fullCollectionName : String,
   selector : BSONObject,
   returnFieldsSelector : Option[BSONObject] = None,
-  options : QueryOptions = QueryOptions()) extends GenericQueryMessage
+  options : QueryOptions = QueryOptions()) extends GenericQueryMessage {
+  override def appendTo(builder : StringBuilder) : StringBuilder = {
+    super.appendTo(builder).
+      append(",fullCollectionName=").append(fullCollectionName).
+      append(",selector=").append(selector).
+      append(",returnFieldSelector=").append(returnFieldsSelector).
+      append(",options=").append(options)
+  }
+}
 
 /** The Mongo GET MORE Message
   * The OP_GET_MORE message is used to query the database for documents in a collection. T
@@ -243,11 +294,20 @@ case class GetMoreMessage(
   //   int32     numberToReturn;     // number of documents to return
   //   int64     cursorID;           // cursorID from the OP_REPLY
   // }
-  override def build = super.build.
-    putInt(0).
-    putCStr(fullCollectionName).
-    putInt(numberToReturn).
-    putLong(forReply.cursorID)
+  override def build = {
+    super.build.
+      putInt(0).
+      putCStr(fullCollectionName).
+      putInt(numberToReturn).
+      putLong(forReply.cursorID)
+  }
+
+  override def appendTo(builder : StringBuilder) : StringBuilder = {
+    super.appendTo(builder).
+      append(",fullCollectionName=").append(fullCollectionName).
+      append(",numberToReturn=").append(numberToReturn).
+      append(",forReply=").append(forReply.cursorID)
+  }
 
 }
 
@@ -287,11 +347,21 @@ case class DeleteMessage(
   //   int32     flags;              // bit vector - see below for details.
   //   document  selector;           // query object.  See below for details.
   // }
-  override def build = super.build.
-    putInt(0).
-    putCStr(fullCollectionName).
-    putInt(flags).
-    putDoc(selector)
+  override def build = {
+    super.build.
+      putInt(0).
+      putCStr(fullCollectionName).
+      putInt(flags).
+      putDoc(selector)
+  }
+
+  override def appendTo(builder : StringBuilder) : StringBuilder = {
+    super.appendTo(builder).
+      append(",fullCollectionName=").append(fullCollectionName).
+      append(",selector=").append(selector).
+      append(",singleRemove=").append(singleRemove)
+  }
+
 }
 
 /** Mongo Kill Cursors Message
@@ -311,11 +381,18 @@ case class KillCursorsMessage(
   //   int32     numberOfCursorIDs; // number of cursorIDs in message
   //   int64*    cursorIDs;         // sequence of cursorIDs to close
   // }
-  override def build = super.build.
-    putInt(0).
-    putInt(cursorIDs.length).
-    putLongs(cursorIDs.toArray)
+  override def build = {
+    super.build.
+      putInt(0).
+      putInt(cursorIDs.length).
+      putLongs(cursorIDs.toArray)
+  }
 
+  override def appendTo(builder : StringBuilder) : StringBuilder = {
+    super.appendTo(builder).
+      append(",numberOfCursorIDs=").append(cursorIDs.length).
+      append(",cursorIDs=").append(cursorIDs)
+  }
 }
 
 /** Mongo Reply Message
@@ -350,16 +427,21 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
     */
 
   val messageLength = itr.getInt
-  val requestID = itr.getInt
+  final val requestId = itr.getInt
   val responseTo = itr.getInt
   val opCode = itr.getInt
 
   /** {{{
     * bit   name	description
-    * 0	 CursorNotFound	  Set when getMore is called but the cursor id is not valid at the server. Returned with zero results.
-    * 1  QueryFailure	    Set when query failed. Results consist of one document containing an “$err” field describing the failure.
-    * 2  ShardConfigStale	Drivers should ignore this. Only mongos will ever see this set, in which case, it needs to update config from the server.
-    * 3  AwaitCapable     Set when the server supports the AwaitData Query option. If it doesn’t, a client should sleep a little between getMore’s of a Tailable cursor. Mongod version 1.6 supports AwaitData and thus always sets AwaitCapable.
+    * 0	 CursorNotFound	  Set when getMore is called but the cursor id is not valid at the server. Returned with zero
+    *                 results.
+    * 1  QueryFailure	    Set when query failed. Results consist of one document containing an “\$err” field describing
+    *                 the failure.
+    * 2  ShardConfigStale	Drivers should ignore this. Only mongos will ever see this set, in which case, it needs to
+    *                 update config from the server.
+    * 3  AwaitCapable     Set when the server supports the AwaitData Query option. If it does not, a client should sleep
+    *                 a little between getMore’s of a Tailable cursor. Mongod version 1.6 supports AwaitData and
+    *                 thus always sets AwaitCapable.
     * 4-31	 Reserved	    Ignore
     * }}}
     */
@@ -380,18 +462,21 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
 
   override def build = throw new IllegalStateException("Attempt to build a ReplyMessage")
   override lazy val finish = buffer
-  override def toString() : String = {
-    val b = new StringBuilder
-    b.append("ReplyMessage(messageLength=").append(messageLength).append(", requestID=").append(requestID).
-      append(", responseTo=").append(responseTo).append(", opCode=").append(opCode).append(", CursorNotFound=").
-      append(CursorNotFound).append(", QueryFailure=").append(QueryFailure).append(", ShardConfigStale=").
-      append(ShardConfigStale).append(", AwaitCapable=").append(AwaitCapable).append(", cursorID=").append(cursorID).
-      append(", startingFrom=").append(startingFrom).append(", numberReturned=").append(numberReturned).
-      append(", documents={ ")
-    for (doc ← documents) { b.append(doc.toString()).append(", ") }
-    b.setLength(b.length - 2)
-    b.append(" }")
-    b.toString()
+  override def appendTo(builder : StringBuilder) : StringBuilder = {
+    super.appendTo(builder).
+      append("messageLength=").append(messageLength).
+      append(",responseTo=").append(responseTo).
+      append(",CursorNotFound=").append(CursorNotFound).
+      append(",QueryFailure=").append(QueryFailure).
+      append(",ShardConfigStale=").append(ShardConfigStale).
+      append(",AwaitCapable=").append(AwaitCapable).
+      append(",cursorID=").append(cursorID).
+      append(",startingFrom=").append(startingFrom).
+      append(",numberReturned=").append(numberReturned).
+      append(",documents={ ")
+    for (doc ← documents) { builder.append(doc.toString()).append(", ") }
+    builder.setLength(builder.length - 2)
+    builder.append(" }")
   }
 
   def error : Option[String] = {
@@ -417,5 +502,5 @@ case class MessageBatch private[driver] (private val msgs : Seq[Message]) extend
     msgs.foldLeft(ByteString.newBuilder) { (x, m) ⇒ x.append(m.finish) }
   }
   override lazy val finish = build.result()
-
+  final val requestId = -1 // Indicates this isn't actually a viable request Id
 }

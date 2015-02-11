@@ -26,7 +26,7 @@ import rxmongo.bson.{ BSONBuilder, BSONProvider, Query }
 
 /** Represents A MongoDB Query Projection
   *
-  * These objects may be passed to the [[rxmongo.client.Collection.find]] method to limit what is returned in
+  * These objects may be passed to the [[rxmongo.client.Collection]].find method to limit what is returned in
   * the query. Typically fields are simply included or excluded, but mongo supports array slicing and array
   * element matches as well.
   */

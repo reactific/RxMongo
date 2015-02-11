@@ -224,9 +224,9 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
       Channel.
         props(current_addr, uri.options, self, isPrimary = true).
         withRouter(routerConfig),
-      Driver.actorName("PrimaryChannel")
+      Driver.actorName("ChannelRouter")
     )
-    context become (waitForChannelConnected(router), discardOld = true)
+    context.become(waitForChannelConnected(router))
     log.debug("Created Router: {}", router)
   }
 
@@ -234,7 +234,7 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
     log.debug("Closing")
     if (primary_router != null) {
       primary_router ! Broadcast(Channel.Close)
-      context become (closing(sender()), discardOld = true)
+      context.become(closing(sender()))
     } else {
       context.stop(self)
     }
@@ -259,7 +259,7 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
 
   def retryChannelConnect() = {
     primary_router = null // FIXME: Try others in replica set
-    context become (waitForChannelRetry, discardOld = true)
+    context.become(waitForChannelRetry)
     context.system.scheduler.scheduleOnce(uri.options.channelReconnectPeriod, self, "retry")
   }
 
@@ -286,7 +286,7 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
       log.debug("Connection to {} succeeded", uri)
       primary_router = pendingRouter
       dequeueAll()
-      context.become(receive, discardOld = true)
+      context.become(receive)
   }
 
   def waitForChannelRetry : Receive = LoggingReceive {
@@ -312,10 +312,13 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
 
     case Connection.CheckReplicaSet ⇒
       if (replicaSetClients.isEmpty) {
+        log.debug("First request to check replica set received")
         resetCheckReplicateSetTime
         val cmd = IsMasterCmd()
-        context.become(waitForReplicaSet(cmd), discardOld = true)
+        context.become(waitForReplicaSet(cmd))
         primary_router ! Channel.SendMessage(cmd, replyTo = self)
+      } else {
+        log.debug("Subsequent request to check replica set received")
       }
       replicaSetClients = replicaSetClients + sender()
 
@@ -330,7 +333,7 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
         resetCheckReplicateSetTime
         enqueue(msg)
         val cmd = IsMasterCmd()
-        context.become(waitForReplicaSet(cmd), discardOld = true)
+        context.become(waitForReplicaSet(cmd))
         primary_router ! Channel.SendMessage(cmd, replyTo = self)
       } else {
         // We assume the primary_router is still valid and send the request message
@@ -367,7 +370,7 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
           handleReplicaSetUpdate(doc) match {
             case Success(response) ⇒
               // We are in business!
-              context.become(receive, discardOld = true)
+              context.become(receive)
               dequeueAll()
               for (client ← replicaSetClients) {
                 client ! response
@@ -389,11 +392,16 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
 
   def closing(replyTo : ActorRef) : Receive = {
     case x : RequestMessage ⇒
-      log.info("Ignoring RunCommand request while closing connection")
+      log.info("Ignoring RequestMessage while closing connection")
+
     case Terminated(actor : ActorRef) ⇒
       if (actor == primary_router) {
+        log.debug(s"Sending Connection.Closed to: $replyTo")
         replyTo ! Connection.Closed
+        log.debug("Stopping")
         context.stop(self)
+      } else {
+        log.warning(s"Received Terminated($actor) but actor is not primary_router")
       }
   }
 }

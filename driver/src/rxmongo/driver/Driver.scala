@@ -47,7 +47,7 @@ import scala.util.{ Failure, Success }
   *
   * The Driver provides a very low level interface to MongoDB. It allows messages to be sent to a replica set and
   * responses returned. No higher level facilities for making interaction with the driver are provided. For that,
-  * use the [[rxmongo.client.RxMongoClient]] class. To send messages to a replica set, you must send requests to
+  * use the [[rxmongo.client.Client]] class. To send messages to a replica set, you must send requests to
   * the Connection actor returned by the connect() methods.
   *
   * Each Driver contains an Akka ActorSystem that is used to manage the concurrent non-blocking communication with
