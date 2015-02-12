@@ -63,9 +63,9 @@ import scala.concurrent.duration._
   * @param waitQueueTimeoutMS The maximum time in milliseconds that a request can wait for a connection to become
   * available. The default is 60,000
   * @param writeConcern The Write Concern option. Write concern describes the kind of assurances that the mongod and
-  *                   the driver provide to the application regarding the success and durability of the write
-  *                   operation. This option defines the level and kind of write concern. This option can take either
-  *                   a number or a string as a value, as follows:
+  *                  the driver provide to the application regarding the success and durability of the write
+  *                  operation. This option defines the level and kind of write concern. This option can take either
+  *                  a number or a string as a value, as follows:
   * {{{
   * Option	Type	  Description
   * -1      number  The driver will not acknowledge write operations and will suppress all network or socket errors.
@@ -152,12 +152,12 @@ import scala.concurrent.duration._
   * is 0.10 or 10% of maxPoolSize (rounded up). FOr example, if maxPoolSize is 10 then whenever we
   * are removing channels, we remove 1 at a time
   * @param messagesPerResize The number of messages flowing into the connection between size checks. Increasing this
-  *  value decreases the overhead of the resizing logic at the expense of potentially increasing
-  *  processing delays because channels were not created quickly enough. The default is 10
+  * value decreases the overhead of the resizing logic at the expense of potentially increasing
+  * processing delays because channels were not created quickly enough. The default is 10
   * @param channelReconnectPeriod When all access to a replica set fails, RxMongo tries to regularly reconnect using
-  *          the information it has. This value controls the period of time between reconnection
-  *          attempts. The default is 10,000 milliseconds (10 seconds). A value of 0 means fail
-  *          instead of attempting reconnection.
+  *         the information it has. This value controls the period of time between reconnection
+  *         attempts. The default is 10,000 milliseconds (10 seconds). A value of 0 means fail
+  *         instead of attempting reconnection.
   */
 
 case class ConnectionOptions(

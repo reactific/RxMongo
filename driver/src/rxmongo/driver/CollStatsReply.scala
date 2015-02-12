@@ -28,33 +28,33 @@ import rxmongo.bson._
   * @param ns The namespace of the current collection, which follows the format [database].[collection].
   * @param count The number of objects or documents in this collection.
   * @param size The total size of all records in a collection. This value does not include the record header, which
-  *  is 16 bytes per record, but does include the record’s padding. Additionally size does not include the
-  *  size of any indexes associated with the collection, which the totalIndexSize field reports. The scale
-  *  argument affects this value.
+  * is 16 bytes per record, but does include the record’s padding. Additionally size does not include the
+  * size of any indexes associated with the collection, which the totalIndexSize field reports. The scale
+  * argument affects this value.
   * @param avgObjSize The average size of an object in the collection. The scale argument does not affect this value.
   * @param storageSize The total amount of storage allocated to this collection for document storage. The scale
-  *         argument affects this value. For mmapv1, storageSize will not decrease as you remove or
-  *         shrink documents.
+  *        argument affects this value. For mmapv1, storageSize will not decrease as you remove or
+  *        shrink documents.
   * @param numExtents The total number of contiguously allocated data file regions. Only present when using
-  *        the mmapv1 storage engine.
+  *       the mmapv1 storage engine.
   * @param nindexes The number of indexes on the collection. All collections have at least one index on the _id field.
   * @param lastExtentSize The size of the last extent allocated. The scale argument affects this value. Only present
-  *            when using the mmapv1 storage engine.
+  *           when using the mmapv1 storage engine.
   * @param userFlags Reports the flags on this collection set by the user. See the collMod command for more information
-  *       on setting user flags and usePowerOf2Sizes. Only appears when using the mmapv1 storage engine.
+  *      on setting user flags and usePowerOf2Sizes. Only appears when using the mmapv1 storage engine.
   * @param totalIndexSize The total size of all indexes. The scale argument affects this value.
   * @param indexSizes This field specifies the key and size of every existing index on the collection.
-  *        The scale argument affects this value.
+  *       The scale argument affects this value.
   * @param capped This field will be “true” if the collection is capped. Not present if collection is not capped
   * @param max Shows the maximum number of documents that may be present in a capped collection. Not present if
   * collection is not capped.
   * @param maxSize Shows the maximum size of a capped collection. Not present if collection is not capped.
   * @param wiredTiger wiredTiger only appears when using the wiredTiger storage engine. This document contains data
-  *        reported directly by the WiredTiger engine and other data for internal diagnostic use.
+  *       reported directly by the WiredTiger engine and other data for internal diagnostic use.
   * @param indexDetails A document that reports data from the storage engine for each index in the collection. The
-  *          fields in this document are the names of the indexes, while the values themselves are documents
-  *          that contain statistics for the index provided by the storage engine. These statistics are for
-  *          internal diagnostic use.
+  *         fields in this document are the names of the indexes, while the values themselves are documents
+  *         that contain statistics for the index provided by the storage engine. These statistics are for
+  *         internal diagnostic use.
   */
 case class CollStatsReply(
   ns : String,

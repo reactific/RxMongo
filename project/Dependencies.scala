@@ -33,12 +33,13 @@ object Dependencies {
   // Akka Stuff
   // val akkaV = "2.3.9"
   val akkaV = "2.4-SNAPSHOT"
+  val akkaStreamsV = "1.0-M3"
   val akka_actor      = "com.typesafe.akka"   %% "akka-actor"                   % akkaV
   val akka_slf4j      = "com.typesafe.akka"   %% "akka-slf4j"                   % akkaV
   val akka_testkit    = "com.typesafe.akka"   %% "akka-testkit"                 % akkaV
-  val akka_streams    = "com.typesafe.akka"   %% "akka-stream-experimental"     % "1.0-M2"
-  val akka_http_core  = "com.typesafe.akka"   %% "akka-http-core-experimental"  % "1.0-M2"
-  val akka_http       = "com.typesafe.akka"   %% "akka-http-experimental"       % "1.0-M2"
+  val akka_streams    = "com.typesafe.akka"   %% "akka-stream-experimental"     % akkaStreamsV
+  val akka_http_core  = "com.typesafe.akka"   %% "akka-http-core-experimental"  % akkaStreamsV
+  val akka_http       = "com.typesafe.akka"   %% "akka-http-experimental"       % akkaStreamsV
   val scala_logging   = "com.typesafe.scala-logging" %% "scala-logging"         % "3.1.0"
   val logback_test    = "ch.qos.logback"       % "logback-classic"              % "1.1.2"      % "test"
   val logback_prod    = "ch.qos.logback"       % "logback-classic"              % "1.1.2"

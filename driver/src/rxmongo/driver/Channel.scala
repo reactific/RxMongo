@@ -28,8 +28,6 @@ import akka.actor._
 import akka.event.LoggingReceive
 import akka.io.Inet.SocketOption
 import akka.io.{ IO, Tcp }
-import akka.stream.scaladsl.StreamTcp
-import akka.stream.scaladsl.StreamTcp.OutgoingConnection
 import akka.util.ByteString
 import rxmongo.driver.Channel.{ ConnectionSucceeded, Ack, ConnectionFailed }
 
@@ -63,21 +61,6 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
   import Tcp._
   import context.system
 
-  /** TODO: Convert Channel to use StreamTCP instead of Akka.IO
-    *
-    * val streamTcp = StreamTcp(context.system)
-    * val connection : OutgoingConnection = streamTcp.outgoingConnection(
-    * remoteAddress = remote,
-    * localAddress = Some(new InetSocketAddress(options.localIP.orNull, options.localPort)),
-    * options = List[SocketOption](
-    * SO.KeepAlive(options.tcpKeepAlive),
-    * SO.OOBInline(options.tcpOOBInline),
-    * SO.TcpNoDelay(options.tcpNoDelay)
-    * ),
-    * connectTimeout = options.connectTimeoutMS match { case 0 ⇒ Duration.Inf; case x : Long ⇒ Duration(x, "ms") },
-    * )
-    */
-
   val manager = IO(Tcp)
 
   val pendingResponses = mutable.HashMap.empty[Int, ActorRef]
@@ -109,6 +92,7 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
   }
 
   def doReply(msg : ByteString) = {
+    replyCounter += 1
     val reply = ReplyMessage(msg) // Encapsulate that in a ReplyMessage
     pendingResponses.get(reply.responseTo) match {
       case Some(actor) ⇒ actor ! reply
@@ -134,6 +118,7 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
       log.debug(s"Connected to $remote_addr at $local_addr")
       val connection = sender()
       connection ! Register(self)
+      context become connected(connection)
       listener ! ConnectionSucceeded(connectionMsg)
 
     case Terminated(actor) ⇒ // The TCP
@@ -173,16 +158,10 @@ class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener 
 
     case Ack ⇒ // Receive Write Ack from connection actor
       log.warning("Got Ack in connected state")
+      connection ! ResumeReading // Tell connection actor we can read more now
 
     case Received(data : ByteString) ⇒ // Receive a reply from Mongo
-      replyCounter += 1
-      val reply = ReplyMessage(data) // Encapsulate that in a ReplyMessage
-      pendingResponses.get(reply.responseTo) match {
-        case Some(actor) ⇒ actor ! reply
-        case None ⇒
-          log.debug("Received reply ({}) but matching request was not found", reply)
-          listener ! Channel.UnsolicitedReply(reply)
-      }
+      doReply(data)
 
     case Terminated(actor) ⇒ // The TCP connection has terminated
       if (actor == connection)
