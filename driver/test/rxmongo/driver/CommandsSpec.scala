@@ -34,11 +34,11 @@ class CommandsSpec extends Specification {
   "Commands" should {
     "print themselves out" in {
       val cmd = new Command("db", BSONObject("cmd" → 1))
-      cmd.toString must beEqualTo("Command(opcode=OP_QUERY,requestId=1,requiresResponse=true,db=db,options=QueryOptions(0,1,false,false,false,false,false,false),selector={ cmd->1 },returnFieldsSelector=None)")
+      cmd.toString.matches("Command\\(opcode=OP_QUERY,requestId=\\d+,requiresResponse=true,db=db,options=QueryOptions\\(0,1,false,false,false,false,false,false\\),selector=\\{ cmd->1 \\},returnFieldsSelector=None\\)")  must beTrue
     }
     "print out case class subclasses" in {
       val cmd = FindAndModifyCmd("db", "coll", Some(Query("a" $eq "b")), Seq("a" → true), None, Some(true))
-      cmd.toString must beEqualTo("FindAndModifyCmd(opcode=OP_QUERY,requestId=2,requiresResponse=true,db=db,options=QueryOptions(0,1,false,false,false,false,false,false),selector={ findAndModify->coll, query->{ $query->{ a->b } }, remove->true },returnFieldsSelector=None)")
+      cmd.toString.matches("FindAndModifyCmd\\(opcode=OP_QUERY,requestId=\\d+,requiresResponse=true,db=db,options=QueryOptions\\(0,1,false,false,false,false,false,false\\),selector=\\{ findAndModify->coll, query->\\{ \\$query->\\{ a->b \\} \\}, remove->true \\},returnFieldsSelector=None\\)")
     }
   }
 }
