@@ -282,8 +282,8 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
       log.debug("Connection to {} failed, trying {} next.", old_addr, current_addr)
       retryChannelConnect()
 
-    case Channel.ConnectionSucceeded(conn) ⇒
-      log.debug("Connection to {} succeeded", uri)
+    case Channel.ConnectionSucceeded(remote : InetSocketAddress) ⇒
+      log.debug("Connection to {} succeeded at {}", uri, remote)
       primary_router = pendingRouter
       dequeueAll()
       context.become(receive)

@@ -26,199 +26,147 @@ import java.net.InetSocketAddress
 
 import akka.actor._
 import akka.event.LoggingReceive
-import akka.io.Inet.SocketOption
-import akka.io.{ IO, Tcp }
 import akka.util.ByteString
-import rxmongo.driver.Channel.{ ConnectionSucceeded, Ack, ConnectionFailed }
 
 import scala.collection.mutable
-import scala.concurrent.duration.Duration
 
 object Channel {
-  def props(remote : InetSocketAddress, options : ConnectionOptions, replies : ActorRef, isPrimary : Boolean) =
-    Props(classOf[Channel], remote, options, replies)
+  def props(remote : InetSocketAddress, options : ConnectionOptions, replies : ActorRef,
+    isPrimary : Boolean, useStreams : Boolean = false) = {
+    if (useStreams) {
+      Props(classOf[TcpStreamChannel], remote, options, replies, isPrimary)
+    } else {
+      Props(classOf[AkkaIOChannel], remote, options, replies, isPrimary)
+    }
+  }
 
   sealed trait ChannelRequest
-  case object Ack extends Tcp.Event
-  case class CloseWithAck(ack : Any)
+  case class CloseWithAck(ack : Any) extends ChannelRequest
   case class SendMessage(msg : RequestMessage, replyTo : ActorRef) extends ChannelRequest
   case object Close extends ChannelRequest
   case object GetStatistics extends ChannelRequest
 
   sealed trait ChannelResponse
-  case class ConnectionFailed(conn : Tcp.Connect) extends ChannelResponse
-  case class ConnectionSucceeded(conn : Tcp.Connect) extends ChannelResponse
+  case class ConnectionFailed(msg : String) extends ChannelResponse
+  case class ConnectionSucceeded(remote : InetSocketAddress) extends ChannelResponse
   case class UnsolicitedReply(reply : ReplyMessage) extends ChannelResponse
+  case class WriteFailed(msg : String) extends ChannelResponse
   case class Statistics(
-    numMessages : Long,
-    numReplies : Long,
-    numFailures : Long) extends ChannelResponse
+    requests : Long,
+    requestBytes : Long,
+    replies : Long,
+    replyBytes : Long,
+    writeFailures : Long,
+    unsolicitedReplies : Long,
+    spuriousMessages : Long) extends ChannelResponse
 }
 
-class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener : ActorRef)
+abstract class Channel(remote : InetSocketAddress, options : ConnectionOptions, listener : ActorRef, isPrimary : Boolean)
   extends Actor with ActorLogging {
 
-  import Tcp._
-  import context.system
-
-  val manager = IO(Tcp)
+  log.debug(s"Establishing ${if (isPrimary) "primary" else "secondary"} Channel to $remote ")
 
   val pendingResponses = mutable.HashMap.empty[Int, ActorRef]
-
-  val connectionMsg = Tcp.Connect(
-    remoteAddress = remote,
-    localAddress = Some(
-      new InetSocketAddress(options.localIP.orNull, options.localPort)
-    ),
-    options = List[SocketOption](
-      SO.KeepAlive(options.tcpKeepAlive),
-      SO.OOBInline(options.tcpOOBInline),
-      SO.TcpNoDelay(options.tcpNoDelay)
-    ),
-    timeout = options.connectTimeoutMS match { case 0 ⇒ None; case x : Long ⇒ Some(Duration(x, "ms")) },
-    pullMode = true
-  )
-
-  var msgCounter : Long = 0L
+  var requestCounter : Long = 0L
+  var requestBytes : Long = 0L
   var replyCounter : Long = 0L
+  var replyBytes : Long = 0L
   var writeFailures : Long = 0L
+  var unsolicitedReplies : Long = 0L
+  var spuriousMessages : Long = 0L
 
-  manager ! connectionMsg
+  def makeStats : Channel.Statistics = {
+    Channel.Statistics(requestCounter, requestBytes, replyCounter, replyBytes,
+      writeFailures, unsolicitedReplies, spuriousMessages)
+  }
 
   log.debug("Connection request to TCP Manager sent")
 
-  override def preStart() = {
-    manager ! ResumeReading
+  def handleRequest(requestMsg : ByteString) : Unit
+
+  def handleReply(replyMsg : ReplyMessage, toActor : ActorRef) : Unit = {
+    toActor ! replyMsg
   }
 
-  def doReply(msg : ByteString) = {
+  def handleClose() : Unit = {
+    context become closing
+  }
+
+  final def doRequest(msg : Channel.SendMessage) = {
+    val message = msg.msg
+    val replyTo = msg.replyTo
+    requestCounter += 1
+    // Send a message to Mongo via connection actor
+    val msg_to_send = message.finish
+    requestBytes += msg_to_send.length
+    if (message.requiresResponse)
+      pendingResponses.put(message.requestId, replyTo)
+    log.debug("Sending Request: {} ({} bytes)", message, msg_to_send.length)
+    handleRequest(msg_to_send)
+  }
+
+  final def doReply(msg : ByteString) = {
     replyCounter += 1
+    replyBytes += msg.length
     val reply = ReplyMessage(msg) // Encapsulate that in a ReplyMessage
     pendingResponses.get(reply.responseTo) match {
-      case Some(actor) ⇒ actor ! reply
+      case Some(actor) ⇒
+        pendingResponses.remove(reply.responseTo)
+        log.debug("Handling Reply: {} ({} bytes)", reply, msg.length)
+        handleReply(reply, actor)
       case None ⇒
         log.info(s"Received reply ($reply) but matching request was not found")
         listener ! Channel.UnsolicitedReply(reply)
     }
   }
 
-  log.debug(s"New Channel to $remote established")
-
-  def receive = LoggingReceive {
-    case Channel.Close ⇒
-      log.debug(s"Channel.Close requested while waiting for connection (terminating)")
-      context stop self
-
-    case CommandFailed(conn : Connect) ⇒
-      log.debug(s"CommandFailed for connection: $conn")
-      listener ! ConnectionFailed(conn)
-      context stop self
-
-    case c @ Connected(remote_addr, local_addr) ⇒
-      log.debug(s"Connected to $remote_addr at $local_addr")
-      val connection = sender()
-      connection ! Register(self)
-      context become connected(connection)
-      listener ! ConnectionSucceeded(connectionMsg)
-
-    case Terminated(actor) ⇒ // The TCP
-      if (actor == manager) {
-        log.info(s"TCP Manager terminated while connecting: $actor")
-        listener ! ConnectionFailed(connectionMsg)
-        context stop self
-      } else {
-        log.info(s"Spurious termination: $actor")
-      }
-
-    case Channel.GetStatistics ⇒
-      sender() ! Channel.Statistics(msgCounter, replyCounter, writeFailures)
-
-    case x : Any ⇒
-      log.debug(s"Got other message: $x")
+  override def preStart() = {
+    context.become(unconnected)
   }
 
-  def connected(connection : ActorRef) : Receive = {
+  def unconnected = LoggingReceive {
     case Channel.Close ⇒
-      log.debug("Channel closing")
-      connection ! Close
-      context become closing
+      log.info(s"Channel.Close requested while unconnected so terminating")
+      context stop self
 
     case Channel.GetStatistics ⇒
-      sender() ! Channel.Statistics(msgCounter, replyCounter, writeFailures)
+      sender() ! makeStats
 
-    case Channel.SendMessage(message : RequestMessage, replyTo : ActorRef) ⇒
-      msgCounter += 1
-      // Send a message to Mongo via connection actor
-      val msg_to_send = message.finish
-      log.debug("Sending message to Mongo: {} ({} bytes)", message, msg_to_send.length)
-      val msg = Write(msg_to_send, Channel.Ack)
-      connection ! msg
-      if (message.requiresResponse)
-        pendingResponses.put(message.requestId, replyTo)
+    case x : Any ⇒
+      log.debug(s"In unconnected, got other message: $x")
+      spuriousMessages += 1
+  }
 
-    case Ack ⇒ // Receive Write Ack from connection actor
-      log.warning("Got Ack in connected state")
-      connection ! ResumeReading // Tell connection actor we can read more now
+  def connected : Receive = LoggingReceive {
+    case Channel.Close ⇒
+      log.info("Channel is closing")
+      handleClose
 
-    case Received(data : ByteString) ⇒ // Receive a reply from Mongo
-      doReply(data)
+    case Channel.GetStatistics ⇒
+      sender() ! makeStats
 
-    case Terminated(actor) ⇒ // The TCP connection has terminated
-      if (actor == connection)
-        log.debug("TCP Connection terminated unexpectedly: {}", actor)
-      else
-        log.debug(s"Spurious termination: $actor")
-
-    case CommandFailed(w : Write) ⇒ // A write has failed
-      writeFailures += 1
-      log.debug("CommandFailed: {}", w)
-      // O/S buffer was full
-      listener ! "write failed"
+    case msg : Channel.SendMessage ⇒
+      doRequest(msg)
 
     case x : Any ⇒
       log.debug(s"In connected, got other message: $x")
+      spuriousMessages += 1
   }
 
   def closing : Receive = LoggingReceive {
     case Channel.Close ⇒
-      log.debug("Channel.Close ignored as channel is already closing")
+      log.info("Channel.Close ignored as channel is already closing")
 
     case Channel.SendMessage ⇒
-      log.debug("Channel.SendMessage ignored as channel is closing")
+      log.info("Channel.SendMessage ignored as channel is closing")
 
-    case Received(data : ByteString) ⇒
-      doReply(data)
-
-    case Tcp.Closed ⇒
-      log.debug("Closed")
-      /** The connection has been closed normally in response to a [[Close]] command.
-        */
-      context stop self
-    case Tcp.Aborted ⇒
-      log.debug("Aborted")
-      /** The connection has been aborted in response to an [[Abort]] command.
-        */
-      context stop self
-    case Tcp.ConfirmedClosed ⇒
-      log.debug("ConfirmedClosed")
-      /** The connection has been half-closed by us and then half-close by the peer
-        * in response to a [[ConfirmedClose]] command.
-        */
-      context stop self
-    case Tcp.PeerClosed ⇒
-      log.debug("PeerClosed")
-      /** The peer has closed its writing half of the connection.
-        */
-      context stop self
-    case Tcp.ErrorClosed(cause : String) ⇒
-      log.debug(s"ErrorClosed: $cause")
-      /** The connection has been closed due to an IO error.
-        */
-      context stop self
-    case _ : Tcp.ConnectionClosed ⇒
-      log.debug("Other ConnectionClosed")
-      context stop self
     case x : Any ⇒
       log.debug(s"In closing, got other message: $x")
+      spuriousMessages += 1
+  }
+
+  final def receive : Receive = {
+    case x : Any ⇒
+      throw new IllegalStateException("Channels should not be in receive state")
   }
 }

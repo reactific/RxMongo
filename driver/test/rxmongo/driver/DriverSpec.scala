@@ -47,22 +47,23 @@ class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
   }
 
   sequential
-
   "Driver" should {
-    "mind its lifecycle" in {
-      val driver = Driver(None, "Lifecycle")
-      driver.close(1.second)
-      driver.isClosed must beTrue
-    }
+    /*
+        "mind its lifecycle" in {
+          val driver = Driver(None, "Lifecycle")
+          driver.close(1.second)
+          driver.isClosed must beTrue
+        }
 
-    "make a simple connection" in mongoTest { () ⇒
-      val driver = Driver(None, "Simple")
-      val future = driver.connect("mongodb://localhost/")
-      val conn = Await.result(future, 1.seconds)
-      conn.isInstanceOf[ActorRef] must beTrue
-      driver.close(500.millis)
-      success
-    }
+        "make a simple connection" in mongoTest { () ⇒
+          val driver = Driver(None, "Simple")
+          val future = driver.connect("mongodb://localhost/")
+          val conn = Await.result(future, 1.seconds)
+          conn.isInstanceOf[ActorRef] must beTrue
+          driver.close(500.millis)
+          success
+        }
+    */
 
     "send an innocuous query" in mongoTest { () ⇒
       val driver = Driver(None, "Innocuous")
@@ -75,7 +76,7 @@ class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
       driver.close(500.millis)
       x.isInstanceOf[ReplyMessage] must beTrue
     }
-
+/*
     "handle a CheckReplicaSet" in mongoTest { () ⇒
       val driver = Driver(None, "Innocuous")
       val future = driver.connect("mongodb://localhost/") map { conn : ActorRef ⇒
@@ -102,6 +103,7 @@ class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
       driver.close(1.second)
       success
     }
+  */
   }
 }
 

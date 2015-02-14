@@ -39,7 +39,7 @@ import scala.concurrent.duration.Duration
   *
   * Description of thing
   */
-case class TcpChannel(remote : InetSocketAddress, options : ConnectionOptions)(implicit system : ActorSystem) {
+case class TcpStreamChannel(remote : InetSocketAddress, options : ConnectionOptions)(implicit system : ActorSystem) {
 
   val streamTcp = StreamTcp(system)
 
