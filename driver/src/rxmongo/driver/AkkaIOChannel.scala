@@ -134,12 +134,13 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
 
   override def connected : Receive = {
     case Ack ⇒ // Receive Write Ack from connection actor
-      ackPending = false
       if (pendingRequests.nonEmpty) {
         val request = pendingRequests.dequeue()
         log.debug("Sending Queued Request: {}", request)
         connection ! request
+        ackPending = true
       } else {
+        ackPending = false
         log.debug("Ack with empty queue")
       }
 

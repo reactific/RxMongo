@@ -30,7 +30,6 @@ import akka.io.Tcp.SO
 import akka.stream.{ ActorFlowMaterializerSettings, ActorFlowMaterializer }
 import akka.stream.scaladsl._
 import akka.stream.scaladsl.StreamTcp.OutgoingConnection
-import akka.util.ByteString
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration

@@ -80,8 +80,6 @@ abstract class Channel(remote : InetSocketAddress, options : ConnectionOptions, 
       writeFailures, unsolicitedReplies, spuriousMessages)
   }
 
-  log.debug("Connection request to TCP Manager sent")
-
   def handleRequest(requestMsg : ByteString) : Unit
 
   def handleReply(replyMsg : ReplyMessage, toActor : ActorRef) : Unit = {

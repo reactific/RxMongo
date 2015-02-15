@@ -260,8 +260,8 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     * Apply a single Update selector and updater to the collection.
     * @param u The Update specification
     * @param ordered If true, then when an update statement fails, return without performing the remaining update
-    *              statements. If false, then when an update fails, continue with the remaining update statements,
-    *              if any. Defaults to true.
+    *             statements. If false, then when an update fails, continue with the remaining update statements,
+    *             if any. Defaults to true.
     * @param to The timeout for the update operation
     * @param wc The write concern for the update operation
     * @return A future WriteResult that returns the result of the update operation

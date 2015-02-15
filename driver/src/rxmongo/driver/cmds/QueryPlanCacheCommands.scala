@@ -40,16 +40,16 @@ case class PlanCacheListFiltersCmd(
   * @param db The database containing the collection to set the filter on
   * @param coll The name of the collection on which to set the filter
   * @param query The query predicate associated with the index filter. Together with the sort and the projection, the
-  *        query predicate make up the query shape for the specified index filter.  Only the structure of the
-  *        predicate, including the field names, are significant; the values in the query predicate are
-  *        insignificant. As such, query predicates cover similar queries that differ only in the values.
+  *       query predicate make up the query shape for the specified index filter.  Only the structure of the
+  *       predicate, including the field names, are significant; the values in the query predicate are
+  *       insignificant. As such, query predicates cover similar queries that differ only in the values.
   * @param sort Optional. The sort associated with the filter. Together with the query and the projection, the sort
-  *       make up the query shape for the specified index filter.
+  *      make up the query shape for the specified index filter.
   * @param projection Optional. The projection associated with the filter. Together with the query and the sort,
-  *             the projection make up the query shape for the specified index filter.
+  *            the projection make up the query shape for the specified index filter.
   * @param indexes An array of index specification documents that act as the index filter for the specified query
-  *          shape. Because the query optimizer chooses among the collection scan and these indexes, if the
-  *          indexes are non-existent, the optimizer will choose the collection scan.
+  *         shape. Because the query optimizer chooses among the collection scan and these indexes, if the
+  *         indexes are non-existent, the optimizer will choose the collection scan.
   */
 case class PlanCacheSetFilterCmd(
   db : String,
@@ -73,8 +73,8 @@ case class PlanCacheSetFilterCmd(
   * @param db The name of the database
   * @param coll The name of the collection
   * @param query Optional. The query predicate associated with the filter to remove. If omitted, clears all filters
-  *        from the collection. The values in the query predicate are insignificant in determining the query
-  *        shape, so the values used in the query need not match the values shown using planCacheListFilters.
+  *       from the collection. The values in the query predicate are insignificant in determining the query
+  *       shape, so the values used in the query need not match the values shown using planCacheListFilters.
   * @param sort Optional. The sort associated with the filter to remove, if any.
   * @param projection Optional. The projection associated with the filter to remove, if any.
   */
@@ -108,7 +108,7 @@ case class PlanCacheListQueryShapesCmd(
   * @param db The name of the database towards which the command should be directed.
   * @param coll The name of the collection which will have have plans listed
   * @param query The query predicate of the query shape. Only the structure of the predicate, including the field
-  *          names, are significant to the shape; the values in the query predicate are insignificant.
+  *         names, are significant to the shape; the values in the query predicate are insignificant.
   * @param sort Optional. The sort associated with the query shape.
   * @param projection Optional. The projection associated with the query shape.
   */
@@ -132,7 +132,7 @@ case class PlanCacheListPlansCmd(
   * @param db The name of the database.
   * @param coll The name of the collection.
   * @param query Optional. The query predicate of the query shape. Only the structure of the predicate, including
-  *        the field names, are significant to the shape; the values in the query predicate are insignificant.
+  *       the field names, are significant to the shape; the values in the query predicate are insignificant.
   * @param sort Optional. The projection associated with the query shape.
   * @param projection Optional. The sort associated with the query shape.
   */
