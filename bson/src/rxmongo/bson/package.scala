@@ -23,7 +23,7 @@
 package rxmongo
 
 import java.nio.ByteOrder
-import java.nio.charset.Charset
+import java.nio.charset.{StandardCharsets, Charset}
 import java.util.regex.Pattern
 
 import akka.util.{ ByteIterator, ByteStringBuilder }
@@ -66,10 +66,7 @@ package object bson {
   implicit class ByteStringBuilderPimps(bldr : ByteStringBuilder) {
 
     def putCStr(s : String) : ByteStringBuilder = {
-      val bytes = s.getBytes(utf8)
-      for (by ← bytes if by == 0) {
-        throw new IllegalArgumentException("UTF-8 encoding of BSON keys must not contain a 0 byte")
-      }
+      val bytes = s.getBytes(StandardCharsets.UTF_8)
       bldr.putBytes(bytes)
       bldr.putByte(0)
       bldr
@@ -84,7 +81,6 @@ package object bson {
     }
 
     def putRegex(pattern : String, options : String) : ByteStringBuilder = {
-      require(options.matches("i?l?m?s?u?x?"), "Regex options allowed are: ilmsux")
       putCStr(pattern)
       putCStr(options)
       bldr

@@ -49,6 +49,7 @@ trait BSONProvider {
 case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with BSONProvider {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
   val buffer : ByteStringBuilder = ByteString.newBuilder
+  buffer.sizeHint(512)
 
   def toByteString : ByteString = {
     val content = buffer.result()
@@ -103,10 +104,21 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
     array(Seq(value1) ++ values)
   }
 
+  def array(key : String, value : BSONArray) : BSONBuilder = {
+    putPrefix(ArrayCode, key)
+    putArray(value)
+  }
+
   def array[T, B <: BSONValue](key : String, values : Seq[T])(implicit codec : BSONCodec[T, B]) : BSONBuilder = {
     putPrefix(ArrayCode, key)
     codecArray[T, B](values)
   }
+
+  def array(key : String, values : Seq[BSONValue]) : BSONBuilder = {
+    putPrefix(ArrayCode, key)
+    array(values)
+  }
+
   def binary(key : String, blob : Array[Byte], subtype : BinarySubtype) : BSONBuilder = {
     putPrefix(BinaryCode, key)
     binary(blob, subtype)
@@ -270,10 +282,7 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
 
   private[bson] def array(values : Iterable[Any]) : BSONBuilder = {
     val arrayBuilder = BSONBuilder()
-    values.zipWithIndex.foreach {
-      case (v, i) ⇒
-        arrayBuilder.append(i.toString, v)
-    }
+    values.zipWithIndex.foreach { (x : (Any, Int)) ⇒ arrayBuilder.append(x._2.toString, x._1) }
     buffer ++= arrayBuilder.toByteString
     this
   }
@@ -365,6 +374,11 @@ case class BSONBuilder() extends mutable.Builder[(String, Any), BSONObject] with
   }
 
   private[bson] def putObj(value : BSONObject) : BSONBuilder = {
+    buffer.putDoc(value)
+    this
+  }
+
+  private[bson] def putArray(value : BSONArray) : BSONBuilder = {
     buffer.putDoc(value)
     this
   }

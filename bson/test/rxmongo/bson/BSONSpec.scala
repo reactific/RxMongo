@@ -33,6 +33,8 @@ import scala.util.matching.Regex
 /** Test Suite For BSON object */
 class BSONSpec extends Specification {
 
+  sequential
+
   "BSON" should {
     "build and interpret reflectively" in {
       val startime = System.nanoTime()
@@ -118,9 +120,9 @@ class BSONSpec extends Specification {
 
   "BSON Builder" should {
 
-    "build and compact a 10,000 node object graph quickly" in {
+    "build and compact a 100,000 object of 18 fields, quickly" in {
       val startime = System.nanoTime()
-      val obj = Helper.makeObject(10, 4)
+      val obj = Helper.makeObject(100000, 1)
       val endtime = System.nanoTime
       val compactObj = obj.compact
       val compactend = System.nanoTime()
@@ -130,12 +132,15 @@ class BSONSpec extends Specification {
       val compactiontime = compactend - endtime
       len must beEqualTo(compact_len)
       if (Helper.suitableForTimingTests) {
-        constructiontime must beLessThan(4000000000L) // < 4 seconds for 10,000 nodes
-        compactiontime must beLessThan(500000000L) // < 400ms for 5MB compaction
-        success
+        constructiontime must beLessThan(1500000000L) // < 2 seconds for 100,000 nodes
+        compactiontime must beLessThan(300000000L) // < 400ms for 5MB compaction
       } else {
         skipped(": machine too busy for timing tests")
       }
+      println("Construction:" + constructiontime)
+      println("Compaction  :" + compactiontime)
+      println(Profiler.format_one_item("makeObj"))
+      success
     }
   }
 
@@ -182,15 +187,14 @@ object Helper {
   val anArrayBSON : BSONArray = BSONArray(anArray)
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
 
-  def makeObj : BSONBuilder = {
-    val b = BSONBuilder()
-    b.double("double", 42.0D).
+  def makeObj : BSONBuilder = Profiler.profile("makeObj") {
+    val b = BSONBuilder().
+      double("double", 42.0D).
       string("string", "fourty-two").
       obj("obj", anObject).
-      array("array", anArray).
+      array("array", anArrayBSON).
       binary("binary", data, UserDefinedBinary).
-      undefined("undefined").
-      objectID("objectid", data).
+      undefined("undefined").objectID("objectid", data).
       boolean("boolean", value = true).
       date("date", System.currentTimeMillis()).
       nil("null").
@@ -225,7 +229,7 @@ object Helper {
       val os = ManagementFactory.getOperatingSystemMXBean
       val processors = os.getAvailableProcessors
       val avg = os.getSystemLoadAverage
-      avg < processors / 4
+      avg < processors / 2
     }
   }
 }

@@ -296,7 +296,10 @@ object UpdateExpression {
   private[rxmongo] def apply[T, B <: BSONValue](operator : String, field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
     val e = UpdateExpression()
     e.putPrefix(ObjectCode, operator)
-    e.putObj(BSONBuilder().append(field, codec.write(value)))
+    val codedValue = codec.write(value)
+    val b = BSONBuilder()
+    b.append(field, codedValue)
+    e.putObj(b)
     e
   }
 
@@ -594,7 +597,7 @@ object $pop {
     * @see [[http://docs.mongodb.org/master/reference/operator/update/pop/]]
     * @param field Name of the field from which to pop a value
     * @param head True to pop from the head (lowest index) or false to pop from the tail (highest index)
-    * @return Å new UpdateExpression containing the $pop operator
+    * @return Å new UpdateExpression containing the \$pop operator
     */
   def apply(field : String, head : Boolean = true) : UpdateExpression = {
     val e = UpdateExpression()
@@ -618,7 +621,7 @@ object $pullAll {
     * @param codec A codec for translating the values
     * @tparam T The scala type of the values
     * @tparam B The BSONValue type of the values
-    * @return A new UpdateExpression containing the $pull operator
+    * @return A new UpdateExpression containing the \$pull operator
     */
   def apply[T, B <: BSONValue](field : String, values : Seq[T])(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
     val e = UpdateExpression()
@@ -639,7 +642,7 @@ object $pull {
     * @param codec A codec for translating the values
     * @tparam T The scala type of the values
     * @tparam B The BSONValue type of the values
-    * @return A new UpdateExpression with the $pull operator
+    * @return A new UpdateExpression with the \$pull operator
     */
   def apply[T, B <: BSONValue](field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
     UpdateExpression("$pull", field, value)(codec)
@@ -651,7 +654,7 @@ object $pull {
     * @param codec A codec for translating the values
     * @tparam T The scala type of the values
     * @tparam B The BSONValue type of the values
-    * @return A new UpdateExpression with the $pull operator
+    * @return A new UpdateExpression with the \$pull operator
     */
   def apply[T, B <: BSONValue](fields : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
     UpdateExpression("$pull", fields)(codec)
@@ -660,7 +663,7 @@ object $pull {
   /** Removes all array elements that match a query
     *
     * @param fields The values of the array fields that should be pulled from the document
-    * @return A new UpdateExpression with the $pull operator
+    * @return A new UpdateExpression with the \$pull operator
     */
   def apply(fields : (String, Query)*) : UpdateExpression = {
     val b = BSONBuilder()

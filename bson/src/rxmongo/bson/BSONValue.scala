@@ -34,14 +34,12 @@ import scala.util.matching.Regex
 import scala.language.implicitConversions
 
 trait BSONValue {
-  private[bson] val buffer : ByteString
-  def value : Any
-
   def code : TypeCode
+  def value : Any
 
   def typeName : String = code.typeName
 
-  def length : Int = buffer.length
+  def buffer : ByteString
 
   override def toString = value.toString
 
@@ -146,16 +144,19 @@ trait BSONDocument extends BSONValue {
   def compact : BSONDocument
 }
 
-case class BSONDouble private[bson] (buffer : ByteString) extends BSONValue {
-  def code = DoubleCode
-  def value : Double = { buffer.iterator.getDouble }
+case class BSONDouble private[bson] (value : Double) extends BSONValue {
+  final val code : TypeCode = DoubleCode
+
+  def buffer : ByteString = {
+    val buffer = ByteString.newBuilder
+    buffer.putDouble(value)(ByteOrder.LITTLE_ENDIAN)
+    buffer.result()
+  }
 }
 
 object BSONDouble {
-  def apply(d : Double) = {
-    val buffer = ByteString.newBuilder
-    buffer.putDouble(d)(ByteOrder.LITTLE_ENDIAN)
-    new BSONDouble(buffer.result())
+  def apply(buff : ByteString) : BSONDouble = {
+    new BSONDouble(buff.iterator.getDouble) { override val buffer : ByteString = buff }
   }
 }
 
@@ -629,7 +630,6 @@ object BSONInteger {
     val buffer = ByteString.newBuilder
     buffer.putInt(i)(ByteOrder.LITTLE_ENDIAN)
     new BSONInteger(buffer.result())
-
   }
 }
 

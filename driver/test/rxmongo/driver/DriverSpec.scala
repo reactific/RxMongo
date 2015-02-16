@@ -76,7 +76,7 @@ class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
       driver.close(500.millis)
       x.isInstanceOf[ReplyMessage] must beTrue
     }
-/*
+    /*
     "handle a CheckReplicaSet" in mongoTest { () ⇒
       val driver = Driver(None, "Innocuous")
       val future = driver.connect("mongodb://localhost/") map { conn : ActorRef ⇒
