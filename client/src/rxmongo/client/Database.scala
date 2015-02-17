@@ -36,6 +36,7 @@ import rxmongo.driver.{ WriteConcern }
 case class Database(name : String, client : Client)(override implicit val timeout : Timeout = client.timeout,
   override implicit val writeConcern : WriteConcern = client.writeConcern)
   extends RxMongoComponent(client.driver) {
+  require(name.length < 64, s"Database name too long: ${name.length}")
 
   def namespace = name
   def collection(name : String)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Collection = {

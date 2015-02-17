@@ -244,7 +244,7 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
 
   def enqueue(msg : RequestMessage) = {
     log.debug("Queueing message {}", msg)
-    pendingRequestQueue.enqueue(Channel.SendMessage(msg, replyTo = sender()))
+    pendingRequestQueue += Channel.SendMessage(msg, replyTo = sender())
   }
 
   def dequeueAll() : Unit = {

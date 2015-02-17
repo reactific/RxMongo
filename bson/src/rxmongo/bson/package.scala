@@ -23,7 +23,7 @@
 package rxmongo
 
 import java.nio.ByteOrder
-import java.nio.charset.{StandardCharsets, Charset}
+import java.nio.charset.{ StandardCharsets, Charset }
 import java.util.regex.Pattern
 
 import akka.util.{ ByteIterator, ByteStringBuilder }

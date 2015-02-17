@@ -47,6 +47,10 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
 
   val fullName = db.namespace + "." + name
 
+  require(!name.contains("$"), "Collection names must not contain a $")
+  require(name.length > 0, "Collection names may not be empty")
+  require(!name.startsWith("system."), "Collection names may not start with 'system.'")
+
   private val _stats = new AtomicReference[CollStatsReply](null)
   private val _stats_refreshed_at = new AtomicLong(0)
   private def getRefreshedStats() : CollStatsReply = Try {
@@ -260,8 +264,8 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     * Apply a single Update selector and updater to the collection.
     * @param u The Update specification
     * @param ordered If true, then when an update statement fails, return without performing the remaining update
-    *             statements. If false, then when an update fails, continue with the remaining update statements,
-    *             if any. Defaults to true.
+    *           statements. If false, then when an update fails, continue with the remaining update statements,
+    *           if any. Defaults to true.
     * @param to The timeout for the update operation
     * @param wc The write concern for the update operation
     * @return A future WriteResult that returns the result of the update operation

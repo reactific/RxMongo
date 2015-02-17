@@ -54,6 +54,7 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
   val manager = IO(Tcp)
   var connection : ActorRef = null
   var ackPending : Boolean = false
+  var responsePending : Boolean = false
 
   val connectionMsg = Tcp.Connect(
     remoteAddress = remote,
@@ -73,31 +74,43 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
 
   log.debug("Connection request to TCP Manager sent")
 
-  val pendingRequests = mutable.Queue.empty[Write]
+  val pendingRequests = mutable.Queue.empty[RequestMessage]
 
-  def handleRequest(requestMsg : ByteString) : Unit = {
-    val msg = Write(requestMsg, Ack)
-    if (ackPending) {
-      pendingRequests.enqueue(msg)
+  @inline def sendMessage(requestMsg : RequestMessage) : Unit = {
+    val msg_to_send = requestMsg.finish
+    val msg = Write(msg_to_send, Ack)
+    connection ! msg
+    ackPending = true
+    responsePending = requestMsg.requiresResponse
+    log.debug("Sent Request: {} ({} bytes, queuelen={})", requestMsg, msg_to_send.length, pendingRequests.length)
+  }
+
+  @inline def handleRequest(requestMsg : RequestMessage) : Unit = {
+    if (ackPending || responsePending) {
+      pendingRequests += requestMsg
+      log.debug("Qued Request: {} (queuelen={})", requestMsg, pendingRequests.length)
     } else {
-      connection ! msg
-      ackPending = true
+      sendMessage(requestMsg)
     }
   }
 
-  override def handleReply(replyMsg : ReplyMessage, toActor : ActorRef) : Unit = {
-    super.handleReply(replyMsg, toActor)
+  @inline override def handleReply(replyMsg : ReplyMessage, toActor : ActorRef) : Unit = {
+    toActor ! replyMsg
     connection ! ResumeReading
+    responsePending = false
+    if (!ackPending && pendingRequests.nonEmpty) {
+      sendMessage(pendingRequests.dequeue())
+    }
   }
 
-  override def handleClose() : Unit = {
+  @inline override def handleClose() : Unit = {
     connection ! Close
     super.handleClose()
   }
 
   override def unconnected = LoggingReceive {
     case Ack ⇒ // Receive Write Ack from connection actor
-      log.warning("Got Ack in unconnected state")
+      log.warning("In unconnected, got unexpected Ack ")
 
     case CommandFailed(conn : Connect) ⇒
       val msg = Channel.ConnectionFailed(s"CommandFailed for connection: $conn")
@@ -134,14 +147,10 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
 
   override def connected : Receive = {
     case Ack ⇒ // Receive Write Ack from connection actor
-      if (pendingRequests.nonEmpty) {
-        val request = pendingRequests.dequeue()
-        log.debug("Sending Queued Request: {}", request)
-        connection ! request
-        ackPending = true
-      } else {
-        ackPending = false
-        log.debug("Ack with empty queue")
+      ackPending = false
+      log.debug("Ack with queuelen={}", pendingRequests.length)
+      if (!responsePending && pendingRequests.nonEmpty) {
+        sendMessage(pendingRequests.dequeue())
       }
 
     case Received(data : ByteString) ⇒ // Receive a reply from Mongo
