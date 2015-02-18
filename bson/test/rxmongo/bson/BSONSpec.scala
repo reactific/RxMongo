@@ -25,6 +25,8 @@ package rxmongo.bson
 import java.lang.management.ManagementFactory
 import java.util.Date
 
+import com.reactific.hsp.Profiler
+
 import org.specs2.mutable.Specification
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 

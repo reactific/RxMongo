@@ -327,16 +327,5 @@ class BuilderSpec extends Specification {
       builder.long("long", data)
       builder.toByteString must beEqualTo(expected)
     }
-
-    "throw for invalid cstring" in {
-      val builder = BSONBuilder()
-      builder.string("name\u0000withNull", "string") should throwA[IllegalArgumentException]
-    }
-
-    "throw for invalid regex options" in {
-      val builder = BSONBuilder()
-      builder.regex("regex", "pattern", "fubar") should throwA[IllegalArgumentException]
-    }
   }
-
 }

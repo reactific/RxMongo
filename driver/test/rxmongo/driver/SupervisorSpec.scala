@@ -57,7 +57,7 @@ class SupervisorSpec extends AkkaTest(ActorSystem("SupervisorTest")) {
       val s = system.actorOf(Supervisor.props())
       val uri = MongoURI("mongodb://localhost/").get
       s ! Supervisor.AddConnection(uri, "MyConnection")
-      expectMsgType[ActorRef](500.millis)
+      expectMsgType[ActorRef](750.millis)
       success
     }
   }

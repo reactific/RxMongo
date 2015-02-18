@@ -37,10 +37,10 @@ object BuildSettings {
 
   val buildSettings: Seq[sbt.Def.Setting[_]] = Defaults.coreDefaultSettings ++
     Seq(
-      organization := "org.rxmongo",
+      organization := "com.reactific",
       resolvers := Dependencies.resolvers,
       version := rxmongo_version,
-      scalaVersion := "2.11.4",
+      scalaVersion := "2.11.5",
       javaOptions in test ++= Seq("-Xmx512m", "-XX:MaxPermSize=512m"),
       scalacOptions ++= Seq("-feature", "-unchecked", "-deprecation", "-target:jvm-1.7"),
       scalacOptions in(Compile, doc) ++=

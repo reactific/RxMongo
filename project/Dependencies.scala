@@ -44,10 +44,11 @@ object Dependencies {
   val logback_test    = "ch.qos.logback"       % "logback-classic"              % "1.1.2"      % "test"
   val logback_prod    = "ch.qos.logback"       % "logback-classic"              % "1.1.2"
   val specs           = "org.specs2"          %% "specs2-core"                  % "2.4.15"     % "test"
+  val hsp             = "com.reactific"       %% "hotspot-profiler"             % "0.1.0-SNAPSHOT"
 
-  val common = Seq(specs, logback_test)
+  val common = Seq(specs, logback_test, hsp)
 
-  val bson = common ++ Seq( akka_actor )
+  val bson = common ++ Seq( akka_actor)
 
   val driver = common ++ Seq( akka_streams, akka_actor, akka_testkit, akka_slf4j, akka_http_core, scala_logging)
 
