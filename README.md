@@ -16,7 +16,7 @@ Will be available in February 2015 with something like this:
 
 ```scala
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
-libraryDependencies := "org.rxmongo" %% "rxmongo-client" % "0.1.0-SNAPSHOT"
+libraryDependencies := "com.reactific" %% "rxmongo-client" % "0.1.0-SNAPSHOT"
 ```
 
 # Introduction
@@ -85,7 +85,7 @@ abstractions for variant collections, named queries, and other utilities to make
 ### Full Featured for Mongo 3.0
 By the 1.0 release, RxMongo will fully support all Mongo 3.0 features and is aimed at the Mongo 3.0 release. Backwards
 compatibility with 2.6 may be offered but at a lower priority. Compatibility with versions prior to 2.6 will not be
-offered. 
+offered.
 
 # Getting Started
 

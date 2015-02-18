@@ -27,7 +27,8 @@ object Dependencies {
 
   val resolvers = Seq(
     "Typesafe repository snapshots" at "http://repo.typesafe.com/typesafe/snapshots/",
-    "Typesafe repository releases" at "http://repo.typesafe.com/typesafe/releases/"
+    "Typesafe repository releases" at "http://repo.typesafe.com/typesafe/releases/",
+    "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
   )
 
   // Akka Stuff
@@ -44,7 +45,7 @@ object Dependencies {
   val logback_test    = "ch.qos.logback"       % "logback-classic"              % "1.1.2"      % "test"
   val logback_prod    = "ch.qos.logback"       % "logback-classic"              % "1.1.2"
   val specs           = "org.specs2"          %% "specs2-core"                  % "2.4.15"     % "test"
-  val hsp             = "com.reactific"       %% "hotspot-profiler"             % "0.1.0-SNAPSHOT"
+  val hsp             = "com.reactific"       %% "hotspot-profiler"             % "0.1.0-SNAPSHOT" % "test"
 
   val common = Seq(specs, logback_test, hsp)
 
