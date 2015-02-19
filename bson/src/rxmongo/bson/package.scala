@@ -210,30 +210,30 @@ package object bson {
       new Regex("(?" + regex_options + ")" + pattern)
     }
 
-    def skipLength : Int = {
+    @inline def skipLength : Int = {
       val len = itr.getInt
       itr.drop(len)
       len + 4
     }
 
-    def skipCStr : Int = {
+    @inline def skipCStr : Int = {
       var count = 0
       itr.dropWhile { ch ⇒ count = count + 1; ch != 0 }
       itr.drop(1)
       count
     }
 
-    def skipDocument : Int = {
+    @inline def skipDocument : Int = {
       val len = itr.getInt
       itr.drop(len - 4)
       len
     }
 
-    def skipLong : Int = { itr.drop(8); 8 }
-    def skipDouble : Int = skipLong
-    def skipInt : Int = { itr.drop(4); 4 }
-    def skipObjId : Int = { itr.drop(12); 12 }
-    def skipByte : Int = { itr.drop(1); 1 }
+    @inline def skipLong : Int = { itr.drop(8); 8 }
+    @inline def skipDouble : Int = skipLong
+    @inline def skipInt : Int = { itr.drop(4); 4 }
+    @inline def skipObjId : Int = { itr.drop(12); 12 }
+    @inline def skipByte : Int = { itr.drop(1); 1 }
 
   }
 

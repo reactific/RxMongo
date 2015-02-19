@@ -23,7 +23,7 @@
 package rxmongo.client
 
 import rxmongo.bson._
-import rxmongo.driver.{ IndexOptions, Index }
+import rxmongo.driver.{WriteResult, IndexOptions, Index}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration
@@ -37,7 +37,8 @@ class CollectionSpec extends RxMongoTest("rxmongo", "collection") {
   "Collection" should {
 
     "insert" in mongoTest { () ⇒
-      val result = Await.result(collection.insertOne(obj1), atMost)
+      val future = collection.insertOne(obj1) map { doc ⇒ WriteResult(doc) }
+      val result = Await.result(future, atMost)
       result.ok must beEqualTo(1)
       result.n must beEqualTo(1)
     }
@@ -70,7 +71,8 @@ class CollectionSpec extends RxMongoTest("rxmongo", "collection") {
 
     "delete" in mongoTest { () ⇒
       val del = Delete("key1" → 42.0, limit = 1)
-      val result = Await.result(collection.deleteOne(del), atMost)
+      val future = collection.deleteOne(del) map { doc ⇒ WriteResult(doc) }
+      val result = Await.result(future, atMost)
       result.ok must beEqualTo(1)
       result.n must beEqualTo(1)
     }

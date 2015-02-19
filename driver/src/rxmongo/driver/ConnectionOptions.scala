@@ -26,7 +26,6 @@ import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
 import akka.http.model.Uri.Query
-import rxmongo.bson._
 
 import scala.concurrent.duration._
 
@@ -63,9 +62,9 @@ import scala.concurrent.duration._
   * @param waitQueueTimeoutMS The maximum time in milliseconds that a request can wait for a connection to become
   * available. The default is 60,000
   * @param writeConcern The Write Concern option. Write concern describes the kind of assurances that the mongod and
-  *                the driver provide to the application regarding the success and durability of the write
-  *                operation. This option defines the level and kind of write concern. This option can take either
-  *                a number or a string as a value, as follows:
+  *               the driver provide to the application regarding the success and durability of the write
+  *               operation. This option defines the level and kind of write concern. This option can take either
+  *               a number or a string as a value, as follows:
   * {{{
   * Option	Type	  Description
   * -1      number  The driver will not acknowledge write operations and will suppress all network or socket errors.
@@ -155,9 +154,9 @@ import scala.concurrent.duration._
   * value decreases the overhead of the resizing logic at the expense of potentially increasing
   * processing delays because channels were not created quickly enough. The default is 10
   * @param channelReconnectPeriod When all access to a replica set fails, RxMongo tries to regularly reconnect using
-  *       the information it has. This value controls the period of time between reconnection
-  *       attempts. The default is 10,000 milliseconds (10 seconds). A value of 0 means fail
-  *       instead of attempting reconnection.
+  *      the information it has. This value controls the period of time between reconnection
+  *      attempts. The default is 10,000 milliseconds (10 seconds). A value of 0 means fail
+  *      instead of attempting reconnection.
   */
 
 case class ConnectionOptions(
@@ -258,142 +257,3 @@ object ConnectionOptions {
   }
 }
 
-sealed trait WriteConcernKind
-case object NoAcknowledgmentWC extends WriteConcernKind { override def toString = "-1" }
-case object ErrorsOnlyWC extends WriteConcernKind { override def toString = "0" }
-case object BasicAcknowledgmentWC extends WriteConcernKind { override def toString = "1" }
-case object MajorityWC extends WriteConcernKind { override def toString = "majority" }
-case class WaitForMembersWC(numMembers : Int) extends WriteConcernKind { override def toString = numMembers.toString }
-case class MembersWithTagWC(tag : String) extends WriteConcernKind { override def toString = tag }
-
-/** MongoDB Write Concern
-  * This represents the WriteConcern values that are part of driver, client, database, collection
-  * and write operation specifications. The Write Concern controls isolation and durability requirements for a write.
-  * @see [[http://docs.mongodb.org/master/reference/write-concern/]]
-  * @param kind How writes should be done.
-  * @param timeout The timeout for the replica set (when WaitForMembersWC.numMbers > 1) to complete the write.
-  * @param journal Whether journaling of the write must be finished before return (guarantees durability)
-  */
-case class WriteConcern(
-  kind : WriteConcernKind,
-  timeout : FiniteDuration,
-  journal : Boolean) extends BSONProvider {
-  def toByteString = { WriteConcern.Codec.write(this).buffer }
-  override def toBSONObject = { WriteConcern.Codec.write(this) }
-}
-
-object WriteConcern {
-  val default = WriteConcern()
-
-  private def int2WCK(i : Int) : WriteConcernKind = {
-    i match {
-      case -1 ⇒ NoAcknowledgmentWC
-      case 0 ⇒ ErrorsOnlyWC
-      case 1 ⇒ BasicAcknowledgmentWC
-      case x : Int ⇒ WaitForMembersWC(x)
-    }
-  }
-
-  private def str2WCK(s : String) : WriteConcernKind = {
-    s match {
-      case "majority" ⇒ MajorityWC
-      case tag : String if tag.length > 0 ⇒ MembersWithTagWC(tag)
-      case _ ⇒ BasicAcknowledgmentWC
-    }
-  }
-
-  implicit object Codec extends BSONCodec[WriteConcern, BSONObject] {
-    def code : TypeCode = ObjectCode
-    def write(value : WriteConcern) : BSONObject = {
-      val b = BSONBuilder()
-      value.kind match {
-        case NoAcknowledgmentWC ⇒ b.integer("w", -1)
-        case ErrorsOnlyWC ⇒ b.integer("w", 0)
-        case BasicAcknowledgmentWC ⇒ b.integer("w", 1)
-        case MajorityWC ⇒ b.string("w", "majority")
-        case WaitForMembersWC(num) ⇒ b.integer("w", num)
-        case MembersWithTagWC(tag) ⇒ b.string("w", tag)
-        case k ⇒ throw new RxMongoError(s"Invalid WriteConcernKind: $k")
-      }
-      b.integer("wtimeout", value.timeout.toMillis.toInt)
-      b.boolean("j", value.journal)
-      b.result
-    }
-    def read(value : BSONObject) : WriteConcern = {
-      val kind = {
-        value.getTypeCode("q") match {
-          case StringCode ⇒ str2WCK(value.getAsString("q"))
-          case IntegerCode ⇒ int2WCK(value.getAsInt("q"))
-          case c ⇒ throw new RxMongoError(s"Invalid TypeCode for WriteConcerKind: $c")
-        }
-      }
-      WriteConcern(kind, Duration(value.getAsInt("wtimeout"), TimeUnit.MILLISECONDS), value.getAsBoolean("j"))
-    }
-  }
-
-  def apply(str : String = "", timeout : FiniteDuration = 10.seconds, journal : Boolean = false) : WriteConcern = {
-    val kind = str.trim match {
-      case num : String if num.length > 0 && (num forall { ch ⇒ ch.isDigit | ch == '-' }) ⇒
-        num.toInt match {
-          case -1 ⇒ NoAcknowledgmentWC
-          case 0 ⇒ ErrorsOnlyWC
-          case 1 ⇒ BasicAcknowledgmentWC
-          case x : Int ⇒ WaitForMembersWC(x)
-        }
-      case "majority" ⇒ MajorityWC
-      case tag : String if tag.length > 0 ⇒ MembersWithTagWC(tag)
-      case _ ⇒ BasicAcknowledgmentWC
-    }
-    WriteConcern(kind, timeout, journal)
-  }
-
-  def apply(wck : WriteConcernKind) : WriteConcern = WriteConcern(wck, 10.seconds, journal = false)
-
-  def apply(wck : WriteConcernKind, timeout : FiniteDuration) : WriteConcern = WriteConcern(wck, timeout, journal = false)
-}
-
-sealed trait ReadPreference
-case object PrimaryRP extends ReadPreference { override def toString = "primary" }
-case object PrimaryPreferredRP extends ReadPreference { override def toString = "primaryPreferred" }
-case object SecondaryRP extends ReadPreference { override def toString = "secondary" }
-case object SecondaryPreferredRP extends ReadPreference { override def toString = "secondaryPreferred" }
-case object NearestRP extends ReadPreference { override def toString = "nearest" }
-
-object ReadPreference {
-  def apply(str : String) : ReadPreference = {
-    str match {
-      case "primary" ⇒ PrimaryRP
-      case "primaryPreferred" ⇒ PrimaryPreferredRP
-      case "secondary" ⇒ SecondaryRP
-      case "secondaryPreferred" ⇒ SecondaryPreferredRP
-      case "nearest" ⇒ NearestRP
-      case _ ⇒ PrimaryRP
-    }
-  }
-
-  def tags(str : String) : Iterable[(String, String)] = {
-    val parts = str.split(",")
-    for (part ← parts if part.contains(":")) yield {
-      val parts = part.split(":")
-      parts(0) -> parts(1)
-    }
-  }
-}
-
-sealed trait AuthMechanism { val asStr : String }
-case object MONGODB_X509 extends AuthMechanism { override def toString = asStr; val asStr = "MONGODB-X509"; }
-case object MONGODB_CR extends AuthMechanism { override def toString = asStr; val asStr = "MONGODB-CR" }
-case object GSSAPI extends AuthMechanism { override def toString = asStr; val asStr = "GSSAPI" }
-case object PLAIN extends AuthMechanism { override def toString = asStr; val asStr = "PLAIN" }
-
-object AuthMechanism {
-  def apply(str : String) : AuthMechanism = {
-    str match {
-      case MONGODB_X509.asStr ⇒ MONGODB_X509
-      case MONGODB_CR.asStr ⇒ MONGODB_CR
-      case GSSAPI.asStr ⇒ GSSAPI
-      case PLAIN.asStr ⇒ PLAIN
-      case _ ⇒ MONGODB_X509
-    }
-  }
-}

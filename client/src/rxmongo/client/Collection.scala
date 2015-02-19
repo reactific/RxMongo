@@ -99,7 +99,7 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
   def createIndex(keys : Index, options : IndexOptions) : Future[BSONObject] = {
     options.name.map { name ⇒ require(name.length + fullName.length + 1 < 128, "Full index name must be < 128 characters") }
     val cmd = CreateIndicesCmd(db.name, name, Seq(keys -> options))
-    db.client.connection.ask(cmd) map processReplyMessage(cmd) { doc ⇒ doc }
+    db.client.connection.ask(cmd) map processReplyMessage(cmd)
   }
 
   def createIndices(indices : (Index, IndexOptions)*) : Future[BSONObject] = {
@@ -107,7 +107,7 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
       options.name.map { name ⇒ require(name.length + fullName.length + 1 < 128, "Full index name must be < 128 characters") }
     }
     val cmd = CreateIndicesCmd(db.name, name, indices)
-    db.client.connection.ask(cmd) map processReplyMessage(cmd) { doc ⇒ doc }
+    db.client.connection.ask(cmd) map processReplyMessage(cmd)
   }
 
   /** Renders a human-readable view of the data collected by indexStats which reflects B-tree utilization. */
@@ -117,10 +117,11 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
   /** Returns the size of the collection. Wraps the size field in the output of the collStats. */
   def dataSize() = ???
 
-  def deleteOne(delete : Delete, ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def deleteOne(delete : Delete, ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONObject] = {
     remove(Seq(delete), ordered)(to, wc)
   }
-  def delete(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+
+  def delete(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONObject] = {
     remove(deletes, ordered)(to, wc)
   }
 
@@ -204,13 +205,13 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     db.client.connection ! msg
   }
 
-  def insertOne(obj : BSONObject)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def insertOne(obj : BSONObject)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONObject] = {
     insert(Seq(obj), ordered = true)(to, wc)
   }
 
-  def insert(objs : Seq[BSONObject], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def insert(objs : Seq[BSONObject], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONObject] = {
     val insert = InsertCmd(db.name, name, objs, ordered, wc)
-    db.client.connection.ask(insert)(to) map processWriteCommandResult(insert)
+    db.client.connection.ask(insert)(to) map processReplyMessage(insert)
   }
 
   /** Reports if a collection is a capped collection. */
@@ -226,9 +227,9 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     db.client.connection ! delete
   }
 
-  def remove(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def remove(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONObject] = {
     val delete = DeleteCmd(db.name, name, deletes, ordered, wc)
-    db.client.connection.ask(delete)(to) map processWriteCommandResult(delete)
+    db.client.connection.ask(delete)(to) map processReplyMessage(delete)
   }
 
   /** Changes the name of a collection. */
@@ -264,8 +265,8 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     * Apply a single Update selector and updater to the collection.
     * @param u The Update specification
     * @param ordered If true, then when an update statement fails, return without performing the remaining update
-    *           statements. If false, then when an update fails, continue with the remaining update statements,
-    *           if any. Defaults to true.
+    *       statements. If false, then when an update fails, continue with the remaining update statements,
+    *       if any. Defaults to true.
     * @param to The timeout for the update operation
     * @param wc The write concern for the update operation
     * @return A future WriteResult that returns the result of the update operation
@@ -276,15 +277,17 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
   /** Performs diagnostic operations on a collection. */
   def validate() = ???
 
-  private def processReplyMessage[T](cmd : Command)(f : (BSONObject) ⇒ T)(any : Any) = {
+  private def processReplyMessage[T](cmd : Command)(any : Any) : BSONObject = {
     any match {
       case reply : ReplyMessage ⇒
+        require(cmd.requestId == reply.responseTo,
+          s"Response to #${cmd.requestId} is actually for #${reply.responseTo}")
         reply.error match {
           case Some(msg) ⇒
             throw new RxMongoError(s"Error while processing $cmd: $msg")
           case None ⇒
             require(reply.numberReturned > 0, s"No write result from $cmd")
-            f(reply.documents.head)
+            reply.documents.head
         }
       case foo ⇒ {
         throw new RxMongoError(s"Unknown result from Connection: $foo")
@@ -293,11 +296,13 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
   }
 
   private def processWriteCommandResult(cmd : Command)(any : Any) : WriteResult = {
-    processReplyMessage(cmd) { doc ⇒ WriteResult(doc) } (any)
+    val doc = processReplyMessage(cmd)(any)
+    WriteResult(doc)
   }
 
   private def processDoubleOkCommandResult(cmd : Command)(any : Any) : Boolean = {
-    processReplyMessage(cmd) { doc ⇒ doc.getAsDouble("ok") == 1.0 } (any)
+    val doc = processReplyMessage(cmd)(any)
+    doc.getAsDouble("ok") == 1.0
   }
 
 }
