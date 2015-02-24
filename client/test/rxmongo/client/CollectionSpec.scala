@@ -23,7 +23,7 @@
 package rxmongo.client
 
 import rxmongo.bson._
-import rxmongo.driver.{WriteResult, IndexOptions, Index}
+import rxmongo.driver.{ WriteResult, IndexOptions, Index }
 
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration

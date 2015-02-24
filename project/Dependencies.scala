@@ -32,8 +32,8 @@ object Dependencies {
   )
 
   // Akka Stuff
-  // val akkaV = "2.3.9"
-  val akkaV = "2.4-SNAPSHOT"
+  val akkaV = "2.3.9"
+  // val akkaV = "2.4-SNAPSHOT"
   val akkaStreamsV = "1.0-M3"
   val akka_actor      = "com.typesafe.akka"   %% "akka-actor"                   % akkaV
   val akka_slf4j      = "com.typesafe.akka"   %% "akka-slf4j"                   % akkaV

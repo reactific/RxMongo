@@ -127,22 +127,22 @@ case class UpdateCmd(
   * @param db The name of the database containing the collection against which the command is run
   * @param coll The collection against which to run the command.
   * @param query Optional. The selection criteria for the modification. The query field employs the same query
-  *     selectors as used in the db.collection.find() method. Although the query may match multiple documents,
-  *     findAndModify will only select one document to modify.
+  *   selectors as used in the db.collection.find() method. Although the query may match multiple documents,
+  *   findAndModify will only select one document to modify.
   * @param sortBy Optional. Determines which document the operation modifies if the query selects multiple documents.
-  *      findAndModify modifies the first document in the sort order specified by this argument.
+  *    findAndModify modifies the first document in the sort order specified by this argument.
   * @param update Must specify either the remove or the update field. Performs an update of the selected document. The
-  *      update field employs the same update operators or field: value specifications to modify the
-  *      selected document.
+  *    update field employs the same update operators or field: value specifications to modify the
+  *    selected document.
   * @param remove Must specify either the remove or the update field. Removes the document specified in the query field.
-  *      Set this to true to remove the selected document . The default is false.
+  *    Set this to true to remove the selected document . The default is false.
   * @param returnNew Optional. When true, returns the modified document rather than the original. The findAndModify
-  *         method ignores the new option for remove operations. The default is false.
+  *       method ignores the new option for remove operations. The default is false.
   * @param upsert Optional. Used in conjunction with the update field. When true, findAndModify creates a new document
-  *      if no document matches the query, or if documents match the query, findAndModify performs an update.
-  *      To avoid multiple upserts, ensure that the query fields are uniquely indexed. The default is false.
+  *    if no document matches the query, or if documents match the query, findAndModify performs an update.
+  *    To avoid multiple upserts, ensure that the query fields are uniquely indexed. The default is false.
   * @param fields Optional. A subset of fields to return. The fields document specifies an inclusion of a field with 1,
-  *      as in: fields: { <field1>: 1, <field2>: 1, ... }.
+  *    as in: fields: { <field1>: 1, <field2>: 1, ... }.
   */
 case class FindAndModifyCmd(
   db : String,
@@ -192,12 +192,12 @@ case class GetLastErrorCmd(
   * @param db The database to send the command to
   * @param function The function to invoke in the database server
   * @param args Optional. An array of arguments to pass to the JavaScript function. Omit if the function does not
-  *    take arguments.
+  *  take arguments.
   * @param nolock Optional. By default, eval takes a global write lock before evaluating the JavaScript function.
-  *      As a result, eval blocks all other read and write operations to the database while the eval operation
-  *      runs. Set nolock to true on the eval command to prevent the eval command from taking the global write
-  *      lock before evaluating the JavaScript. nolock does not impact whether operations within the JavaScript
-  *      code itself takes a write lock.
+  *    As a result, eval blocks all other read and write operations to the database while the eval operation
+  *    runs. Set nolock to true on the eval command to prevent the eval command from taking the global write
+  *    lock before evaluating the JavaScript. nolock does not impact whether operations within the JavaScript
+  *    code itself takes a write lock.
   */
 case class EvalCmd(
   db : String,

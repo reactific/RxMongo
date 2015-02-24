@@ -129,7 +129,7 @@ object MongoURI {
           case 1 ⇒ parts(0) -> DefaultPort
           case _ ⇒ throw RxMongoError("Mongo URI host names must not be empty or contain more than one :")
         }
-        InetSocketAddress.createUnresolved(host, port)
+        new InetSocketAddress(host, port)
       }
     }.toList
     MongoURI(hostList, database, creds, options)

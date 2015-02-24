@@ -112,7 +112,7 @@ abstract class Channel(remote : InetSocketAddress, options : ConnectionOptions, 
         log.debug("Handling Reply: {} ({} bytes)", reply, msg.length)
         handleReply(reply, actor)
       case None ⇒
-        log.info(s"Received reply ($reply) but matching request was not found")
+        log.warning(s"Received reply ({}) but matching request was not found", reply)
         listener ! Channel.UnsolicitedReply(reply)
     }
   }
@@ -130,7 +130,7 @@ abstract class Channel(remote : InetSocketAddress, options : ConnectionOptions, 
       sender() ! makeStats
 
     case x : Any ⇒
-      log.debug(s"In unconnected, got other message: $x")
+      log.debug(s"In unconnected, got other message: {}", x)
       spuriousMessages += 1
   }
 
@@ -146,7 +146,7 @@ abstract class Channel(remote : InetSocketAddress, options : ConnectionOptions, 
       doRequest(msg)
 
     case x : Any ⇒
-      log.debug(s"In connected, got other message: $x")
+      log.debug(s"In connected, got other message: {}", x)
       spuriousMessages += 1
   }
 
@@ -158,7 +158,7 @@ abstract class Channel(remote : InetSocketAddress, options : ConnectionOptions, 
       log.info("Channel.SendMessage ignored as channel is closing")
 
     case x : Any ⇒
-      log.debug(s"In closing, got other message: $x")
+      log.debug(s"In closing, got other message: {}", x)
       spuriousMessages += 1
   }
 

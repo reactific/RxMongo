@@ -111,12 +111,17 @@ case class Driver(cfg : Option[Config] = None, name : String = "RxMongo") extend
     }
 
     // Terminate the actor system
-    system.terminate()
+    // system.terminate()
 
     // When the actorSystem is shutdown, it means that supervisorActor has exited (run its postStop). Even if that
     // hasn't happened, the shutdown() method is asynchronous and this close method is synchronous so make sure
     // we wait for the system to be actually down.
-    Await.result(system.whenTerminated, timeout.toMillis match { case 0 ⇒ Duration.Inf; case _ ⇒ timeout })
+
+    // 2.4 = Await.result(system.whenTerminated, timeout.toMillis match { case 0 ⇒ Duration.Inf; case _ ⇒ timeout })
+    if (timeout.toMillis > 0) {
+      try { system.awaitTermination(timeout) }
+      catch { case x : Throwable ⇒ log.warning("While awaiting termination: {}", x) }
+    }
     log.debug("RxMongo Closed")
   }
 
@@ -135,7 +140,7 @@ case class Driver(cfg : Option[Config] = None, name : String = "RxMongo") extend
       case Some(nm) ⇒ nm
       case None     ⇒ "Connection"
     }
-    (supervisorActor ? AddConnection(uri, final_name)).map { x ⇒
+    supervisorActor.ask(AddConnection(uri, final_name))(timeout) map { x ⇒
       log.debug(s"Connection to '$final_name' acquired actor $x")
       x.asInstanceOf[ActorRef]
     }

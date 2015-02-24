@@ -44,7 +44,7 @@ class MongoURISpec extends Specification {
     try_uri.get
   }
 
-  def addr(h : String, p : Int) = InetSocketAddress.createUnresolved(h, p)
+  def addr(h : String, p : Int) = new InetSocketAddress(h, p)
 
   "MongoURI" should {
     s"parse a simple url: $simple" in {

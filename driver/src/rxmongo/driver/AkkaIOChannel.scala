@@ -25,7 +25,6 @@ package rxmongo.driver
 import java.net.InetSocketAddress
 
 import akka.actor.{ Terminated, ActorRef }
-import akka.event.LoggingReceive
 import akka.io.Inet.SocketOption
 import akka.io.{ IO, Tcp }
 import akka.util.ByteString
@@ -108,7 +107,7 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
     super.handleClose()
   }
 
-  override def unconnected = LoggingReceive {
+  override def unconnected : Receive = {
     case Ack ⇒ // Receive Write Ack from connection actor
       log.warning("In unconnected, got unexpected Ack ")
 
@@ -119,7 +118,7 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
       context stop self
 
     case c @ Connected(remote_addr, local_addr) ⇒
-      log.debug(s"Connected to $remote_addr at $local_addr")
+      log.debug("Connected to {} at {}", remote_addr, local_addr)
       connection = sender()
       connection ! Register(self)
       connection ! ResumeReading
@@ -160,7 +159,7 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
       if (actor == connection)
         log.debug("TCP Connection terminated unexpectedly: {}", actor)
       else
-        log.debug(s"Spurious termination: $actor")
+        log.debug("Spurious termination: {}", actor)
 
     case CommandFailed(w : Write) ⇒ // A write has failed
       writeFailures += 1
@@ -173,7 +172,7 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
       super.connected(x)
   }
 
-  override def closing : Receive = LoggingReceive {
+  override def closing : Receive = {
     case Received(data : ByteString) ⇒
       doReply(data)
 

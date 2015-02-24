@@ -28,8 +28,7 @@ import java.util.Date
 import akka.util.{ ByteIterator, ByteString }
 
 import scala.annotation.switch
-import scala.collection.{ Map, MapLike }
-import scala.collection.immutable
+import scala.collection.{ mutable, Map, MapLike, immutable }
 import scala.util.matching.Regex
 import scala.language.implicitConversions
 
@@ -47,9 +46,34 @@ trait BSONValue {
 
 object BSONValue {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
+
+  def apply(code : TypeCode, bytes : ByteString) : BSONValue = {
+    code match {
+      case IntegerCode ⇒ BSONInteger(bytes)
+      case LongCode ⇒ BSONLong(bytes)
+      case DoubleCode ⇒ BSONDouble(bytes)
+      case StringCode ⇒ BSONString(bytes)
+      case ObjectCode ⇒ BSONObject(bytes)
+      case ArrayCode ⇒ BSONArray(bytes)
+      case BinaryCode ⇒ BSONBinary(bytes)
+      case ObjectIDCode ⇒ BSONObjectID(bytes)
+      case BooleanCode ⇒ BSONBoolean(bytes)
+      case DateCode ⇒ BSONDate(bytes)
+      case NullCode ⇒ BSONNull
+      case RegexCode ⇒ BSONRegex(bytes)
+      case JavaScriptCode ⇒ BSONJsCode(bytes)
+      case ScopedJSCode ⇒ BSONScopedJsCode(bytes)
+      case DBPointerCode ⇒ BSONDBPointer(bytes)
+      case TimestampCode ⇒ BSONTimestamp(bytes)
+      case UndefinedCode ⇒ BSONUndefined
+      case SymbolCode ⇒ BSONSymbol(bytes)
+      case x : TypeCode ⇒ throw new NoSuchElementException(s"Unrecognized: $x")
+    }
+
+  }
 }
 
-trait BSONDocument extends BSONValue {
+abstract class BSONDocument extends BSONValue {
 
   class DocumentIterator private[bson] (docItr : ByteIterator) extends Iterator[(String, BSONValue)] {
 
@@ -188,6 +212,8 @@ case class BSONObject private[bson] (buffer : ByteString)
     bldr.append(kv._1, kv._2.asInstanceOf[BSONValue])
     bldr.result
   }
+
+  private[rxmongo] def byteIterator = buffer.iterator
 
   def iterator : Iterator[(String, BSONValue)] = {
     new DocumentIterator(buffer.iterator)
