@@ -86,8 +86,7 @@ package object bson {
       bldr
     }
 
-    def putRegex(r : Regex) : ByteStringBuilder = {
-      val pattern : String = r.pattern.pattern()
+    def putRegex(p : Pattern) : ByteStringBuilder = {
       val options : String = {
         //
         // 'i' for case insensitive matching,
@@ -96,7 +95,7 @@ package object bson {
         // 's' for dotall mode ('.' matches everything),
         // and 'u' to make \w, \W, etc. match unicode.
         // 'x' for verbose mode,
-        val flags = r.pattern.flags()
+        val flags = p.flags()
         var str : String = ""
         if ((flags & Pattern.CASE_INSENSITIVE) != 0)
           str = str + "i"
@@ -110,12 +109,18 @@ package object bson {
           str = str + "x"
         str
       }
+      val pattern : String = {
+        val s = p.pattern()
+        val r = "^\\(\\?[idmsuxU]+\\)"
+        s.replaceFirst(r, "")
+      }
       putRegex(pattern, options)
     }
 
     def putDoc(value : BSONDocument) : ByteStringBuilder = {
-      require(bldr.length + value.buffer.length <= maxDocSize, s"Document size exceeds maximum of $maxDocSize")
-      bldr ++= value.buffer
+      val buffer = value.toByteString
+      require(bldr.length + buffer.length <= maxDocSize, s"Document size exceeds maximum of $maxDocSize")
+      bldr ++= buffer
       bldr
     }
 
@@ -131,18 +136,18 @@ package object bson {
       bldr
     }
 
-    def putDocs(values : Seq[BSONDocument]) : ByteStringBuilder = {
+    def putDocs(values : Iterable[BSONDocument]) : ByteStringBuilder = {
       for (doc ← values) { putDoc(doc) }
       bldr
     }
 
-    def putObj(value : BSONObject) : ByteStringBuilder = putDoc(value)
-    def putObj(value : Option[BSONObject]) : ByteStringBuilder = putDoc(value)
-    def putObjs(value : Seq[BSONObject]) : ByteStringBuilder = putDocs(value)
+    def putObj(value : BSONObject) : ByteStringBuilder = putDoc(value.doc)
+    def putObj(value : Option[BSONObject]) : ByteStringBuilder = putDoc(value.map { v ⇒ v.doc })
+    def putObjs(values : Iterable[BSONObject]) : ByteStringBuilder = putDocs(values.map { v ⇒ v.doc })
 
-    def putArr(value : BSONArray) : ByteStringBuilder = putDoc(value)
-    def putArr(value : Option[BSONArray]) : ByteStringBuilder = putDoc(value)
-    def putArrs(value : Seq[BSONArray]) : ByteStringBuilder = putDocs(value)
+    def putArr(value : BSONArray) : ByteStringBuilder = putDoc(value.doc)
+    def putArr(value : Option[BSONArray]) : ByteStringBuilder = putDoc(value.map { v ⇒ v.doc })
+    def putArrs(values : Iterable[BSONArray]) : ByteStringBuilder = putDocs(values.map { v ⇒ v.doc })
 
   }
 
@@ -177,37 +182,54 @@ package object bson {
       res
     }
 
-    def getObj : BSONObject = {
+    def getDoc : BSONDocument = {
       val save = itr.clone()
       val len = itr.getInt
       require(len < maxDocSize, s"Maximum object size is $maxDocSize bytes")
       itr.drop(len - 4)
-      val buffer = save.slice(0, len).toByteString
-      new BSONObject(buffer)
+      val bitr = save.slice(0, len)
+      BSONDocument(bitr)
     }
+
+    def getObj : BSONObject = BSONObject(getDoc)
+
+    def getArray : BSONArray = BSONArray(getDoc)
 
     def getObjs(count : Int) : Seq[BSONObject] = {
       for (x ← 1 to count) yield { getObj }
     }
 
-    def getRegex : Regex = {
+    def getBinary : (BinarySubtype, Array[Byte]) = {
+      val len = itr.getInt
+      val st = BinarySubtype(itr.getByte)
+      val value = itr.getBytes(len)
+      st → value
+    }
+
+    def getRegex : Pattern = {
       val pattern = itr.getCStr
       val options = itr.getCStr
-      val regex_options = {
-        options.map {
-          case ch : Char ⇒
-            (ch : @switch) match {
-              case 'i' ⇒ "i"
-              case 'l' ⇒ ""
-              case 'm' ⇒ "m"
-              case 's' ⇒ "s"
-              case 'u' ⇒ "U"
-              case 'x' ⇒ "x"
-              case _   ⇒ ""
-            }
-        }
-      }.mkString
-      new Regex("(?" + regex_options + ")" + pattern)
+      val flags = options.foldLeft(0) {
+        case (flg, ch) ⇒
+          (ch : @switch) match {
+            case 'i' ⇒ flg | Pattern.CASE_INSENSITIVE
+            case 'm' ⇒ flg | Pattern.MULTILINE
+            case 's' ⇒ flg | Pattern.DOTALL
+            case 'u' ⇒ flg | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE
+            case 'x' ⇒ flg | Pattern.COMMENTS
+            case _   ⇒ flg
+          }
+      }
+      Pattern.compile(pattern, flags)
+    }
+
+    def getDBPointer : (String, Array[Byte]) = {
+      itr.getStr → itr.getBytes(12)
+    }
+
+    def getScopedJavaScript : (String, BSONObject) = {
+      itr.getInt
+      itr.getStr → itr.getObj
     }
 
     @inline def skipLength : Int = {

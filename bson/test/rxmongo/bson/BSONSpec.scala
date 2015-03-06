@@ -24,18 +24,24 @@ package rxmongo.bson
 
 import java.lang.management.ManagementFactory
 import java.util.Date
+import java.util.regex.Pattern
 
 import com.reactific.hsp.Profiler
 
 import org.specs2.mutable.Specification
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
-import scala.util.matching.Regex
-
 /** Test Suite For BSON object */
 class BSONSpec extends Specification {
 
   sequential
+
+  val ALL_FLAGS : Int = Pattern.CASE_INSENSITIVE |
+    Pattern.MULTILINE |
+    Pattern.DOTALL |
+    Pattern.UNICODE_CHARACTER_CLASS |
+    Pattern.UNICODE_CASE |
+    Pattern.COMMENTS
 
   "BSON" should {
     "build and interpret reflectively" in {
@@ -89,7 +95,7 @@ class BSONSpec extends Specification {
       string.get.value must beEqualTo("fourty-two")
       obj.get.value.asInstanceOf[Map[String, BSONValue]] must beEqualTo(
         Map("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four")))
-      array.get.value.asInstanceOf[Iterator[BSONValue]].toSeq must beEqualTo(
+      array.get.asInstanceOf[BSONArray].seq must beEqualTo(
         Seq(BSONDouble(42.0D), BSONDouble(84.0D)))
 
       val pair = binary.get.value.asInstanceOf[(BinarySubtype, Array[Byte])]
@@ -101,7 +107,9 @@ class BSONSpec extends Specification {
       boolean.get.value.asInstanceOf[Boolean] must beEqualTo(true)
       date.get.value.asInstanceOf[Date].getTime must beLessThan(System.currentTimeMillis)
       nil.get.value.asInstanceOf[Unit] must beEqualTo({})
-      regex.get.value.asInstanceOf[Regex].pattern.pattern must beEqualTo("(?imsUx)pattern")
+      val r = regex.get.value.asInstanceOf[Pattern]
+      r.pattern must beEqualTo("pattern")
+      r.flags() must beEqualTo(ALL_FLAGS)
 
       val (referent, objid) = dbpointer.get.value.asInstanceOf[(String, Array[Byte])]
       referent must beEqualTo("referent")
@@ -123,24 +131,17 @@ class BSONSpec extends Specification {
   "BSON Builder" should {
 
     "build and compact a 100,000 object of 18 fields, quickly" in {
-      val startime = System.nanoTime()
-      val obj = Helper.makeObject(100000, 1)
-      val endtime = System.nanoTime
-      val compactObj = obj.compact
-      val compactend = System.nanoTime()
+      val startTime = System.nanoTime()
+      val obj = Helper.makeObject(10000, 1)
+      val endTime = System.nanoTime
       val len = obj.buffer.length
-      val compact_len = compactObj.buffer.length
-      val constructiontime = endtime - startime
-      val compactiontime = compactend - endtime
-      len must beEqualTo(compact_len)
+      val constructionTime = endTime - startTime
       if (Helper.suitableForTimingTests) {
-        constructiontime must beLessThan(2000000000L) // < 2 seconds for 100,000 nodes
-        compactiontime must beLessThan(300000000L) // < 400ms for 5MB compaction
+        constructionTime must beLessThan(2000000000L) // < 1 seconds for 10,000 nodes
       } else {
         skipped(": machine too busy for timing tests")
       }
-      println("Construction:" + constructiontime)
-      println("Compaction  :" + compactiontime)
+      println("Construction:" + constructionTime)
       println(Profiler.format_one_item("makeObj"))
       success
     }
@@ -149,7 +150,7 @@ class BSONSpec extends Specification {
   "BSONObject" should {
     "construct from a variety of Any values" in {
       val date = new Date()
-      val regex = new Regex("(?imsux)pattern")
+      val regex = Pattern.compile("pattern", ALL_FLAGS)
       val map = Map("foo" -> 84, "bar" -> true, "roo" -> "fourty-two")
       val b = BSONObject(
         "double" -> 42.0D,
@@ -188,6 +189,7 @@ object Helper {
   val anArraySeq = Seq(BSONDouble(42.0D), BSONDouble(84.0D))
   val anArrayBSON : BSONArray = BSONArray(anArray)
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
+  val aTime = System.currentTimeMillis()
 
   def makeObj : BSONBuilder = Profiler.profile("makeObj") {
     val b = BSONBuilder().
@@ -196,9 +198,10 @@ object Helper {
       obj("obj", anObject).
       array("array", anArrayBSON).
       binary("binary", data, UserDefinedBinary).
-      undefined("undefined").objectID("objectid", data).
+      undefined("undefined").
+      objectID("objectid", data).
       boolean("boolean", value = true).
-      date("date", System.currentTimeMillis()).
+      date("date", aTime).
       nil("null").
       regex("regex", "pattern", "ilmsux").
       dbPointer("dbpointer", "referent", data).

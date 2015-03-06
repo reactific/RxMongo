@@ -23,12 +23,12 @@
 package rxmongo.bson
 
 import java.util.Date
+import java.util.regex.Pattern
 
 import akka.util.ByteString
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
 import scala.annotation.switch
-import scala.util.matching.Regex
 import scala.util.{ Failure, Success, Try }
 
 /** BSON Coder/Decoder (Codec) between BSONValue and type T
@@ -179,7 +179,7 @@ object BSONCodec {
         case s : Short ⇒ BSONInteger(s)
         case s : String ⇒ BSONString(s)
         case d : Date ⇒ BSONDate(d.getTime)
-        case r : Regex ⇒ BSONRegex(r)
+        case p : Pattern ⇒ BSONRegex(p)
         case b : ByteString ⇒ BSONBinary(b, UserDefinedBinary)
         case a : Array[Byte] ⇒ BSONBinary(a, UserDefinedBinary)
         case m : Map[String, Any] @unchecked ⇒ BSONObject(m)

@@ -143,8 +143,8 @@ case class UpdateMessage(
       putInt(0).
       putCStr(fullCollectionName).
       putInt(flags).
-      putDoc(selector).
-      putDoc(update)
+      putObj(selector).
+      putObj(update)
   }
 
   override def appendTo(builder : StringBuilder) : StringBuilder = {
@@ -187,7 +187,7 @@ case class InsertMessage(
     super.build.
       putInt(flags). // bit vector - see arguments
       putCStr(fullCollectionName). // "dbname.collectionname"
-      putDocs(documents)
+      putObjs(documents)
   } // one or more documents to insert into the collection
 
   override def appendTo(builder : StringBuilder) : StringBuilder = {
@@ -227,7 +227,7 @@ abstract class GenericQueryMessage extends RequestMessage(Message.OP_QUERY) {
   override def build = {
     val bs = super.build
     options.writeToByteString(bs, fullCollectionName)
-    bs.putDoc(selector).putDoc(returnFieldsSelector)
+    bs.putObj(selector).putObj(returnFieldsSelector)
   }
 
   override val requiresResponse : Boolean = true
@@ -352,7 +352,7 @@ case class DeleteMessage(
       putInt(0).
       putCStr(fullCollectionName).
       putInt(flags).
-      putDoc(selector)
+      putObj(selector)
   }
 
   override def appendTo(builder : StringBuilder) : StringBuilder = {
@@ -434,14 +434,14 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
   /** {{{
     * bit   name	description
     * 0	 CursorNotFound	  Set when getMore is called but the cursor id is not valid at the server. Returned with zero
-    *            results.
+    *           results.
     * 1  QueryFailure	    Set when query failed. Results consist of one document containing an “\$err” field describing
-    *            the failure.
+    *           the failure.
     * 2  ShardConfigStale	Drivers should ignore this. Only mongos will ever see this set, in which case, it needs to
-    *            update config from the server.
+    *           update config from the server.
     * 3  AwaitCapable     Set when the server supports the AwaitData Query option. If it does not, a client should sleep
-    *            a little between getMore’s of a Tailable cursor. Mongod version 1.6 supports AwaitData and
-    *            thus always sets AwaitCapable.
+    *           a little between getMore’s of a Tailable cursor. Mongod version 1.6 supports AwaitData and
+    *           thus always sets AwaitCapable.
     * 4-31	 Reserved	    Ignore
     * }}}
     */

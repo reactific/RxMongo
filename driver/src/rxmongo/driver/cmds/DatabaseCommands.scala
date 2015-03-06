@@ -117,20 +117,19 @@ case class ConvertToCapped(db : String, coll : String, size : Int)
 case class CreateIndicesCmd(
   db : String,
   coll : String,
-  indices : Iterable[(Index, IndexOptions)]) extends Command(db,
-  BSONObject(
-    "createIndexes" -> coll,
-    "indexes" -> BSONArray(
-      for ((keys, options) ← indices) yield {
-        val obj : BSONObject = options.result + ("key" -> keys.result)
-        if (obj.contains("name"))
-          obj
-        else {
-          obj + ("name" -> BSONString(db + "." + coll + "." + keys.name))
-        }
-      }
-    )
-  ))
+  indices : Iterable[(Index, IndexOptions)]) extends Command(db, {
+  val bldr = BSONBuilder()
+  bldr.string("createIndexes", coll)
+  val objects = for ((keys, options) ← indices) yield {
+    val obj = options.result + ("key" → keys.result)
+    if (obj.contains("name"))
+      obj
+    else
+      obj + ("name" -> BSONString(db + "." + coll + "." + keys.name))
+  }
+  bldr.array("indexes", objects)
+  bldr.toBSONObject
+})
 
 /** listIndexes
   * @see [[http://docs.mongodb.org/master/reference/command/listIndexes/]]
@@ -166,14 +165,14 @@ case class DropAllIndicesCmd(db : String, coll : String)
   * @param db The name of the database.
   * @param coll The name of the collection.
   * @param force If true, compact can run on the primary in a replica set. If false, compact returns an error when
-  *    run on a primary, because the command blocks all other activity. Compact blocks activity only for
-  *    the database it is compacting.
+  *   run on a primary, because the command blocks all other activity. Compact blocks activity only for
+  *   the database it is compacting.
   * @param paddingFactor Describes the record size allocated for each document as a factor of the document size for
-  *            all records compacted during the compact operation. The paddingFactor does not affect
-  *            the padding of subsequent record allocations after compact completes.
+  *           all records compacted during the compact operation. The paddingFactor does not affect
+  *           the padding of subsequent record allocations after compact completes.
   * @param paddingBytes Sets the padding as an absolute number of bytes for all records compacted during the compact
-  *           operation. After compact completes, paddingBytes does not affect the padding of subsequent
-  *           record allocations.
+  *          operation. After compact completes, paddingBytes does not affect the padding of subsequent
+  *          record allocations.
   */
 case class CompactCmd(
   db : String,

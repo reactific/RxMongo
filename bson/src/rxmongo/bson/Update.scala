@@ -37,7 +37,12 @@ object Update {
     def code : TypeCode = ObjectCode
 
     def write(value : Update) : BSONObject = {
-      val selector = if (value.isolated) value.selector + ("$isolated" → BSONInteger(1)) else value.selector
+      val selector = if (value.isolated) {
+        val bldr = BSONBuilder()
+        value.selector.doc.addTo(bldr)
+        bldr.integer("$isolated", 1)
+        bldr.result
+      } else value.selector
       BSONBuilder().
         obj("q", selector).
         obj("u", value.updater).

@@ -69,16 +69,17 @@ class OperatorsSpec extends Specification {
     }
 
     "construct $in properly" in {
-      val obj = "foo" $in ("bar", "baz", "bong")
-      obj.result must beEqualTo(BSONObject("foo" -> BSONObject("$in" ->
-        BSONArray("bar", "baz", "bong")
-      )))
+      val query = "foo" $in ("bar", "baz", "bong")
+      val obj = query.result
+      val equiv = BSONObject("foo" -> BSONObject("$in" -> BSONArray("bar", "baz", "bong")))
+      obj must beEqualTo(equiv)
     }
+
     "construct $nin properly" in {
-      val obj = "foo" $nin ("bar", "baz", "bong")
-      obj.result must beEqualTo(BSONObject("foo" -> BSONObject("$nin" ->
-        BSONArray("bar", "baz", "bong")
-      )))
+      val query = "foo" $nin ("bar", "baz", "bong")
+      val obj = query.result
+      val equiv = BSONObject("foo" -> BSONObject("$nin" -> BSONArray("bar", "baz", "bong")))
+      obj must beEqualTo(equiv)
     }
 
     "construct infix $and properly" in {

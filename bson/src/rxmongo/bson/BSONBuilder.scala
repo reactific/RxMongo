@@ -24,12 +24,12 @@ package rxmongo.bson
 
 import java.nio.ByteOrder
 import java.util.Date
+import java.util.regex.Pattern
 
-import akka.util.{ ByteString, ByteStringBuilder }
+import akka.util.{ ByteIterator, ByteString, ByteStringBuilder }
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
 import scala.collection.mutable
-import scala.util.matching.Regex
 
 /** A Trait for things that provide BSON ByteStrings
   *
@@ -109,14 +109,9 @@ case class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), 
     putArray(value)
   }
 
-  def array[T, B <: BSONValue](key : String, values : Seq[T])(implicit codec : BSONCodec[T, B]) : BSONBuilder = {
+  def array[T, B <: BSONValue](key : String, values : Iterable[T])(implicit codec : BSONCodec[T, B]) : BSONBuilder = {
     putPrefix(ArrayCode, key)
     codecArray[T, B](values)
-  }
-
-  def array(key : String, values : Seq[BSONValue]) : BSONBuilder = {
-    putPrefix(ArrayCode, key)
-    array(values)
   }
 
   def binary(key : String, blob : Array[Byte], subtype : BinarySubtype) : BSONBuilder = {
@@ -167,7 +162,7 @@ case class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), 
     this
   }
 
-  def regex(key : String, regex : Regex) : BSONBuilder = {
+  def regex(key : String, regex : Pattern) : BSONBuilder = {
     putPrefix(RegexCode, key)
     buffer.putRegex(regex)
     this
@@ -245,11 +240,12 @@ case class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), 
       case s : String ⇒ string(key, s)
       case d : Date ⇒ date(key, d.getTime)
       case b : ByteString ⇒ binary(key, b, UserDefinedBinary)
-      case r : Regex ⇒ regex(key, r)
+      case p : Pattern ⇒ regex(key, p)
       case m : Map[String, Any] @unchecked ⇒
         putPrefix(ObjectCode, key); obj(m.toSeq)
-      case a : Array[Byte]   ⇒ binary(key, a, UserDefinedBinary)
+      case a : Array[Byte] ⇒ binary(key, a, UserDefinedBinary)
       case i : Iterable[Any] ⇒ array(key, i.toSeq)
+      case (b : Byte, bi : ByteIterator) ⇒ BSONValue(b, bi)
       case x : Any ⇒
         throw RxMongoError(s"Unable to convert $x into a BSONValue")
     }
@@ -368,18 +364,25 @@ case class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), 
     this
   }
 
+  private[bson] def putPrefix(code : Byte, key : String) : BSONBuilder = {
+    buffer.
+      putByte(code).
+      putCStr(key)
+    this
+  }
+
   private[bson] def putStr(value : String) : BSONBuilder = {
     buffer.putStr(value)
     this
   }
 
   private[bson] def putObj(value : BSONObject) : BSONBuilder = {
-    buffer.putDoc(value)
+    buffer.putDoc(value.doc)
     this
   }
 
   private[bson] def putArray(value : BSONArray) : BSONBuilder = {
-    buffer.putDoc(value)
+    buffer.putDoc(value.doc)
     this
   }
 

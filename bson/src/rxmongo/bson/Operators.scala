@@ -269,8 +269,7 @@ object $not extends BooleanExpression {
     */
   def apply(expr : Expression with BooleanExpression) : BooleanExpression = {
     val e = new BooleanExpression
-    e.putPrefix(ObjectCode, "$not")
-    e.obj(expr.result)
+    e.obj("$not", expr.result)
     e
   }
 }

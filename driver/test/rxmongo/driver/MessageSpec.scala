@@ -49,8 +49,8 @@ class MessageSpec extends Specification {
         b.putInt(0)
         b.putCStr("db.coll")
         b.putInt(3)
-        b.putDoc(selector)
-        b.putDoc(update)
+        b.putObj(selector)
+        b.putObj(update)
         val payload = b.result()
         val c = ByteString.newBuilder
         c.putInt(payload.length + 16)
@@ -80,8 +80,8 @@ class MessageSpec extends Specification {
         val b = ByteString.newBuilder
         b.putInt(1)
         b.putCStr("db.coll")
-        b.putDoc(selector)
-        b.putDoc(update)
+        b.putObj(selector)
+        b.putObj(update)
         val payload = b.result()
         val c = ByteString.newBuilder
         c.putInt(payload.length + 16)
@@ -118,7 +118,7 @@ class MessageSpec extends Specification {
         b.putCStr("db.coll")
         b.putInt(0)
         b.putInt(1)
-        b.putDoc(selector)
+        b.putObj(selector)
         val payload = b.result()
         val c = ByteString.newBuilder
         c.putInt(payload.length + 16)
@@ -206,7 +206,7 @@ class MessageSpec extends Specification {
         b.putInt(0)
         b.putCStr("db.coll")
         b.putInt(1)
-        b.putDoc(selector)
+        b.putObj(selector)
         val payload = b.result()
         val c = ByteString.newBuilder
         c.putInt(payload.length + 16)
