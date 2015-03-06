@@ -45,7 +45,7 @@ case class ReplicaSetMemberConfiguration(
     b.boolean("arbiterOnly", arbiterOnly)
     b.boolean("buildIndexes", buildIndexes)
     b.double("priority", priority)
-    b.obj("tags", BSONObject(tags))
+    b.obj("tags", BSONObject.from(tags.toSeq))
     b.integer("slaveDelay", slaveDelay)
     b.integer("votes", votes)
     b.toByteString

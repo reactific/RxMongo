@@ -257,7 +257,7 @@ case object WriteLogger extends MongoLoggers { override def toString = "write" }
   */
 case class SetLogComponentVerbosity(default : Int, components : (MongoLoggers, Int)*)
   extends AdminCommand(
-    BSONObject((components.map { case (l, v) ⇒ l.toString -> v }) : _*) + ("verbosity" → default))
+    BSONObject.from(components.map { case (l, v) ⇒ l.toString -> v } :+ ("verbosity" → default)))
 
 /** logRotate
   * Rotates the MongoDB logs to prevent a single file from taking too much space.
