@@ -19,9 +19,9 @@
     <logger name="akka" level="WARN" />
     <logger name="rxmongo" level="WARN"/>
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${logs_dir:-logs}/j9Accelerators.log</file>
+        <file>${logs_dir:-logs}/rxmongo.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${logs_dir:-logs}/j9Accelerators.%i.log.zip</fileNamePattern>
+            <fileNamePattern>${logs_dir:-logs}/rxmongo.%i.log.zip</fileNamePattern>
             <minIndex>1</minIndex>
             <maxIndex>20</maxIndex>
         </rollingPolicy>
