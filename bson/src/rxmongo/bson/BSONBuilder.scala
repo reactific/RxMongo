@@ -46,7 +46,7 @@ trait BSONProvider {
   * This uses the builder pattern to allow construction of a BSON.Object by using a ByteStringBuilder to construct
   * the corresponding ByteString and then instantiating BSON.Object with the immutable ByteString
   */
-case class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONObject] with BSONProvider {
+class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONObject] with BSONProvider {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
   val buffer : ByteStringBuilder = ByteString.newBuilder
   buffer.sizeHint(hint)
@@ -391,4 +391,8 @@ case class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), 
     this
   }
 
+}
+
+object BSONBuilder {
+  def apply(sizeHint: Int = 512) : BSONBuilder = new BSONBuilder(sizeHint)
 }

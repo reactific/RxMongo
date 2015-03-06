@@ -26,17 +26,15 @@ package rxmongo.bson
   *
   * A query is built
   */
-case class Query() extends BSONProvider {
-  private val bson = BSONBuilder()
-  def toByteString = bson.toByteString
+case class Query() extends BSONBuilder {
 
   def select(what : BooleanExpression) : Query = {
-    bson.obj("$query", what)
+    obj("$query", what)
     this
   }
 
   def comment(msg : String) : Query = {
-    bson.string("$comment", msg)
+    string("$comment", msg)
     this
   }
 
@@ -46,7 +44,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def hint(index : String) : Query = {
-    bson.obj("$hint", Map(index → 1))
+    obj("$hint", Map(index → 1))
     this
   }
 
@@ -56,7 +54,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def maxScan(num_docs : Int) : Query = {
-    bson.integer("$maxScan", num_docs)
+    integer("$maxScan", num_docs)
     this
   }
 
@@ -66,7 +64,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def maxTimeMS(millis : Long) : Query = {
-    bson.long("$maxTimeMS", millis)
+    long("$maxTimeMS", millis)
     this
   }
 
@@ -76,7 +74,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def max(fields : (String, Any)*) : Query = {
-    bson.obj("$max", fields.head, fields.tail : _*)
+    obj("$max", fields.head, fields.tail : _*)
     this
   }
 
@@ -86,7 +84,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def min(fields : (String, Any)*) : Query = {
-    bson.obj("$min", fields.head, fields.tail : _*)
+    obj("$min", fields.head, fields.tail : _*)
     this
   }
 
@@ -97,7 +95,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def orderBy(field : String, ascending : Boolean = true) : Query = {
-    bson.obj("$orderby", Map(field → (if (ascending) 1 else -1)))
+    obj("$orderby", Map(field → (if (ascending) 1 else -1)))
     this
   }
 
@@ -106,7 +104,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def returnKey() : Query = {
-    bson.boolean("$returnKey", value = true)
+    boolean("$returnKey", value = true)
     this
   }
 
@@ -115,7 +113,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def showDiskLoc() : Query = {
-    bson.boolean("$showDiskLoc", value = true)
+    boolean("$showDiskLoc", value = true)
     this
   }
 
@@ -124,7 +122,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def snapshot() : Query = {
-    bson.boolean("$snapshot", value = true)
+    boolean("$snapshot", value = true)
     this
   }
 
@@ -135,7 +133,7 @@ case class Query() extends BSONProvider {
     * @return
     */
   def natural(reverse : Boolean = false) : Query = {
-    bson.integer("$natural", if (reverse) -1 else 1)
+    integer("$natural", if (reverse) -1 else 1)
     this
   }
 
