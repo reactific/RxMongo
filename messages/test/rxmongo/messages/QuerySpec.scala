@@ -20,9 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.bson
+package rxmongo.messages
 
 import org.specs2.mutable.Specification
+import rxmongo.bson._
 
 class QuerySpec extends Specification {
 

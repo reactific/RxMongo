@@ -20,7 +20,9 @@
  * SOFTWARE.
  */
 
-package rxmongo.bson
+package rxmongo.messages
+
+import rxmongo.bson._
 
 case class Update(selector : BSONObject, updater : BSONObject, upsert : Boolean, multi : Boolean, isolated : Boolean)
 

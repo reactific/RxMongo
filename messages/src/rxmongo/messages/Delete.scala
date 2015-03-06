@@ -20,7 +20,9 @@
  * SOFTWARE.
  */
 
-package rxmongo.bson
+package rxmongo.messages
+
+import rxmongo.bson._
 
 case class Delete(query : BSONObject, limit : Int)
 

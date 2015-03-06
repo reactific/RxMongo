@@ -24,6 +24,7 @@ package rxmongo.driver.cmds
 
 import rxmongo.bson._
 import rxmongo.driver.{ Command, Projection, WriteConcern }
+import rxmongo.messages.{Delete, Query, Update}
 
 /** Represents A MongoDB Write Command
   * @see [[http://docs.mongodb.org/master/reference/command/insert/#dbcmd.insert]]

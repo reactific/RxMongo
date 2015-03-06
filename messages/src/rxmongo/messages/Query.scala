@@ -20,7 +20,9 @@
  * SOFTWARE.
  */
 
-package rxmongo.bson
+package rxmongo.messages
+
+import rxmongo.bson.BSONBuilder
 
 /** Represent a MongoDB Query
   *

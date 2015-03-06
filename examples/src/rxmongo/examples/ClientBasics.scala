@@ -22,8 +22,9 @@
 
 package rxmongo.examples
 
-import rxmongo.bson.{ Query, BSONObject }
+import rxmongo.bson.BSONObject
 import rxmongo.client.Client
+import rxmongo.messages.Query
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global

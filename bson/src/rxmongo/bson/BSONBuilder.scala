@@ -225,7 +225,7 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
     append(key, codec.write(value))
   }
 
-  private[bson] def append(key : String, anyVal : Any) : BSONBuilder = {
+  private[rxmongo] def append(key : String, anyVal : Any) : BSONBuilder = {
     anyVal match {
       case BSONNull ⇒ putPrefix(NullCode, key)
       case BSONUndefined ⇒ putPrefix(UndefinedCode, key)
@@ -252,7 +252,7 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
     this
   }
 
-  private[bson] def append(fields : Iterable[(String, _)]) : BSONBuilder = {
+  private[rxmongo] def append(fields : Iterable[(String, _)]) : BSONBuilder = {
     fields.foreach {
       case (key : String, value : Unit) ⇒ nil(key)
       case (key : String, value : Any) ⇒ this.append(key, value)
@@ -261,7 +261,7 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
     this
   }
 
-  private[bson] def obj(fields : Iterable[(String, Any)]) : BSONBuilder = {
+  private[rxmongo] def obj(fields : Iterable[(String, Any)]) : BSONBuilder = {
     val docBuilder = BSONBuilder()
     for ((key : String, any : Any) ← fields) {
       docBuilder.append(key, any)
@@ -270,20 +270,20 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
     this
   }
 
-  private[bson] def obj(key : String, value : ByteString) : BSONBuilder = {
+  private[rxmongo] def obj(key : String, value : ByteString) : BSONBuilder = {
     putPrefix(ObjectCode, key)
     buffer ++= value
     this
   }
 
-  private[bson] def array(values : Iterable[Any]) : BSONBuilder = {
+  private[rxmongo] def array(values : Iterable[Any]) : BSONBuilder = {
     val arrayBuilder = BSONBuilder()
     values.zipWithIndex.foreach { (x : (Any, Int)) ⇒ arrayBuilder.append(x._2.toString, x._1) }
     buffer ++= arrayBuilder.toByteString
     this
   }
 
-  private[bson] def codecArray[T, B <: BSONValue](values : Iterable[T])(implicit codec : BSONCodec[T, B]) = {
+  private[rxmongo] def codecArray[T, B <: BSONValue](values : Iterable[T])(implicit codec : BSONCodec[T, B]) = {
     val arrayBuilder = BSONBuilder()
     values.zipWithIndex.foreach {
       case (v, i) ⇒ arrayBuilder.append(i.toString, codec.write(v))
@@ -292,7 +292,7 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
     this
   }
 
-  private[bson] def binary(blob : Array[Byte], subtype : BinarySubtype) : BSONBuilder = {
+  private[rxmongo] def binary(blob : Array[Byte], subtype : BinarySubtype) : BSONBuilder = {
     buffer.
       putInt(blob.length).
       putByte(subtype.code).
@@ -300,7 +300,7 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
     this
   }
 
-  private[bson] def binary(blob : Iterator[Byte], subtype : BinarySubtype) : BSONBuilder = {
+  private[rxmongo] def binary(blob : Iterator[Byte], subtype : BinarySubtype) : BSONBuilder = {
     buffer.sizeHint(buffer.length + blob.length + 5)
     buffer.
       putInt(blob.length).
@@ -309,7 +309,7 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
     this
   }
 
-  private[bson] def binary(blob : ByteString, subtype : BinarySubtype) : BSONBuilder = {
+  private[rxmongo] def binary(blob : ByteString, subtype : BinarySubtype) : BSONBuilder = {
     buffer.
       putInt(blob.length).
       putByte(subtype.code).
@@ -317,23 +317,23 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
     this
   }
 
-  private[bson] def objectID(value : Array[Byte]) : BSONBuilder = {
+  private[rxmongo] def objectID(value : Array[Byte]) : BSONBuilder = {
     require(value.length == 12, "ObjectID must be exactly 12 bytes")
     buffer.putBytes(value)
     this
   }
 
-  private[bson] def boolean(value : Boolean) : BSONBuilder = {
+  private[rxmongo] def boolean(value : Boolean) : BSONBuilder = {
     buffer.putByte(if (value) 1.toByte else 0.toByte)
     this
   }
 
-  private[bson] def utcDate(time : Long) : BSONBuilder = {
+  private[rxmongo] def utcDate(time : Long) : BSONBuilder = {
     buffer.putLong(time)
     this
   }
 
-  private[bson] def dbPointer(referent : String, id : Array[Byte]) : BSONBuilder = {
+  private[rxmongo] def dbPointer(referent : String, id : Array[Byte]) : BSONBuilder = {
     require(id.length == 12, "ObjectID must be exactly 12 bytes")
     buffer.
       putStr(referent).
@@ -341,7 +341,7 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
     this
   }
 
-  private[bson] def scopedJsCode(code : String, scope : BSONObject) : BSONBuilder = {
+  private[rxmongo] def scopedJsCode(code : String, scope : BSONObject) : BSONBuilder = {
     val content = ByteString.newBuilder
     content.
       putStr(code).
@@ -352,41 +352,41 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
     this
   }
 
-  private[bson] def putCStr(s : String) : BSONBuilder = {
+  private[rxmongo] def putCStr(s : String) : BSONBuilder = {
     buffer.putCStr(s)
     this
   }
 
-  private[bson] def putPrefix(code : TypeCode, key : String) : BSONBuilder = {
+  private[rxmongo] def putPrefix(code : TypeCode, key : String) : BSONBuilder = {
     buffer.
       putByte(code.code).
       putCStr(key)
     this
   }
 
-  private[bson] def putPrefix(code : Byte, key : String) : BSONBuilder = {
+  private[rxmongo] def putPrefix(code : Byte, key : String) : BSONBuilder = {
     buffer.
       putByte(code).
       putCStr(key)
     this
   }
 
-  private[bson] def putStr(value : String) : BSONBuilder = {
+  private[rxmongo] def putStr(value : String) : BSONBuilder = {
     buffer.putStr(value)
     this
   }
 
-  private[bson] def putObj(value : BSONObject) : BSONBuilder = {
+  private[rxmongo] def putObj(value : BSONObject) : BSONBuilder = {
     buffer.putDoc(value.doc)
     this
   }
 
-  private[bson] def putArray(value : BSONArray) : BSONBuilder = {
+  private[rxmongo] def putArray(value : BSONArray) : BSONBuilder = {
     buffer.putDoc(value.doc)
     this
   }
 
-  private[bson] def putObj(value : BSONBuilder) : BSONBuilder = {
+  private[rxmongo] def putObj(value : BSONBuilder) : BSONBuilder = {
     buffer.putDoc(value)
     this
   }

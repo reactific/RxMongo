@@ -31,8 +31,8 @@ import scala.collection.{ Map, MapLike, mutable }
 
 case class BSONDocument private[rxmongo] (
   private[bson] val data : Map[String, (Byte, ByteIterator)],
-  docItr : Option[ByteIterator] = None) extends BSONProvider
-  with MapLike[String, (Byte, ByteIterator), BSONDocument] with Map[String, (Byte, ByteIterator)] {
+  docItr : Option[ByteIterator] = None
+) extends BSONProvider with MapLike[String, (Byte, ByteIterator), BSONDocument] with Map[String, (Byte, ByteIterator)] {
 
   def get(key : String) : Option[(Byte, ByteIterator)] = data.get(key)
 

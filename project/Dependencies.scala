@@ -50,6 +50,10 @@ object Dependencies {
 
   val bson = common ++ Seq( akka_actor)
 
+  val macros = common
+
+  val messages = common
+
   val driver = common ++ Seq( akka_streams, akka_actor, akka_testkit, akka_slf4j, akka_http_core, scala_logging)
 
   val client = common ++ Seq( )

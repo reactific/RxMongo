@@ -22,7 +22,8 @@
 
 package rxmongo.driver
 
-import rxmongo.bson.{ BSONBuilder, BSONProvider, Query }
+import rxmongo.bson.{ BSONBuilder, BSONProvider }
+import rxmongo.messages.Query
 
 /** Represents A MongoDB Query Projection
   *

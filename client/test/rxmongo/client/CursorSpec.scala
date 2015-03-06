@@ -23,6 +23,7 @@
 package rxmongo.client
 
 import rxmongo.bson._
+import rxmongo.messages._
 import rxmongo.driver.{ WriteResult, QueryOptions }
 
 import scala.concurrent.Await

@@ -20,11 +20,12 @@
  * SOFTWARE.
  */
 
-package rxmongo.bson
+package rxmongo.messages
 
 import java.util.Date
 
 import org.specs2.mutable.Specification
+import rxmongo.bson._
 
 class OperatorsSpec extends Specification {
 

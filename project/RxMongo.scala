@@ -34,8 +34,8 @@ object RxMongo extends Build {
       settings = buildSettings ++ Seq(
         libraryDependencies := Dependencies.examples
       )).
-      dependsOn(examples, client, driver, bson).
-      aggregate(bson, driver, client, examples)
+      dependsOn(examples, client, driver, macros, messages, bson).
+      aggregate(bson, macros, messages, driver, client, examples)
 
   lazy val gridfs =
     Project(s"${BuildSettings.name}-GridFS", file("./gridfs"),
@@ -55,6 +55,20 @@ object RxMongo extends Build {
     Project(s"${BuildSettings.name}-Driver", file("./driver"),
       settings = buildSettings ++ Seq(
         libraryDependencies := Dependencies.driver
+      )).
+    dependsOn(bson, messages)
+
+  lazy val macros =
+    Project(s"${BuildSettings.name}-Macros", file("./macros"),
+      settings = buildSettings ++ Seq(
+        libraryDependencies := Dependencies.macros
+      )).
+    dependsOn(bson)
+
+  lazy val messages =
+    Project(s"${BuildSettings.name}-Messages", file("./messages"),
+      settings = buildSettings ++ Seq(
+        libraryDependencies := Dependencies.messages
       )).
     dependsOn(bson)
 

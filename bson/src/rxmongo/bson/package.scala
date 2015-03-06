@@ -30,7 +30,6 @@ import akka.util.{ ByteIterator, ByteStringBuilder }
 
 import scala.annotation.switch
 import scala.language.implicitConversions
-import scala.util.matching.Regex
 
 /** The bson package object.
   *
@@ -257,16 +256,6 @@ package object bson {
     @inline def skipObjId : Int = { itr.drop(12); 12 }
     @inline def skipByte : Int = { itr.drop(1); 1 }
 
-  }
-
-  implicit def booleanFieldExpression(fieldName : String) : BooleanFieldExpression =
-    new BooleanFieldExpression(fieldName)
-
-  implicit def logicalExpression(exp1 : BooleanExpression) : LogicalExpression =
-    new LogicalExpression(exp1)
-
-  implicit def pairLiteral[T, B <: BSONValue](pair : (String, T))(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
-    new BooleanFieldExpression(pair._1).$eq[T, B](pair._2)
   }
 
 }

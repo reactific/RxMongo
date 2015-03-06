@@ -27,9 +27,9 @@ import java.io.Closeable
 import akka.actor.ActorRef
 import akka.util.Timeout
 import com.typesafe.config.Config
-import rxmongo.bson.Query
 
 import rxmongo.driver.{ WriteConcern, Driver, MongoURI }
+import rxmongo.messages.Query
 
 import scala.concurrent.Await
 import scala.util.{ Failure, Success }

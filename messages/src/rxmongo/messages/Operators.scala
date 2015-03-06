@@ -20,7 +20,9 @@
  * SOFTWARE.
  */
 
-package rxmongo.bson
+package rxmongo.messages
+
+import rxmongo.bson._
 
 import scala.util.matching.Regex
 
@@ -284,6 +286,8 @@ class UpdateExpression extends Expression {
 
 object UpdateExpression {
   def apply() = new UpdateExpression
+
+  import rxmongo.bson._
 
   private[rxmongo] def apply(operator : String, value : BSONBuilder) : UpdateExpression = {
     val e = UpdateExpression()

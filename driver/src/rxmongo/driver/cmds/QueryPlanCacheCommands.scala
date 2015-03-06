@@ -22,8 +22,9 @@
 
 package rxmongo.driver.cmds
 
-import rxmongo.bson.{ Query, BSONBuilder, BSONObject }
+import rxmongo.bson.{ BSONBuilder, BSONObject }
 import rxmongo.driver.{ Projection, Command }
+import rxmongo.messages.Query
 
 /** planCacheListFilters
   * Lists the index filters for a collection.

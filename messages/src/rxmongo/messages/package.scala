@@ -20,26 +20,22 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo
 
-import org.specs2.mutable.Specification
+import rxmongo.bson.{BSONCodec, BSONValue}
 
-import rxmongo.bson._
-import rxmongo.driver.cmds.FindAndModifyCmd
-import rxmongo.messages._
+import scala.language.implicitConversions
 
-class CommandsSpec extends Specification {
+package object messages {
 
-  sequential
+  implicit def booleanFieldExpression(fieldName : String) : BooleanFieldExpression =
+    new BooleanFieldExpression(fieldName)
 
-  "Commands" should {
-    "print themselves out" in {
-      val cmd = new Command("db", BSONObject("cmd" → 1))
-      cmd.toString.matches("Command\\(opcode=OP_QUERY,requestId=\\d+,requiresResponse=true,db=db,options=QueryOptions\\(0,1,false,false,false,false,false,false\\),selector=\\{ cmd->1 \\},returnFieldsSelector=None\\)") must beTrue
-    }
-    "print out case class subclasses" in {
-      val cmd = FindAndModifyCmd("db", "coll", Some(Query("a" $eq "b")), Seq("a" → true), None, Some(true))
-      cmd.toString.matches("FindAndModifyCmd\\(opcode=OP_QUERY,requestId=\\d+,requiresResponse=true,db=db,options=QueryOptions\\(0,1,false,false,false,false,false,false\\),selector=\\{ findAndModify->coll, query->\\{ \\$query->\\{ a->b \\} \\}, remove->true \\},returnFieldsSelector=None\\)")
-    }
+  implicit def logicalExpression(exp1 : BooleanExpression) : LogicalExpression =
+    new LogicalExpression(exp1)
+
+  implicit def pairLiteral[T, B <: BSONValue](pair : (String, T))(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
+    new BooleanFieldExpression(pair._1).$eq[T, B](pair._2)
   }
+
 }

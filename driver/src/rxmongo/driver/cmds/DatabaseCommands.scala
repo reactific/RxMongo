@@ -24,6 +24,7 @@ package rxmongo.driver.cmds
 
 import rxmongo.bson._
 import rxmongo.driver.{ AdminCommand, Index, IndexOptions, Command }
+import rxmongo.messages.Query
 
 /** listCollections
   * @see [[http://docs.mongodb.org/master/reference/command/listCollections/]]

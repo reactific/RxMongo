@@ -22,8 +22,9 @@
 
 package rxmongo.driver.cmds
 
-import rxmongo.bson.{ Query, BSONArray, BSONBuilder, BSONObject }
+import rxmongo.bson.{ BSONArray, BSONBuilder, BSONObject }
 import rxmongo.driver.Command
+import rxmongo.messages.Query
 
 /** aggregate
   * Performs aggregation tasks such as group using the aggregation framework.

@@ -20,26 +20,28 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages
 
 import org.specs2.mutable.Specification
+import rxmongo.bson.BSONObject
 
-import rxmongo.bson._
-import rxmongo.driver.cmds.FindAndModifyCmd
-import rxmongo.messages._
+class DeleteSpec extends Specification {
 
-class CommandsSpec extends Specification {
-
-  sequential
-
-  "Commands" should {
-    "print themselves out" in {
-      val cmd = new Command("db", BSONObject("cmd" → 1))
-      cmd.toString.matches("Command\\(opcode=OP_QUERY,requestId=\\d+,requiresResponse=true,db=db,options=QueryOptions\\(0,1,false,false,false,false,false,false\\),selector=\\{ cmd->1 \\},returnFieldsSelector=None\\)") must beTrue
+  "Delete" should {
+    "construction from boolean expression" in {
+      Delete("a" $ne "b", 1) must beEqualTo(Delete(BSONObject("a" → BSONObject("$ne" -> "b")), 1))
     }
-    "print out case class subclasses" in {
-      val cmd = FindAndModifyCmd("db", "coll", Some(Query("a" $eq "b")), Seq("a" → true), None, Some(true))
-      cmd.toString.matches("FindAndModifyCmd\\(opcode=OP_QUERY,requestId=\\d+,requiresResponse=true,db=db,options=QueryOptions\\(0,1,false,false,false,false,false,false\\),selector=\\{ findAndModify->coll, query->\\{ \\$query->\\{ a->b \\} \\}, remove->true \\},returnFieldsSelector=None\\)")
+    "construct from Query" in {
+      Delete(Query("a" $ne "b"), 1) must beEqualTo(Delete(
+        BSONObject("$query" → BSONObject("a" → BSONObject("$ne" -> "b"))), 1))
+    }
+    "produce correct BSONObject" in {
+      Delete.Codec.write(Delete("a" $ne "b", 1)) must beEqualTo(
+        BSONObject("q" → BSONObject("a" → BSONObject("$ne" -> "b")), "limit" → 1)
+      )
     }
   }
+
+
+
 }
