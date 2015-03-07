@@ -361,6 +361,10 @@ package object bson {
       st → value
     }
 
+    def getObjectID : Array[Byte] = {
+      itr.getBytes(12)
+    }
+
     def getRegex : Pattern = {
       val pattern = itr.getCStr
       val options = itr.getCStr

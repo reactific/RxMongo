@@ -23,6 +23,8 @@
 package rxmongo.bson
 
 import java.util
+import java.util.Date
+import java.util.regex.Pattern
 
 import akka.util.{ ByteIterator, ByteString }
 
@@ -43,12 +45,27 @@ case class BSONDocument private[rxmongo] (
       case None ⇒ throw new NoSuchElementException(s"Field '$key' does not exist.")
     }
   }
-  def asInt(key: String) : Int = as[Int](key, IntegerCode, { itr ⇒ itr.clone().getInt })
-  def asLong(key: String) : Long = as[Long](key, LongCode, { itr ⇒ itr.clone().getLong })
   def asDouble(key: String) : Double = as[Double](key, DoubleCode, { itr ⇒ itr.clone().getDouble })
   def asString(key: String) : String = as[String](key, StringCode, { itr ⇒ itr.clone().getStr })
   def asObject(key: String) : BSONObject = as[BSONObject](key, ObjectCode, { itr ⇒ itr.clone().getObject })
   def asArray(key: String) : BSONArray = as[BSONArray](key, ArrayCode, { itr ⇒ itr.clone().getArray })
+  def asBinary(key: String) : (BinarySubtype, Array[Byte]) =
+    as[(BinarySubtype,Array[Byte])](key, BinaryCode, { itr ⇒ itr.clone().getBinary })
+  def asUndefined(key: String) : Unit = as[Unit](key, UndefinedCode, { itr ⇒ require(itr.isEmpty)})
+  def asObjectID(key: String) : Array[Byte] = as[Array[Byte]](key, ObjectIDCode, { itr ⇒ itr.clone().getObjectID })
+  def asBoolean(key: String) : Boolean = as[Boolean](key, BooleanCode, { itr ⇒ itr.clone().getByte != 0 })
+  def asDate(key: String) : Date = as[Date](key, DateCode, { itr ⇒ new Date(itr.clone().getLong) } )
+  def asNull(key : String) : Unit = as[Unit](key, NullCode, { itr ⇒ require(itr.clone().isEmpty) })
+  def asRegex(key: String) : Pattern = as [Pattern](key, RegexCode, { itr ⇒ itr.clone().getRegex })
+  def asDBPointer(key: String) : (String, Array[Byte]) =
+    as[(String,Array[Byte])](key, DBPointerCode, { itr ⇒ itr.clone().getDBPointer })
+  def asJavaScript(key: String) : String = as[String](key, JavaScriptCode, { itr ⇒ itr.clone().getStr } )
+  def asSymbol(key: String) : String = as[String](key, SymbolCode, { itr ⇒ itr.clone().getStr })
+  def asScopedJavaScript(key: String) : (String,BSONObject) =
+    as[(String,BSONObject)](key, ScopedJSCode, { itr ⇒ itr.clone().getScopedJavaScript })
+  def asInt(key: String) : Int = as[Int](key, IntegerCode, { itr ⇒ itr.clone().getInt })
+  def asTimestamp(key: String) : Long = as[Long](key, TimestampCode, { itr ⇒ itr.clone().getLong })
+  def asLong(key: String) : Long = as[Long](key, LongCode, { itr ⇒ itr.clone().getLong })
 
   def +[B1 >: (Byte, ByteIterator)](kv : (String, B1)) : BSONDocument = {
     val pair = kv._1 → kv._2.asInstanceOf[(Byte, ByteIterator)]

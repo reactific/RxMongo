@@ -22,9 +22,12 @@
 
 package rxmongo.bson
 
+import java.lang.management.ManagementFactory
 import java.nio.ByteOrder
 
 import akka.util.{ ByteString, ByteStringBuilder }
+import com.reactific.hsp.Profiler
+import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
 trait ByteStringUtils {
 
@@ -54,4 +57,73 @@ trait ByteStringUtils {
     field(bldr, code, fieldName)
   }
 
+  val data = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+  val anArray = Seq(42.0D, 84.0D)
+  val anArraySeq = Seq(BSONDouble(42.0D), BSONDouble(84.0D))
+  val anArrayBSON : BSONArray = BSONArray(anArray)
+  val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
+  val aTime = System.currentTimeMillis()
+
+  def makeAnObject : BSONBuilder = Profiler.profile("makeObj") {
+    val b = BSONBuilder().
+      double("double", 42.0D).
+      string("string", "fourty-two").
+      obj("obj", anObject).
+      array("array", anArrayBSON).
+      binary("binary", data, UserDefinedBinary).
+      undefined("undefined").
+      objectID("objectid", data).
+      boolean("boolean", value = true).
+      date("date", aTime).
+      nil("null").
+      regex("regex", "pattern", "ilmsux").
+      dbPointer("dbpointer", "referent", data).
+      jsCode("jscode", "function(x) { return x + 1; };").
+      symbol("symbol", "symbol").
+      scopedJsCode("scopedjscode", "function(x)", anObject).
+      integer("integer", 42).
+      timestamp("timestamp", 42L).
+      long("long", 42L)
+    b
+  }
+
+  def makeObject : BSONObject = makeAnObject.toBSONObject
+
+  def makeObject(width : Int, depth : Int) : BSONObject = {
+    val bldr = makeAnObject
+    if (depth > 0) {
+      val kids = for (i ← 1 to width) yield {
+        makeObject(width, depth - 1)
+      }
+      bldr.array("kids", kids.toSeq)
+    }
+    bldr.toBSONObject
+  }
+
+  val suitableForTimingTests : Boolean = {
+    if (System.getenv("TRAVIS") != null)
+      false
+    else {
+      val os = ManagementFactory.getOperatingSystemMXBean
+      val processors = os.getAvailableProcessors
+      val avg = os.getSystemLoadAverage
+      avg < processors / 2
+    }
+  }
+
+  def timedTest[T](maxNanoSeconds: Double, name: String, func: (Profiler) ⇒ T) : T = {
+    val p = new Profiler
+    if (suitableForTimingTests) {
+      val r = p.profile(name) { func(p) }
+      val (count, time) = Profiler.get_one_item(name)
+      p.print_profile_summary(System.out)
+      println()
+      if (time > maxNanoSeconds) {
+        throw new Exception(s"Test '$name' took ${time}ns which exceeded limit of ${maxNanoSeconds}ns")
+      }
+      r
+    } else {
+      func(p)
+    }
+  }
 }

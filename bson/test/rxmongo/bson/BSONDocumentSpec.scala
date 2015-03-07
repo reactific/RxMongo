@@ -22,25 +22,17 @@
 
 package rxmongo.bson
 
+import java.util.Date
 import java.util.regex.Pattern
 
 import akka.util.ByteString
+import com.reactific.hsp.Profiler
 import org.specs2.mutable.Specification
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
 class BSONDocumentSpec extends Specification with ByteStringUtils {
 
   "BSONDocument" should {
-    "construct from BytIterator" in {
-      pending
-    }
-    "construct from ByteString" in {
-      pending
-    }
-    "construct from Map" in {
-      pending
-    }
-
     "construct empty" in {
       val doc = BSONObject()
       val itr = doc.iterator
@@ -56,6 +48,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asDouble("double") must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -73,6 +66,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asString("string") must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -82,6 +76,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
     }
 
     "interpret object correctly" in {
+      val data = Map[String, BSONValue]("double" -> BSONDouble(42.0D), "string" -> BSONString("fourty-two"))
       val bytes : ByteString = {
         val builder = preamble(9 + 4 + 41 + 1, 3, "obj")
         builder.putInt(12 + 8 + 8 + 15 + 1) // length of object
@@ -94,6 +89,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asObject("obj").toMap must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -101,10 +97,11 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       typeCode must beEqualTo(ObjectCode.code)
       val obj = byteIterator.getObject
       obj.isInstanceOf[BSONObject] must beTrue
-      obj.toMap must beEqualTo(Map[String, BSONValue]("double" -> BSONDouble(42.0D), "string" -> BSONString("fourty-two")))
+      obj.toMap must beEqualTo(data)
     }
 
     "interpret array correctly" in {
+      val data = Seq[BSONValue](BSONDouble(42.0D), BSONString("fourty-two"))
       val bytes : ByteString = {
         val builder = preamble(9 + 4 + 41 + 1, 4, "array")
         builder.putInt(7 + 8 + 3 + 15 + 1) // length of object
@@ -117,13 +114,14 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asArray("array").seq must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
       key must beEqualTo("array")
       typeCode must beEqualTo(ArrayCode.code)
       val arr = byteIterator.getArray
-      arr.seq must beEqualTo(Seq[BSONValue](BSONDouble(42.0D), BSONString("fourty-two")))
+      arr.seq must beEqualTo(data)
     }
 
     "interpret binary correctly" in {
@@ -138,14 +136,17 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      val (subtype1, array1) = doc.asBinary("binary")
+      subtype1 must beEqualTo(UserDefinedBinary)
+      array1 must beEqualTo(data.getBytes(utf8))
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
       key must beEqualTo("binary")
       typeCode must beEqualTo(BinaryCode.code)
-      val (subtype, arr) = byteIterator.getBinary
-      subtype must beEqualTo(UserDefinedBinary)
-      arr must beEqualTo(data.getBytes(utf8))
+      val (subtype2, array2) = byteIterator.getBinary
+      subtype2 must beEqualTo(UserDefinedBinary)
+      array2 must beEqualTo(data.getBytes(utf8))
     }
 
     "interpret undefined correctly" in {
@@ -155,6 +156,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asUndefined("undefined")
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -172,6 +174,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asObjectID("objectID") must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -189,6 +192,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asBoolean("true") must beEqualTo(true)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -207,6 +211,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asDate("date") must beEqualTo(new Date(data))
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -222,6 +227,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asNull("null")
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -239,6 +245,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asRegex("regex").pattern must beEqualTo("pattern")
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -265,6 +272,9 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      val (referent1, objid1) = doc.asDBPointer("dbpointer")
+      referent1 must beEqualTo("referent")
+      objid1 must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -284,6 +294,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asJavaScript("jscode") must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -294,23 +305,26 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
     }
 
     "interpret symbol correctly" in {
+      val data = "symbol"
       val bytes : ByteString = {
         val builder = preamble(12 + 11 + 1, 14, "symbol")
-        string(builder, "symbol")
+        string(builder, data)
         builder.putByte(0) // terminating null
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asSymbol("symbol") must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
       key must beEqualTo("symbol")
       typeCode must beEqualTo(SymbolCode.code)
       val sym = byteIterator.getStr
-      sym must beEqualTo("symbol")
+      sym must beEqualTo(data)
     }
 
     "interpret scopedjscode correctly" in {
+      val data = Map("double" -> BSONDouble(42.0D), "string" -> BSONString("fourty-two"))
       val code = "function(x) { return x + 1; };"
       val bytes : ByteString = {
         val builder = preamble(18 + 4 + code.length + 5 + 4 + 40 + 1, 15, "scopedjscode")
@@ -326,6 +340,9 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      val (js1, obj1) = doc.asScopedJavaScript("scopedjscode")
+      js1 must beEqualTo(code)
+      obj1.toMap must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -333,7 +350,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       typeCode must beEqualTo(ScopedJSCode.code)
       val (js, obj) = byteIterator.getScopedJavaScript
       js must beEqualTo(code)
-      obj.toMap must beEqualTo(Map("double" -> BSONDouble(42.0D), "string" -> BSONString("fourty-two")))
+      obj.toMap must beEqualTo(data)
     }
 
     "interpret integer correctly" in {
@@ -345,6 +362,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asInt("int") must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -363,6 +381,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asTimestamp("timestamp") must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -381,6 +400,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val doc = BSONDocument(bytes)
+      doc.asLong("long") must beEqualTo(data)
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -388,6 +408,10 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       typeCode must beEqualTo(LongCode.code)
       val long = byteIterator.getLong
       long must beEqualTo(data)
+    }
+
+    "construct from Map" in {
+      pending
     }
 
     "support equality of empty" in {
@@ -400,6 +424,35 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       val obj1 : BSONDocument = makeDocument
       val obj2 : BSONDocument = makeDocument
       obj1.equals(obj2) must beTrue
+    }
+
+    "interpret documents from ByteString quickly" in {
+      val bs : ByteString = makeAnObject.toByteString
+      val repetitions = 100000
+      val limit = 80000.0 * repetitions
+      val profiler = timedTest(limit,"ByteString Interpretation", { profiler: Profiler ⇒
+        val docs = profiler.profile("Construction") {
+          for (i ← 1 to 100000) yield {
+            BSONDocument(bs)
+          }
+        }
+        profiler.profile("Validation") {
+          for (doc ← docs) {
+            doc.asDouble("double") must beEqualTo(42.0D)
+            doc.asBoolean("boolean") must beEqualTo(true)
+            doc.asDate("date").getTime must beEqualTo(aTime)
+            doc.asSymbol("symbol") must beEqualTo("symbol")
+            doc.asLong("long") must beEqualTo(42L)
+            doc.asInt("integer") must beEqualTo(42)
+            doc.asString("string") must beEqualTo("fourty-two")
+            doc.asTimestamp("timestamp") must beEqualTo(42L)
+            doc.asObject("obj") must beEqualTo(anObject)
+          }
+        }
+      profiler
+      })
+      val construction = profiler.get_one_item("Construction")._2
+      construction / repetitions must beLessThan(50000.0)
     }
   }
 
