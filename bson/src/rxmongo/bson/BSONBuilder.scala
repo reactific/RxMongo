@@ -345,7 +345,7 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
     val content = ByteString.newBuilder
     content.
       putStr(code).
-      putObj(scope)
+      putObject(scope)
     val tmp = content.result()
     buffer.putInt(tmp.length + 4) // add four for the length field itself
     buffer ++= tmp

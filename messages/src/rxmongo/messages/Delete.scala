@@ -22,6 +22,7 @@
 
 package rxmongo.messages
 
+import akka.util.{ByteIterator, ByteStringBuilder}
 import rxmongo.bson._
 
 case class Delete(query : BSONObject, limit : Int)
@@ -36,7 +37,18 @@ object Delete {
     Delete(query.result, limit)
   }
 
-  implicit object Codec extends BSONCodec[Delete, BSONObject] {
+  implicit object Codec extends Codec[Delete] {
+    def read(value : ByteIterator) : Delete = {
+      val doc = BSONDocument(value)
+      Delete(doc.asObject("q"), doc.asInt("limit"))
+    }
+    def write(value: Delete, builder: ByteStringBuilder) : ByteStringBuilder = {
+      builder.obj("q", value.query)
+      builder.integer("limit",value.limit)
+    }
+  }
+
+  implicit object BSONCodec extends BSONCodec[Delete, BSONObject] {
     def code : TypeCode = ObjectCode
     def write(value : Delete) : BSONObject = {
       BSONBuilder().

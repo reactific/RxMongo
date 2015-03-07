@@ -214,8 +214,8 @@ object BSONObject {
 
   object empty extends BSONObject(BSONDocument.empty)
 
-  private[bson] def apply(buffer : ByteString) : BSONObject = BSONObject(buffer.iterator)
-  private[bson] def apply(itr : ByteIterator) : BSONObject = new BSONObject(BSONDocument.apply(itr))
+  def apply(buffer : ByteString) : BSONObject = BSONObject(buffer.iterator)
+  def apply(itr : ByteIterator) : BSONObject = new BSONObject(BSONDocument.apply(itr))
 
   def apply() : BSONObject = empty
 

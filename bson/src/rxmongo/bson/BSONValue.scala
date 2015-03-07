@@ -267,7 +267,7 @@ object BSONScopedJsCode {
   private[bson] def apply(itr : ByteIterator) : BSONScopedJsCode = {
     val len = itr.getInt
     val code = itr.getStr
-    val obj = itr.getObj
+    val obj = itr.getObject
     new BSONScopedJsCode(code → obj)
   }
   private[bson] def apply(buffer : ByteString) : BSONScopedJsCode = BSONScopedJsCode(buffer.iterator)

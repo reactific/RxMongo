@@ -99,7 +99,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       val (key, (typeCode, byteIterator)) = itr.next()
       key must beEqualTo("obj")
       typeCode must beEqualTo(ObjectCode.code)
-      val obj = byteIterator.getObj
+      val obj = byteIterator.getObject
       obj.isInstanceOf[BSONObject] must beTrue
       obj.toMap must beEqualTo(Map[String, BSONValue]("double" -> BSONDouble(42.0D), "string" -> BSONString("fourty-two")))
     }

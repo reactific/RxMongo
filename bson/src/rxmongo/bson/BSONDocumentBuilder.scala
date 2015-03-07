@@ -20,29 +20,26 @@
  * SOFTWARE.
  */
 
-package rxmongo.messages
+package rxmongo.bson
 
-import org.specs2.mutable.Specification
-import rxmongo.bson._
+import java.nio.ByteOrder
 
-class DeleteSpec extends Specification {
+import akka.util.{ByteString, ByteStringBuilder, ByteIterator}
 
-  "Delete" should {
-    "construction from boolean expression" in {
-      Delete("a" $ne "b", 1) must beEqualTo(Delete(BSONObject("a" → BSONObject("$ne" -> "b")), 1))
-    }
-    "construct from Query" in {
-      Delete(Query("a" $ne "b"), 1) must beEqualTo(Delete(
-        BSONObject("$query" → BSONObject("a" → BSONObject("$ne" -> "b"))), 1))
-    }
-    "produce correct BSONObject" in {
-      val bs = Delete.Codec.write(Delete("a" $ne "b", 1))
-      val obj = BSONObject(bs)
-      obj must beEqualTo( BSONObject("q" → BSONObject("a" → BSONObject("$ne" -> "b")), "limit" → 1)
-      )
-    }
-  }
+import scala.collection.mutable
 
+class BSONDocumentBuilder(hint: Int) extends mutable.Builder[(String, (Byte,ByteIterator)), BSONDocument] {
+  implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
+  val buffer : ByteStringBuilder = ByteString.newBuilder
+  buffer.sizeHint(hint)
 
+  def +=(elem : (String, (Byte, ByteIterator))) : BSONDocumentBuilder.this.type = ???
 
+  def result() : BSONDocument = ???
+
+  def clear() : Unit = ???
+}
+
+object BSONDocumentBuilder {
+  def apply(hint: Int = 512) : BSONDocumentBuilder = new BSONDocumentBuilder(hint)
 }

@@ -25,7 +25,7 @@ package rxmongo.bson
 import java.util.Date
 import java.util.regex.Pattern
 
-import akka.util.ByteString
+import akka.util.{ByteStringBuilder, ByteString}
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
 import scala.annotation.switch
@@ -98,6 +98,27 @@ trait BSONCodec[T, B <: BSONValue] {
 }
 
 object BSONCodec {
+
+  implicit object ByteStringBuilderCodec extends BSONCodec[ByteStringBuilder, BSONObject] {
+    def code : TypeCode = ObjectCode
+    def write(value : ByteStringBuilder) : BSONObject = BSONObject(value.result())
+    def read(value : BSONObject) : ByteStringBuilder = {
+      val bldr = ByteString.newBuilder
+      bldr.putObject(value)
+      bldr
+    }
+  }
+
+  implicit object ByteStringCodec extends BSONCodec[ByteString, BSONObject] {
+    def code : TypeCode = ObjectCode
+    def write(value : ByteString) : BSONObject = BSONObject(value)
+    def read(value : BSONObject) : ByteString = {
+      val bldr = ByteString.newBuilder
+      bldr.putObject(value)
+      bldr.result()
+    }
+  }
+
 
   implicit object StringCodec extends BSONCodec[String, BSONString] {
     def code = StringCode

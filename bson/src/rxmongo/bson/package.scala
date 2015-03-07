@@ -24,9 +24,10 @@ package rxmongo
 
 import java.nio.ByteOrder
 import java.nio.charset.{ StandardCharsets, Charset }
+import java.util.Date
 import java.util.regex.Pattern
 
-import akka.util.{ ByteIterator, ByteStringBuilder }
+import akka.util.{ByteString, ByteIterator, ByteStringBuilder}
 
 import scala.annotation.switch
 import scala.language.implicitConversions
@@ -64,28 +65,69 @@ package object bson {
     */
   implicit class ByteStringBuilderPimps(bldr : ByteStringBuilder) {
 
-    def putCStr(s : String) : ByteStringBuilder = {
+    @inline private[rxmongo] def putCStr(s : String) : ByteStringBuilder = {
       val bytes = s.getBytes(StandardCharsets.UTF_8)
       bldr.putBytes(bytes)
       bldr.putByte(0)
-      bldr
     }
 
-    def putStr(value : String) : ByteStringBuilder = {
+    @inline private[rxmongo] def putStr(value : String) : ByteStringBuilder = {
       val bytes = value.getBytes(utf8)
       bldr.putInt(bytes.length + 1)
       bldr.putBytes(bytes)
       bldr.putByte(0)
+    }
+
+    @inline private[rxmongo] def putPrefix(code : TypeCode, key : String) : ByteStringBuilder = {
+      bldr.
+        putByte(code.code).
+        putCStr(key)
+    }
+
+    @inline private[rxmongo] def putPrefix(code : Byte, key : String) : ByteStringBuilder = {
+      bldr.
+        putByte(code).
+        putCStr(key)
+    }
+
+    @inline private[rxmongo] def putDoc(value : BSONDocument) : ByteStringBuilder = {
+      val buffer = value.toByteString
+      require(bldr.length + buffer.length <= maxDocSize, s"Document size exceeds maximum of $maxDocSize")
+      bldr ++= buffer
       bldr
     }
 
-    def putRegex(pattern : String, options : String) : ByteStringBuilder = {
+    @inline private[rxmongo] def putDoc(value : Option[BSONDocument]) : ByteStringBuilder = {
+      value match {
+        case Some(doc) ⇒ putDoc(doc)
+        case None ⇒ bldr
+      }
+    }
+
+    @inline private[rxmongo] def putDoc(value : BSONBuilder) : ByteStringBuilder = {
+      bldr ++= value.result.buffer
+      bldr
+    }
+
+    private[rxmongo] def putDocs(values : Iterable[BSONDocument]) : ByteStringBuilder = {
+      for (doc ← values) { putDoc(doc) }
+      bldr
+    }
+
+    @inline private[rxmongo] def putObject(value : BSONObject) : ByteStringBuilder = putDoc(value.doc)
+    @inline private[rxmongo] def putObject(value : Option[BSONObject]) : ByteStringBuilder = putDoc(value.map { v ⇒ v.doc })
+    @inline private[rxmongo] def putObjects(values : Iterable[BSONObject]) : ByteStringBuilder = putDocs(values.map { v ⇒ v.doc })
+
+    @inline private[rxmongo] def putArray(value : BSONArray) : ByteStringBuilder = putDoc(value.doc)
+    @inline private[rxmongo] def putArray(value : Option[BSONArray]) : ByteStringBuilder = putDoc(value.map { v ⇒ v.doc })
+    @inline private[rxmongo] def putArrays(values : Iterable[BSONArray]) : ByteStringBuilder = putDocs(values.map { v ⇒ v.doc })
+
+    @inline private[rxmongo] def putRegex(pattern : String, options : String) : ByteStringBuilder = {
       putCStr(pattern)
       putCStr(options)
-      bldr
     }
 
-    def putRegex(p : Pattern) : ByteStringBuilder = {
+    private [rxmongo] def putRegex(p : Pattern) : ByteStringBuilder = {
       val options : String = {
         //
         // 'i' for case insensitive matching,
@@ -116,38 +158,152 @@ package object bson {
       putRegex(pattern, options)
     }
 
-    def putDoc(value : BSONDocument) : ByteStringBuilder = {
-      val buffer = value.toByteString
-      require(bldr.length + buffer.length <= maxDocSize, s"Document size exceeds maximum of $maxDocSize")
-      bldr ++= buffer
+    private[rxmongo] def scopedJsCode(code : String, scope : BSONObject) : ByteStringBuilder = {
+      val content = ByteString.newBuilder
+      content.
+        putStr(code).
+        putObject(scope)
+      val tmp = content.result()
+      bldr.putInt(tmp.length + 4) // add four for the length field itself
+      bldr ++= tmp
+    }
+
+    @inline def double(key : String, value : Double) : ByteStringBuilder = {
+      putPrefix(DoubleCode, key)
+      bldr.putDouble(value)
+    }
+
+    @inline def string(key : String, value : String) : ByteStringBuilder = {
+      putPrefix(StringCode, key)
+      putStr(value)
+    }
+
+    @inline def obj(key : String, value : BSONObject) : ByteStringBuilder = {
+      putPrefix(ObjectCode, key)
+      putObject(value)
+    }
+
+    @inline def obj(key : String, value : BSONBuilder) : ByteStringBuilder = {
+      putPrefix(ObjectCode, key)
+      putDoc(value)
+    }
+
+    @inline def array(key : String, value : BSONArray) : ByteStringBuilder = {
+      putPrefix(ArrayCode, key)
+      putArray(value)
+    }
+
+    @inline def binary(key : String, blob : Array[Byte], subtype : BinarySubtype) : ByteStringBuilder = {
+      putPrefix(BinaryCode, key)
+      bldr.
+        putInt(blob.length).
+        putByte(subtype.code).
+        putBytes(blob)
+    }
+
+    def binary(key : String, blob : Iterator[Byte], subtype : BinarySubtype) : ByteStringBuilder = {
+      putPrefix(BinaryCode, key)
+      bldr.sizeHint(bldr.length + blob.length + 5)
+      bldr.
+        putInt(blob.length).
+        putByte(subtype.code)
+      for (b ← blob) { bldr.putByte(b) }
       bldr
     }
 
-    def putDoc(value : Option[BSONDocument]) : ByteStringBuilder = {
-      value match {
-        case Some(doc) ⇒ putDoc(doc)
-        case None ⇒ bldr
-      }
+    @inline def binary(key : String, blob : ByteString, subtype : BinarySubtype) : ByteStringBuilder = {
+      putPrefix(BinaryCode, key)
+      bldr.
+        putInt(blob.length).
+        putByte(subtype.code).
+        append(blob)
     }
 
-    def putDoc(value : BSONBuilder) : ByteStringBuilder = {
-      bldr ++= value.result.buffer
-      bldr
+    @inline def undefined(key : String) : ByteStringBuilder = {
+      putPrefix(UndefinedCode, key)
     }
 
-    def putDocs(values : Iterable[BSONDocument]) : ByteStringBuilder = {
-      for (doc ← values) { putDoc(doc) }
-      bldr
+    @inline def objectID(key : String, value : Array[Byte]) : ByteStringBuilder = {
+      require(value.length == 12, "ObjectID must be exactly 12 bytes")
+      putPrefix(ObjectIDCode, key)
+      bldr.putBytes(value)
     }
 
-    def putObj(value : BSONObject) : ByteStringBuilder = putDoc(value.doc)
-    def putObj(value : Option[BSONObject]) : ByteStringBuilder = putDoc(value.map { v ⇒ v.doc })
-    def putObjs(values : Iterable[BSONObject]) : ByteStringBuilder = putDocs(values.map { v ⇒ v.doc })
+    @inline def boolean(key : String, value : Boolean) : ByteStringBuilder = {
+      putPrefix(BooleanCode, key)
+      bldr.putByte(if (value) 1.toByte else 0.toByte)
+    }
 
-    def putArr(value : BSONArray) : ByteStringBuilder = putDoc(value.doc)
-    def putArr(value : Option[BSONArray]) : ByteStringBuilder = putDoc(value.map { v ⇒ v.doc })
-    def putArrs(values : Iterable[BSONArray]) : ByteStringBuilder = putDocs(values.map { v ⇒ v.doc })
+    @inline def date(key : String, time : Date) : ByteStringBuilder = {
+      putPrefix(DateCode, key)
+      bldr.putLong(time.getTime)
+    }
 
+    @inline def date(key : String, time : Long) : ByteStringBuilder = {
+      putPrefix(DateCode, key)
+      bldr.putLong(time)
+    }
+
+    @inline def nil(key : String) : ByteStringBuilder = {
+      putPrefix(NullCode, key)
+    }
+
+    @inline def regex(key : String, pattern : String, options : String = "") : ByteStringBuilder = {
+      putPrefix(RegexCode, key)
+      bldr.putRegex(pattern, options)
+    }
+
+    @inline def regex(key : String, regex : Pattern) : ByteStringBuilder = {
+      putPrefix(RegexCode, key)
+      bldr.putRegex(regex)
+    }
+
+    @inline def dbPointer(key : String, referent : String, id : Array[Byte]) : ByteStringBuilder = {
+      require(id.length == 12, "ObjectID must be exactly 12 bytes")
+      putPrefix(DBPointerCode, key)
+      bldr.
+        putStr(referent).
+        putBytes(id)
+    }
+
+    @inline def jsCode(key : String, code : String) : ByteStringBuilder = {
+      putPrefix(JavaScriptCode, key)
+      putStr(code)
+    }
+
+    @inline def symbol(key : String, symbol : String) : ByteStringBuilder = {
+      putPrefix(SymbolCode, key)
+      putStr(symbol)
+    }
+
+    @inline def scopedJsCode(key : String, code : String, scope : BSONObject) : ByteStringBuilder = {
+      putPrefix(ScopedJSCode, key)
+      bldr.scopedJsCode(code, scope)
+    }
+
+    @inline def integer(key : String, value : Int) : ByteStringBuilder = {
+      putPrefix(IntegerCode, key)
+      bldr.putInt(value)
+    }
+
+    @inline def timestamp(key : String, value : Long) : ByteStringBuilder = {
+      putPrefix(TimestampCode, key)
+      bldr.putLong(value)
+    }
+
+    @inline def long(key : String, value : Long) : ByteStringBuilder = {
+      putPrefix(LongCode, key)
+      bldr.putLong(value)
+    }
+
+    def toByteString : ByteString = {
+      val content = bldr.result()
+      val bsb = ByteString.newBuilder
+      bsb.putInt(content.length + 5) // 4 for length, 1 for terminating 0 byte
+      bsb ++= content
+      bsb.putByte(0)
+      bsb.result()
+    }
   }
 
   /** Implicit Extensions To ByteIterator
@@ -190,12 +346,12 @@ package object bson {
       BSONDocument(bitr)
     }
 
-    def getObj : BSONObject = BSONObject(getDoc)
+    def getObject : BSONObject = BSONObject(getDoc)
 
     def getArray : BSONArray = BSONArray(getDoc)
 
-    def getObjs(count : Int) : Seq[BSONObject] = {
-      for (x ← 1 to count) yield { getObj }
+    def getObjects(count : Int) : Seq[BSONObject] = {
+      for (x ← 1 to count) yield { getObject }
     }
 
     def getBinary : (BinarySubtype, Array[Byte]) = {
@@ -228,7 +384,7 @@ package object bson {
 
     def getScopedJavaScript : (String, BSONObject) = {
       itr.getInt
-      itr.getStr → itr.getObj
+      itr.getStr → itr.getObject
     }
 
     @inline def skipLength : Int = {

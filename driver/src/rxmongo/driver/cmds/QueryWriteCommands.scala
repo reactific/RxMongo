@@ -68,7 +68,7 @@ case class DeleteCmd(
   writeConcern : WriteConcern) extends Command(db, {
   val wc = WriteConcern.Codec.write(writeConcern)
   var sum = 0
-  val dels = deletes.map { d ⇒ val obj = Delete.Codec.write(d); sum += obj.buffer.length; obj }
+  val dels = deletes.map { d ⇒ val obj = Delete.Codec.write(d); sum += obj.length; obj }
   val lenHint = 9 + coll.length + 8 + deletes.size * 8 + sum + 9 + 19 + wc.buffer.length
   val b = BSONBuilder(lenHint)
   b.string("delete", coll)

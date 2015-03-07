@@ -36,6 +36,20 @@ case class BSONDocument private[rxmongo] (
 
   def get(key : String) : Option[(Byte, ByteIterator)] = data.get(key)
 
+  def as[T](key: String, code: TypeCode, conv: (ByteIterator) ⇒ T) : T = {
+    data.get(key) match {
+      case Some((c,itr)) if c == code.code ⇒ conv(itr)
+      case Some((c,itr)) ⇒ throw new IllegalArgumentException(s"Field '$key' has type ${TypeCode(c).typeName} not ${code.typeName}")
+      case None ⇒ throw new NoSuchElementException(s"Field '$key' does not exist.")
+    }
+  }
+  def asInt(key: String) : Int = as[Int](key, IntegerCode, { itr ⇒ itr.clone().getInt })
+  def asLong(key: String) : Long = as[Long](key, LongCode, { itr ⇒ itr.clone().getLong })
+  def asDouble(key: String) : Double = as[Double](key, DoubleCode, { itr ⇒ itr.clone().getDouble })
+  def asString(key: String) : String = as[String](key, StringCode, { itr ⇒ itr.clone().getStr })
+  def asObject(key: String) : BSONObject = as[BSONObject](key, ObjectCode, { itr ⇒ itr.clone().getObject })
+  def asArray(key: String) : BSONArray = as[BSONArray](key, ArrayCode, { itr ⇒ itr.clone().getArray })
+
   def +[B1 >: (Byte, ByteIterator)](kv : (String, B1)) : BSONDocument = {
     val pair = kv._1 → kv._2.asInstanceOf[(Byte, ByteIterator)]
     BSONDocument(data.+(pair), None)
@@ -105,8 +119,8 @@ object BSONDocument {
     BSONDocument(b.toByteString)
   }
 
-  private[bson] def apply(buffer : ByteString) : BSONDocument = BSONDocument(buffer.iterator)
-  private[bson] def apply(itr : ByteIterator) : BSONDocument = {
+  def apply(buffer : ByteString) : BSONDocument = BSONDocument(buffer.iterator)
+  def apply(itr : ByteIterator) : BSONDocument = {
     val bldr = new mutable.MapBuilder[String, (Byte, ByteIterator), Map[String, (Byte, ByteIterator)]](Map.empty[String, (Byte, ByteIterator)])
     val docItr = itr.clone()
     val byteLen = itr.getInt

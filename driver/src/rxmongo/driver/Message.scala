@@ -143,8 +143,8 @@ case class UpdateMessage(
       putInt(0).
       putCStr(fullCollectionName).
       putInt(flags).
-      putObj(selector).
-      putObj(update)
+      putObject(selector).
+      putObject(update)
   }
 
   override def appendTo(builder : StringBuilder) : StringBuilder = {
@@ -187,7 +187,7 @@ case class InsertMessage(
     super.build.
       putInt(flags). // bit vector - see arguments
       putCStr(fullCollectionName). // "dbname.collectionname"
-      putObjs(documents)
+      putObjects(documents)
   } // one or more documents to insert into the collection
 
   override def appendTo(builder : StringBuilder) : StringBuilder = {
@@ -227,7 +227,7 @@ abstract class GenericQueryMessage extends RequestMessage(Message.OP_QUERY) {
   override def build = {
     val bs = super.build
     options.writeToByteString(bs, fullCollectionName)
-    bs.putObj(selector).putObj(returnFieldsSelector)
+    bs.putObject(selector).putObject(returnFieldsSelector)
   }
 
   override val requiresResponse : Boolean = true
@@ -352,7 +352,7 @@ case class DeleteMessage(
       putInt(0).
       putCStr(fullCollectionName).
       putInt(flags).
-      putObj(selector)
+      putObject(selector)
   }
 
   override def appendTo(builder : StringBuilder) : StringBuilder = {
@@ -458,7 +458,7 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
   val cursorID = itr.getLong
   val startingFrom = itr.getInt
   val numberReturned = itr.getInt
-  val documents = itr.getObjs(numberReturned)
+  val documents = itr.getObjects(numberReturned)
 
   override def build = throw new IllegalStateException("Attempt to build a ReplyMessage")
   override lazy val finish = buffer
