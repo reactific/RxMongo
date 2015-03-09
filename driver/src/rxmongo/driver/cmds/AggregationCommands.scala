@@ -32,10 +32,10 @@ import rxmongo.messages.Query
   * @param db The database containing the collection to aggregate
   * @param coll The name of the collection to as the input for the aggregation pipeline.
   * @param pipeline An array of aggregation pipeline stages that process and transform the document stream as
-  *      part of the aggregation pipeline.
+  *     part of the aggregation pipeline.
   * @param explain Optional. Specifies to return the information on the processing of the pipeline.
   * @param allowDiskUse Optional. Enables writing to temporary files. When set to true, aggregation stages can write
-  *          data to the _tmp subdirectory in the dbPath directory.
+  *         data to the _tmp subdirectory in the dbPath directory.
   * @param batchSize Optional. Specify a document that contains options that control the creation of the cursor object.
   */
 case class AggregateCmd(
@@ -106,18 +106,18 @@ case class DistinctCmd(
   * @param coll The name of the collection from which to perform the group by operation.
   * @param key The field or fields to group. Returns a “key object” for use as the grouping key.
   * @param reduce An aggregation function that operates on the documents during the grouping operation. These functions
-  *    may return a sum or a count. The function takes two arguments: the current document and an
-  *    aggregation result document for that group.
+  *   may return a sum or a count. The function takes two arguments: the current document and an
+  *   aggregation result document for that group.
   * @param initial Initializes the aggregation result document.
   * @param keyf Optional. Alternative to the key field. Specifies a function that creates a “key object” for use as the
-  *  grouping key. Use \$keyf instead of key to group by calculated fields rather than existing document
-  *  fields.
+  * grouping key. Use \$keyf instead of key to group by calculated fields rather than existing document
+  * fields.
   * @param cond Optional. The selection criteria to determine which documents in the collection to process. If you
-  *  omit the cond field, group processes all the documents in the collection for the group operation.
+  * omit the cond field, group processes all the documents in the collection for the group operation.
   * @param finalizer Optional. A function that runs each item in the result set before group returns the final value.
-  *      This function can either modify the result document or replace the result document as a whole.
-  *      Unlike the \$keyf and \$reduce fields that also specify a function, this field name is finalize,
-  *      not \$finalize.
+  *     This function can either modify the result document or replace the result document as a whole.
+  *     Unlike the \$keyf and \$reduce fields that also specify a function, this field name is finalize,
+  *     not \$finalize.
   */
 case class GroupCmd(
   db : String,
@@ -144,7 +144,7 @@ case class GroupCmd(
   * @see [[http://docs.mongodb.org/master/reference/command/mapReduce/]]
   * @param db The name of the database containing the collection on which you want to perform map-reduce.
   * @param coll The name of the collection on which you want to perform map-reduce. This collection will be filtered
-  *  using query before being processed by the map function.
+  * using query before being processed by the map function.
   * @param map A JavaScript function that associates or “maps” a value with a key and emits the key and value pair.
   * @param reduce A JavaScript function that “reduces” to a single object all the values associated with a particular key.
   * @param out Specifies where to output the result of the map-reduce operation. You can either output to a collection
@@ -152,24 +152,24 @@ case class GroupCmd(
   * or inline, but on a secondary, only inline output is possible. When None is specified, you get inline
   * output. Otherwise, the document provided specifies output to a collection.
   * @param query Optional. Specifies the selection criteria using query operators for determining the documents input
-  *   to the map function.
+  *  to the map function.
   * @param sort Optional. Sorts the input documents. This option is useful for optimization. For example, specify the
-  *  sort key to be the same as the emit key so that there are fewer reduce operations. The sort key must
-  *  be in an existing index for this collection.
+  * sort key to be the same as the emit key so that there are fewer reduce operations. The sort key must
+  * be in an existing index for this collection.
   * @param limit Optional. Specifies a maximum number of documents for the input into the map function.
   * @param finalizer Optional. Follows the reduce method and modifies the output.
   * @param scope Optional. Specifies global variables that are accessible in the map, reduce and finalize functions.
   * @param jsMode Optional. Specifies whether to convert intermediate data into BSON format between the execution of
-  *    the map and reduce functions. Defaults to false. If false: Internally, MongoDB converts the
-  *    JavaScript objects emitted by the map function to BSON objects. These BSON objects are then converted
-  *    back to JavaScript objects when calling the reduce function. The map-reduce operation places the
-  *    intermediate BSON objects in temporary, on-disk storage. This allows the map-reduce operation to
-  *    execute over arbitrarily large data sets. If true: Internally, the JavaScript objects emitted during
-  *    map function remain as JavaScript objects. There is no need to convert the objects for the reduce
-  *    function, which can result in faster execution. You can only use jsMode for result sets with fewer
-  *    than 500,000 distinct key arguments to the mapper’s emit() function. The jsMode defaults to false.
+  *   the map and reduce functions. Defaults to false. If false: Internally, MongoDB converts the
+  *   JavaScript objects emitted by the map function to BSON objects. These BSON objects are then converted
+  *   back to JavaScript objects when calling the reduce function. The map-reduce operation places the
+  *   intermediate BSON objects in temporary, on-disk storage. This allows the map-reduce operation to
+  *   execute over arbitrarily large data sets. If true: Internally, the JavaScript objects emitted during
+  *   map function remain as JavaScript objects. There is no need to convert the objects for the reduce
+  *   function, which can result in faster execution. You can only use jsMode for result sets with fewer
+  *   than 500,000 distinct key arguments to the mapper’s emit() function. The jsMode defaults to false.
   * @param verbose Optional. Specifies whether to include the timing information in the result information. The verbose
-  *     defaults to true to include the timing information.
+  *    defaults to true to include the timing information.
   */
 case class MapReduceCmd(
   db : String,

@@ -26,7 +26,7 @@ import java.util
 import java.util.Date
 import java.util.regex.Pattern
 
-import akka.util.{ ByteIterator, ByteString }
+import akka.util.{ ByteStringBuilder, ByteIterator, ByteString }
 
 import scala.annotation.switch
 import scala.collection.{ Map, MapLike, mutable }
@@ -66,6 +66,14 @@ case class BSONDocument private[rxmongo] (
   def asTimestamp(key : String) : Long = as[Long](key, TimestampCode, { itr ⇒ itr.clone().getLong })
   def asLong(key : String) : Long = as[Long](key, LongCode, { itr ⇒ itr.clone().getLong })
 
+  def asObjectOfType[T](key : String)(implicit codec : Codec[T]) : T = {
+    as[T](key, ObjectCode, { itr ⇒ codec.read(itr) })
+  }
+
+  def asArrayOfType[T](key : String)(implicit codec : Codec[T]) : T = {
+    as[T](key, ArrayCode, { itr ⇒ codec.read(itr) })
+  }
+
   def +[B1 >: (Byte, ByteIterator)](kv : (String, B1)) : BSONDocument = {
     val pair = kv._1 → kv._2.asInstanceOf[(Byte, ByteIterator)]
     BSONDocument(data.+(pair), None)
@@ -85,6 +93,13 @@ case class BSONDocument private[rxmongo] (
     for ((k, (typeCode, byteIterator)) ← data) {
       b.putPrefix(typeCode, k)
       b.buffer ++= byteIterator.clone()
+    }
+  }
+
+  def addTo(b : ByteStringBuilder) : Unit = {
+    for ((k, (typeCode, byteIterator)) ← data) {
+      b.putPrefix(typeCode, k)
+      b ++= byteIterator.clone()
     }
   }
 
@@ -136,6 +151,7 @@ object BSONDocument {
   }
 
   def apply(buffer : ByteString) : BSONDocument = BSONDocument(buffer.iterator)
+
   def apply(itr : ByteIterator) : BSONDocument = {
     val bldr = new mutable.MapBuilder[String, (Byte, ByteIterator), Map[String, (Byte, ByteIterator)]](Map.empty[String, (Byte, ByteIterator)])
     val docItr = itr.clone()

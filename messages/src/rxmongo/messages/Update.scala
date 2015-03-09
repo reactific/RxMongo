@@ -22,6 +22,7 @@
 
 package rxmongo.messages
 
+import akka.util.{ ByteString, ByteIterator, ByteStringBuilder }
 import rxmongo.bson._
 
 case class Update(selector : BSONObject, updater : BSONObject, upsert : Boolean, multi : Boolean, isolated : Boolean)
@@ -35,33 +36,32 @@ object Update {
     Update(selector.result, updater.result, upsert, multi, isolated)
   }
 
-  implicit object Codec extends BSONCodec[Update, BSONObject] {
-    def code : TypeCode = ObjectCode
-
-    def write(value : Update) : BSONObject = {
-      val selector = if (value.isolated) {
-        val bldr = BSONBuilder()
-        value.selector.doc.addTo(bldr)
-        bldr.integer("$isolated", 1)
-        bldr.result
-      } else value.selector
-      BSONBuilder().
-        obj("q", selector).
-        obj("u", value.updater).
-        boolean("upsert", value.upsert).
-        boolean("multi", value.multi).
-        result
-    }
-
-    def read(value : BSONObject) : Update = {
-      val q = value.getObj("q")
+  implicit object Codec extends Codec[Update] {
+    def read(value : ByteIterator) : Update = {
+      val doc = BSONDocument(value)
+      val q = doc.asObject("q")
       val (selector, isolated) = {
         if (q.contains("$isolated"))
           (q - "$isolated") → true
         else
           q → false
       }
-      Update(selector, value.getObj("u"), value.getAsBoolean("upsert"), value.getAsBoolean("multi"), isolated)
+      Update(selector, doc.asObject("u"), doc.asBoolean("upsert"), doc.asBoolean("multi"), isolated)
+    }
+    def write(value : Update, builder : ByteStringBuilder) : ByteStringBuilder = {
+      val selector = if (value.isolated) {
+        val bldr = ByteString.newBuilder
+        value.selector.doc.addTo(bldr)
+        bldr.integer("$isolated", 1)
+        BSONObject(bldr.toByteString)
+      } else value.selector
+      builder.
+        obj("q", selector).
+        obj("u", value.updater).
+        boolean("upsert", value.upsert).
+        boolean("multi", value.multi)
+      builder
     }
   }
+
 }

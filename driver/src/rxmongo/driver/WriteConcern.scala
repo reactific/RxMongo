@@ -24,6 +24,7 @@ package rxmongo.driver
 
 import java.util.concurrent.TimeUnit
 
+import akka.util.{ ByteIterator, ByteStringBuilder }
 import rxmongo.bson._
 
 import scala.concurrent.duration._
@@ -48,8 +49,8 @@ case class WriteConcern(
   kind : WriteConcernKind,
   timeout : FiniteDuration,
   journal : Boolean) extends BSONProvider {
-  def toByteString = { WriteConcern.Codec.write(this).buffer }
-  override def toBSONObject = { WriteConcern.Codec.write(this) }
+  def toByteString = { WriteConcern.Codec.write(this) }
+  override def toBSONObject = { BSONObject(WriteConcern.Codec.write(this)) }
 }
 
 object WriteConcern {
@@ -72,32 +73,36 @@ object WriteConcern {
     }
   }
 
-  implicit object Codec extends BSONCodec[WriteConcern, BSONObject] {
-    def code : TypeCode = ObjectCode
-    def write(value : WriteConcern) : BSONObject = {
-      val b = BSONBuilder()
+  implicit object Codec extends Codec[WriteConcern] {
+    override val code : TypeCode = ObjectCode
+    override val sizeHint = 4 + 3 + 4 + 10 + 1 + 3
+
+    def write(value : WriteConcern, bldr : ByteStringBuilder) : ByteStringBuilder = {
       value.kind match {
-        case NoAcknowledgmentWC ⇒ b.integer("w", -1)
-        case ErrorsOnlyWC ⇒ b.integer("w", 0)
-        case BasicAcknowledgmentWC ⇒ b.integer("w", 1)
-        case MajorityWC ⇒ b.string("w", "majority")
-        case WaitForMembersWC(num) ⇒ b.integer("w", num)
-        case MembersWithTagWC(tag) ⇒ b.string("w", tag)
+        case NoAcknowledgmentWC ⇒ bldr.integer("w", -1)
+        case ErrorsOnlyWC ⇒ bldr.integer("w", 0)
+        case BasicAcknowledgmentWC ⇒ bldr.integer("w", 1)
+        case MajorityWC ⇒ bldr.string("w", "majority")
+        case WaitForMembersWC(num) ⇒ bldr.integer("w", num)
+        case MembersWithTagWC(tag) ⇒ bldr.string("w", tag)
         case k ⇒ throw new RxMongoError(s"Invalid WriteConcernKind: $k")
       }
-      b.integer("wtimeout", value.timeout.toMillis.toInt)
-      b.boolean("j", value.journal)
-      b.result
+      bldr.integer("wtimeout", value.timeout.toMillis.toInt)
+      bldr.boolean("j", value.journal)
     }
-    def read(value : BSONObject) : WriteConcern = {
-      val kind = {
-        value.getTypeCode("w") match {
-          case StringCode ⇒ str2WCK(value.getAsString("w"))
-          case IntegerCode ⇒ int2WCK(value.getAsInt("w"))
-          case c ⇒ throw new RxMongoError(s"Invalid TypeCode for WriteConcernKind: $c")
-        }
+
+    def read(itr : ByteIterator) : WriteConcern = {
+      val doc : BSONDocument = BSONDocument(itr)
+      val kind = doc.get("w") match {
+        case Some((tc, i)) ⇒
+          TypeCode(tc) match {
+            case StringCode ⇒ str2WCK(i.getStr)
+            case IntegerCode ⇒ int2WCK(i.getInt)
+            case c ⇒ throw new RxMongoError(s"Invalid TypeCode for WriteConcernKind: $c")
+          }
+        case _ ⇒ throw new NoSuchElementException("w")
       }
-      WriteConcern(kind, Duration(value.getAsInt("wtimeout"), TimeUnit.MILLISECONDS), value.getAsBoolean("j"))
+      WriteConcern(kind, Duration(doc.asInt("wtimeout"), TimeUnit.MILLISECONDS), doc.asBoolean("j"))
     }
   }
 

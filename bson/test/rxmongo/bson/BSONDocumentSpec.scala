@@ -427,7 +427,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
     }
 
     "interpret documents from ByteString quickly" in {
-      val bs : ByteString = makeAnObject.toByteString
+      val bs : ByteString = makeAnObject().toByteString
       val repetitions = 100000
       val limit = 80000.0 * repetitions
       val profiler = timedTest(limit, "ByteString Interpretation", { profiler : Profiler ⇒
@@ -455,6 +455,6 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
     }
   }
 
-  def makeDocument : BSONDocument = BSONDocument(makeAnObject.toByteString)
+  def makeDocument : BSONDocument = { BSONDocument(makeAnObject().toByteString) }
 
 }

@@ -55,8 +55,7 @@ object Message {
   val MultiUpdate_Flag = 2
 }
 
-trait Message {
-  def build : ByteStringBuilder = ByteString.newBuilder
+trait Message extends BSONConstructor {
   val opcode : Message.OpCode
   def requestId : Int
 
@@ -138,8 +137,8 @@ case class UpdateMessage(
   //   document  selector;           // the query to select the document
   //   document  update;             // specification of the update to perform
   // }
-  override def build = {
-    super.build.
+  def addTo(bldr : ByteStringBuilder) = {
+    bldr.
       putInt(0).
       putCStr(fullCollectionName).
       putInt(flags).
@@ -183,8 +182,8 @@ case class InsertMessage(
   //   cstring   fullCollectionName; // "dbname.collectionname"
   //   document* documents;          // one or more documents to insert into the collection
   // }
-  override def build = {
-    super.build.
+  def addTo(bldr : ByteStringBuilder) = {
+    bldr.
       putInt(flags). // bit vector - see arguments
       putCStr(fullCollectionName). // "dbname.collectionname"
       putObjects(documents)
@@ -224,10 +223,14 @@ abstract class GenericQueryMessage extends RequestMessage(Message.OP_QUERY) {
   //   document  query;                    // query object.
   //   [ document  returnFieldsSelector; ] // Optional. Selector indicating the fields to return.
   // }
-  override def build = {
-    val bs = super.build
-    options.writeToByteString(bs, fullCollectionName)
-    bs.putObject(selector).putObject(returnFieldsSelector)
+  def addTo(bldr : ByteStringBuilder) = {
+    bldr.
+      putInt(options.flags).
+      putCStr(fullCollectionName).
+      putInt(options.numberToSkip).
+      putInt(options.numberToReturn).
+      put(selector).
+      putObject(returnFieldsSelector)
   }
 
   override val requiresResponse : Boolean = true
@@ -294,8 +297,8 @@ case class GetMoreMessage(
   //   int32     numberToReturn;     // number of documents to return
   //   int64     cursorID;           // cursorID from the OP_REPLY
   // }
-  override def build = {
-    super.build.
+  def addTo(bldr : ByteStringBuilder) = {
+    bldr.
       putInt(0).
       putCStr(fullCollectionName).
       putInt(numberToReturn).
@@ -347,8 +350,8 @@ case class DeleteMessage(
   //   int32     flags;              // bit vector - see below for details.
   //   document  selector;           // query object.  See below for details.
   // }
-  override def build = {
-    super.build.
+  def addTo(bldr : ByteStringBuilder) = {
+    bldr.
       putInt(0).
       putCStr(fullCollectionName).
       putInt(flags).
@@ -381,8 +384,8 @@ case class KillCursorsMessage(
   //   int32     numberOfCursorIDs; // number of cursorIDs in message
   //   int64*    cursorIDs;         // sequence of cursorIDs to close
   // }
-  override def build = {
-    super.build.
+  def addTo(bldr : ByteStringBuilder) = {
+    bldr.
       putInt(0).
       putInt(cursorIDs.length).
       putLongs(cursorIDs.toArray)
@@ -434,14 +437,14 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
   /** {{{
     * bit   name	description
     * 0	 CursorNotFound	  Set when getMore is called but the cursor id is not valid at the server. Returned with zero
-    *          results.
+    *         results.
     * 1  QueryFailure	    Set when query failed. Results consist of one document containing an “\$err” field describing
-    *          the failure.
+    *         the failure.
     * 2  ShardConfigStale	Drivers should ignore this. Only mongos will ever see this set, in which case, it needs to
-    *          update config from the server.
+    *         update config from the server.
     * 3  AwaitCapable     Set when the server supports the AwaitData Query option. If it does not, a client should sleep
-    *          a little between getMore’s of a Tailable cursor. Mongod version 1.6 supports AwaitData and
-    *          thus always sets AwaitCapable.
+    *         a little between getMore’s of a Tailable cursor. Mongod version 1.6 supports AwaitData and
+    *         thus always sets AwaitCapable.
     * 4-31	 Reserved	    Ignore
     * }}}
     */
@@ -460,7 +463,7 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
   val numberReturned = itr.getInt
   val documents = itr.getObjects(numberReturned)
 
-  override def build = throw new IllegalStateException("Attempt to build a ReplyMessage")
+  def addTo(bldr : ByteStringBuilder) = throw new IllegalStateException("Attempt to build a ReplyMessage")
   override lazy val finish = buffer
   override def appendTo(builder : StringBuilder) : StringBuilder = {
     super.appendTo(builder).
@@ -498,7 +501,7 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
   */
 case class MessageBatch private[driver] (private val msgs : Seq[Message]) extends Message {
   val opcode = OP_NOT_A_MESSAGE
-  override def build : ByteStringBuilder = {
+  def addTo(bldr : ByteStringBuilder) : ByteStringBuilder = {
     msgs.foldLeft(ByteString.newBuilder) { (x, m) ⇒ x.append(m.finish) }
   }
   override lazy val finish = build.result()

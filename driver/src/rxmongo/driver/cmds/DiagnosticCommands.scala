@@ -115,7 +115,7 @@ case class GetCmdLineOptsCmd() extends AdminCommand(BSONObject("getCmdLineOpts" 
   * @see [[http://docs.mongodb.org/master/reference/command/profile/]]
   * @param db The databaset o profile
   * @param level The profiling level. -1=No change(returns the current profile level), 0=Off(no profiling),
-  *     1=Only include slow operations, 2=Include all operations.
+  *    1=Only include slow operations, 2=Include all operations.
   * @param slowms Optional.  Sets the threshold in milliseconds for slow operations
   */
 case class ProfileCmd(db : String, level : Int, slowms : Option[Int] = None) extends Command(db, {

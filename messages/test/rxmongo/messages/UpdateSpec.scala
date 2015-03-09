@@ -43,8 +43,9 @@ class UpdateSpec extends Specification {
     }
 
     "produce correct BSONObject" in {
-      Update.Codec.write(Update("a" $ne "b", $set("foo" → "bar"), upsert = true, multi = false, isolated = true)) must
-        beEqualTo(
+      val bs = Update.Codec.write(Update("a" $ne "b", $set("foo" → "bar"), upsert = true, multi = false, isolated = true))
+      val obj = BSONObject(bs)
+      obj must beEqualTo(
           BSONObject(
             "q" → BSONObject("a" → BSONObject("$ne" → "b"), "$isolated" → 1),
             "u" → BSONObject("$set" → BSONObject("foo" → "bar")),

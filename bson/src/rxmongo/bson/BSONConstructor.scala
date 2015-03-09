@@ -39,6 +39,11 @@ trait BSONConstructor {
     */
   def addTo(builder : ByteStringBuilder) : ByteStringBuilder
 
+  def build : ByteStringBuilder = {
+    val bldr = ByteString.newBuilder
+    addTo(bldr)
+  }
+
   /** Finalize and return ByteString.
     * The construction of the ByteString is finalized and a ByteString is returned.
     * @return

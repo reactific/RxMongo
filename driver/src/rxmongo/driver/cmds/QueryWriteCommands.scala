@@ -22,6 +22,7 @@
 
 package rxmongo.driver.cmds
 
+import akka.util.ByteString
 import rxmongo.bson._
 import rxmongo.driver.{ Command, Projection, WriteConcern }
 import rxmongo.messages.{ Delete, Query, Update }
@@ -42,7 +43,7 @@ case class InsertCmd(
   writeConcern : WriteConcern) extends Command(db, {
   val wc = WriteConcern.Codec.write(writeConcern)
   val docLen = documents.foldLeft(0) { case (sum, obj) ⇒ sum + obj.buffer.length }
-  val lenHint = 9 + coll.length + 15 + 8 * documents.size + docLen + 9 + 19 + wc.buffer.length
+  val lenHint = 9 + coll.length + 15 + 8 * documents.size + docLen + 9 + 19 + wc.length
   val b = BSONBuilder(lenHint)
   b.string("insert", coll)
   b.array("documents", documents)
@@ -69,7 +70,7 @@ case class DeleteCmd(
   val wc = WriteConcern.Codec.write(writeConcern)
   var sum = 0
   val dels = deletes.map { d ⇒ val obj = Delete.Codec.write(d); sum += obj.length; obj }
-  val lenHint = 9 + coll.length + 8 + deletes.size * 8 + sum + 9 + 19 + wc.buffer.length
+  val lenHint = 9 + coll.length + 8 + deletes.size * 8 + sum + 9 + 19 + wc.length
   val b = BSONBuilder(lenHint)
   b.string("delete", coll)
   b.array("deletes", dels)
@@ -109,16 +110,16 @@ case class UpdateCmd(
   updates : Seq[Update],
   ordered : Boolean,
   writeConcern : WriteConcern) extends Command(db, {
-  val wc = WriteConcern.Codec.write(writeConcern)
   var sum = 0
-  val dels = updates.map { u ⇒ val obj = Update.Codec.write(u); sum += obj.buffer.length; obj }
-  val lenHint = 9 + coll.length + 8 + updates.size * 8 + sum + 9 + 19 + wc.buffer.length
-  val b = BSONBuilder(lenHint)
+  val dels = updates.map { u ⇒ val obj = Update.Codec.write(u); sum += obj.length; obj }
+  val lenHint = 9 + coll.length + 8 + updates.size * 8 + sum + 9 + 19 + WriteConcern.Codec.sizeHint
+  val b = ByteString.newBuilder
+  b.sizeHint(lenHint)
   b.string("update", coll)
   b.array("updates", dels)
   b.boolean("ordered", ordered)
-  b.obj("writeConcern", wc)
-  b.result
+  b.obj("writeConcern", writeConcern)
+  b.toBSONObject
 }
 )
 
@@ -128,22 +129,22 @@ case class UpdateCmd(
   * @param db The name of the database containing the collection against which the command is run
   * @param coll The collection against which to run the command.
   * @param query Optional. The selection criteria for the modification. The query field employs the same query
-  *  selectors as used in the db.collection.find() method. Although the query may match multiple documents,
-  *  findAndModify will only select one document to modify.
+  * selectors as used in the db.collection.find() method. Although the query may match multiple documents,
+  * findAndModify will only select one document to modify.
   * @param sortBy Optional. Determines which document the operation modifies if the query selects multiple documents.
-  *   findAndModify modifies the first document in the sort order specified by this argument.
+  *  findAndModify modifies the first document in the sort order specified by this argument.
   * @param update Must specify either the remove or the update field. Performs an update of the selected document. The
-  *   update field employs the same update operators or field: value specifications to modify the
-  *   selected document.
+  *  update field employs the same update operators or field: value specifications to modify the
+  *  selected document.
   * @param remove Must specify either the remove or the update field. Removes the document specified in the query field.
-  *   Set this to true to remove the selected document . The default is false.
+  *  Set this to true to remove the selected document . The default is false.
   * @param returnNew Optional. When true, returns the modified document rather than the original. The findAndModify
-  *      method ignores the new option for remove operations. The default is false.
+  *     method ignores the new option for remove operations. The default is false.
   * @param upsert Optional. Used in conjunction with the update field. When true, findAndModify creates a new document
-  *   if no document matches the query, or if documents match the query, findAndModify performs an update.
-  *   To avoid multiple upserts, ensure that the query fields are uniquely indexed. The default is false.
+  *  if no document matches the query, or if documents match the query, findAndModify performs an update.
+  *  To avoid multiple upserts, ensure that the query fields are uniquely indexed. The default is false.
   * @param fields Optional. A subset of fields to return. The fields document specifies an inclusion of a field with 1,
-  *   as in: fields: { <field1>: 1, <field2>: 1, ... }.
+  *  as in: fields: { <field1>: 1, <field2>: 1, ... }.
   */
 case class FindAndModifyCmd(
   db : String,
@@ -155,7 +156,7 @@ case class FindAndModifyCmd(
   returnNew : Option[Boolean] = None,
   upsert : Option[Boolean] = None,
   fields : Option[Projection] = None) extends Command(db, {
-  val b = BSONBuilder()
+  val b = ByteString.newBuilder
   b.string("findAndModify", coll)
   query.map { q ⇒ b.obj("query", q.result) }
   if (sortBy.nonEmpty) {
@@ -167,7 +168,7 @@ case class FindAndModifyCmd(
   upsert.map { u ⇒ b.boolean("upsert", u) }
   returnNew.map { rn ⇒ b.boolean("new", rn) }
   fields.map { f ⇒ b.obj("fields", f.result) }
-  b.result
+  b.toBSONObject
 })
 
 /** getLastError
@@ -181,10 +182,11 @@ case class GetLastErrorCmd(
   db : String,
   writeConcern : WriteConcern,
   fsync : Boolean = false) extends Command(db, {
-  val b = BSONBuilder()
+  val b = ByteString.newBuilder
   b.integer("getLastError", 1)
   b.boolean("fsync", fsync)
-  BSONObject(b.result ++ writeConcern.toBSONObject)
+  b.addFieldsOf(writeConcern)
+  b.toBSONObject
 })
 
 /** eval
@@ -195,21 +197,21 @@ case class GetLastErrorCmd(
   * @param args Optional. An array of arguments to pass to the JavaScript function. Omit if the function does not
   * take arguments.
   * @param nolock Optional. By default, eval takes a global write lock before evaluating the JavaScript function.
-  *   As a result, eval blocks all other read and write operations to the database while the eval operation
-  *   runs. Set nolock to true on the eval command to prevent the eval command from taking the global write
-  *   lock before evaluating the JavaScript. nolock does not impact whether operations within the JavaScript
-  *   code itself takes a write lock.
+  *  As a result, eval blocks all other read and write operations to the database while the eval operation
+  *  runs. Set nolock to true on the eval command to prevent the eval command from taking the global write
+  *  lock before evaluating the JavaScript. nolock does not impact whether operations within the JavaScript
+  *  code itself takes a write lock.
   */
 case class EvalCmd(
   db : String,
   function : String,
   args : Option[BSONArray] = None,
   nolock : Option[Boolean] = None) extends Command(db, {
-  val b = BSONBuilder()
+  val b = ByteString.newBuilder
   b.string("eval", function)
   args.map { a ⇒ b.array("args", a) }
   nolock.map { nl ⇒ b.boolean("nolock", nl) }
-  b.result
+  b.toBSONObject
 })
 
 /** parallelCollectionScan
@@ -223,9 +225,9 @@ case class ParallelCollectionScan(
   db : String,
   coll : String,
   numCursors : Int) extends Command(db, {
-  val b = BSONBuilder()
+  val b = ByteString.newBuilder
   b.string("parallelCollectionScan", coll)
   b.integer("numCursors", numCursors)
-  b.result
+  b.toBSONObject
 }
 )

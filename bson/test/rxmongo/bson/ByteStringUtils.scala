@@ -65,7 +65,7 @@ trait ByteStringUtils {
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
   val aTime = System.currentTimeMillis()
 
-  def makeAnObject : BSONBuilder = Profiler.profile("makeObj") {
+  def makeAnObject(profiler: Profiler = Profiler) : BSONBuilder = profiler.profile("makeObj") {
     val b = BSONBuilder().
       double("double", 42.0D).
       string("string", "fourty-two").
@@ -88,10 +88,10 @@ trait ByteStringUtils {
     b
   }
 
-  def makeObject : BSONObject = makeAnObject.toBSONObject
+  def makeObject(profiler: Profiler = Profiler) : BSONObject = makeAnObject(profiler).toBSONObject
 
   def makeObject(width : Int, depth : Int) : BSONObject = {
-    val bldr = makeAnObject
+    val bldr = makeAnObject()
     if (depth > 0) {
       val kids = for (i ← 1 to width) yield {
         makeObject(width, depth - 1)
