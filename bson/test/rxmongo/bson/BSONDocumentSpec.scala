@@ -430,7 +430,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       val bs : ByteString = makeAnObject.toByteString
       val repetitions = 100000
       val limit = 80000.0 * repetitions
-      val profiler = timedTest(limit,"ByteString Interpretation", { profiler: Profiler ⇒
+      val profiler = timedTest(limit, "ByteString Interpretation", { profiler : Profiler ⇒
         val docs = profiler.profile("Construction") {
           for (i ← 1 to 100000) yield {
             BSONDocument(bs)
@@ -449,39 +449,12 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
             doc.asObject("obj") must beEqualTo(anObject)
           }
         }
-      profiler
       })
       val construction = profiler.get_one_item("Construction")._2
       construction / repetitions must beLessThan(50000.0)
     }
   }
 
-  def makeDocument : BSONDocument = {
-    val b = BSONBuilder()
-    b.obj("$query", makeObj("a", "b"))
-    b.string("$comment", "foo")
-    b.obj("$hint", makeObj("a", 1))
-    b.integer("$maxScan", 1000)
-    b.integer("$maxTimeMS", 1000)
-    b.obj("$max", makeObj("count", 10))
-    b.obj("$min", makeObj("count", 1))
-    b.obj("$orderby", makeObj("count", 1))
-    b.boolean("$returnKey", true)
-    b.boolean("$showDiskLoc", true)
-    b.boolean("$snapshot", true)
-    b.integer("$natural", 1)
-    b.toBSONObject.doc
-  }
+  def makeDocument : BSONDocument = BSONDocument(makeAnObject.toByteString)
 
-  def makeObj(key : String, value : String) = {
-    val bldr = ByteString.newBuilder
-    bldr.putStr(value)
-    BSONObject(BSONDocument(Map(key → (StringCode.code, bldr.result().iterator))))
-  }
-
-  def makeObj(key : String, value : Int) = {
-    val bldr = ByteString.newBuilder
-    bldr.putInt(value)
-    BSONObject(BSONDocument(Map(key → (IntegerCode.code, bldr.result().iterator))))
-  }
 }

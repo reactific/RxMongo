@@ -25,7 +25,7 @@ package rxmongo.bson
 import java.util.Date
 import java.util.regex.Pattern
 
-import akka.util.{ByteStringBuilder, ByteString}
+import akka.util.{ ByteStringBuilder, ByteString }
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
 import scala.annotation.switch
@@ -118,7 +118,6 @@ object BSONCodec {
       bldr.result()
     }
   }
-
 
   implicit object StringCodec extends BSONCodec[String, BSONString] {
     def code = StringCode

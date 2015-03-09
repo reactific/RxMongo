@@ -394,5 +394,5 @@ class BSONBuilder(hint : Int = 512) extends mutable.Builder[(String, Any), BSONO
 }
 
 object BSONBuilder {
-  def apply(sizeHint: Int = 512) : BSONBuilder = new BSONBuilder(sizeHint)
+  def apply(sizeHint : Int = 512) : BSONBuilder = new BSONBuilder(sizeHint)
 }

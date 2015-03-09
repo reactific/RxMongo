@@ -24,12 +24,12 @@ package rxmongo.bson
 
 import java.util.Date
 
-import akka.util.{ByteIterator, ByteString, ByteStringBuilder}
+import akka.util.{ ByteIterator, ByteString, ByteStringBuilder }
 
 import scala.collection._
 
 case class BSONObject private[bson] ( final val doc : BSONDocument) extends BSONValue
-with MapLike[String, BSONValue, BSONObject] with Map[String, BSONValue] {
+  with MapLike[String, BSONValue, BSONObject] with Map[String, BSONValue] {
   final val code : TypeCode = ObjectCode
 
   final def value : Map[String, BSONValue] = toMap

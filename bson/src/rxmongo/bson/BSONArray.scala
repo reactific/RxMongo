@@ -22,12 +22,12 @@
 
 package rxmongo.bson
 
-import akka.util.{ByteIterator, ByteString, ByteStringBuilder}
+import akka.util.{ ByteIterator, ByteString, ByteStringBuilder }
 
 import scala.collection._
 
 case class BSONArray private[bson] ( final val doc : BSONDocument) extends BSONValue
-with SeqLike[BSONValue, BSONArray] {
+  with SeqLike[BSONValue, BSONArray] {
   final val code : TypeCode = ArrayCode
   final def value : Seq[BSONValue] = seq
 

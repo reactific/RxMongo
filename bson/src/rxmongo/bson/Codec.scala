@@ -22,9 +22,9 @@
 
 package rxmongo.bson
 
-import akka.util.{ByteString, ByteStringBuilder, ByteIterator}
+import akka.util.{ ByteString, ByteStringBuilder, ByteIterator }
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 /** Coder/Decoder (Codec) between type T and BSON Binary format
   *
@@ -53,9 +53,9 @@ trait Codec[T] {
     * @param builder The ByteStringBuilder to which the value of type T should be written
     * @return The ByteStringBuilder
     */
-  def write(value : T, builder: ByteStringBuilder) : ByteStringBuilder
+  def write(value : T, builder : ByteStringBuilder) : ByteStringBuilder
 
-  def write(value : T, sizeHint: Int = 512) : ByteString = {
+  def write(value : T, sizeHint : Int = 512) : ByteString = {
     val bsb = ByteString.newBuilder
     bsb.sizeHint(sizeHint)
     write(value, bsb).toByteString
@@ -77,7 +77,7 @@ trait Codec[T] {
     * @param value The value, T, to write to BSON
     * @return None if T cannot be written, Some[BSONValue] otherwise
     */
-  def writeOption(value : T, sizeHint: Int = 512) : Option[ByteString] = Try {
+  def writeOption(value : T, sizeHint : Int = 512) : Option[ByteString] = Try {
     Option(write(value, sizeHint))
   } match {
     case Success(x) ⇒ x
@@ -91,7 +91,7 @@ trait Codec[T] {
     }
   }
 
-  def tryWrite(value : T, sizeHint: Int = 512) : Try[ByteString] = Try {
+  def tryWrite(value : T, sizeHint : Int = 512) : Try[ByteString] = Try {
     Option(write(value, sizeHint)) match {
       case Some(x) ⇒ x
       case None    ⇒ throw new UnsupportedOperationException(s"Could not encode $value")
@@ -104,12 +104,12 @@ object Codec {
 
   implicit object BSONObjectCodec extends Codec[BSONObject] {
     def read(value : ByteIterator) : BSONObject = { value.getObject }
-    def write(value : BSONObject, builder: ByteStringBuilder) : ByteStringBuilder = { builder.putObject(value); builder }
+    def write(value : BSONObject, builder : ByteStringBuilder) : ByteStringBuilder = { builder.putObject(value); builder }
   }
 
   implicit object BSONArrayCodec extends Codec[BSONArray] {
     def read(value : ByteIterator) : BSONArray = { value.getArray }
-    def write(value : BSONArray, builder: ByteStringBuilder) : ByteStringBuilder = { builder.putArray(value); builder }
+    def write(value : BSONArray, builder : ByteStringBuilder) : ByteStringBuilder = { builder.putArray(value); builder }
   }
 
 }

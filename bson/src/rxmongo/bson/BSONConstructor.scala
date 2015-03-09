@@ -22,7 +22,7 @@
 
 package rxmongo.bson
 
-import akka.util.{ByteStringBuilder, ByteString}
+import akka.util.{ ByteStringBuilder, ByteString }
 
 /** A Trait for things that provide BSON
   *
@@ -37,7 +37,7 @@ trait BSONConstructor {
     * @param builder The build to which this object's provided BSON is added
     * @return The resulting BSONBuilder
     */
-  def addTo(builder: ByteStringBuilder) : ByteStringBuilder
+  def addTo(builder : ByteStringBuilder) : ByteStringBuilder
 
   /** Finalize and return ByteString.
     * The construction of the ByteString is finalized and a ByteString is returned.

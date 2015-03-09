@@ -27,7 +27,7 @@ import java.nio.charset.{ StandardCharsets, Charset }
 import java.util.Date
 import java.util.regex.Pattern
 
-import akka.util.{ByteString, ByteIterator, ByteStringBuilder}
+import akka.util.{ ByteString, ByteIterator, ByteStringBuilder }
 
 import scala.annotation.switch
 import scala.language.implicitConversions
@@ -127,7 +127,7 @@ package object bson {
       putCStr(options)
     }
 
-    private [rxmongo] def putRegex(p : Pattern) : ByteStringBuilder = {
+    private[rxmongo] def putRegex(p : Pattern) : ByteStringBuilder = {
       val options : String = {
         //
         // 'i' for case insensitive matching,

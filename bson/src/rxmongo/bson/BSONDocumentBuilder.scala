@@ -24,11 +24,11 @@ package rxmongo.bson
 
 import java.nio.ByteOrder
 
-import akka.util.{ByteString, ByteStringBuilder, ByteIterator}
+import akka.util.{ ByteString, ByteStringBuilder, ByteIterator }
 
 import scala.collection.mutable
 
-class BSONDocumentBuilder(hint: Int) extends mutable.Builder[(String, (Byte,ByteIterator)), BSONDocument] {
+class BSONDocumentBuilder(hint : Int) extends mutable.Builder[(String, (Byte, ByteIterator)), BSONDocument] {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
   val buffer : ByteStringBuilder = ByteString.newBuilder
   buffer.sizeHint(hint)
@@ -41,5 +41,5 @@ class BSONDocumentBuilder(hint: Int) extends mutable.Builder[(String, (Byte,Byte
 }
 
 object BSONDocumentBuilder {
-  def apply(hint: Int = 512) : BSONDocumentBuilder = new BSONDocumentBuilder(hint)
+  def apply(hint : Int = 512) : BSONDocumentBuilder = new BSONDocumentBuilder(hint)
 }

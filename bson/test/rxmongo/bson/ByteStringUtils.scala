@@ -27,6 +27,7 @@ import java.nio.ByteOrder
 
 import akka.util.{ ByteString, ByteStringBuilder }
 import com.reactific.hsp.Profiler
+import org.specs2.execute.Result
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
 trait ByteStringUtils {
@@ -111,7 +112,7 @@ trait ByteStringUtils {
     }
   }
 
-  def timedTest[T](maxNanoSeconds: Double, name: String, func: (Profiler) ⇒ T) : T = {
+  def timedTest(maxNanoSeconds : Double, name : String, func : (Profiler) ⇒ Unit) : Profiler = {
     val p = new Profiler
     if (suitableForTimingTests) {
       val r = p.profile(name) { func(p) }
@@ -121,9 +122,9 @@ trait ByteStringUtils {
       if (time > maxNanoSeconds) {
         throw new Exception(s"Test '$name' took ${time}ns which exceeded limit of ${maxNanoSeconds}ns")
       }
-      r
+      p
     } else {
-      func(p)
+      Profiler
     }
   }
 }
