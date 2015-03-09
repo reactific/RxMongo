@@ -1,23 +1,32 @@
 # RxMongo
-A reactive, non-blocking, asynchronous driver for MongoDB 3.0 using ReactiveStreams.
+A reactive, non-blocking, asynchronous driver for MongoDB 3.0 using ReactiveStreams as implemented by akka-streams.
 
 # Status [![Build Status](https://travis-ci.org/reactific/RxMongo.svg?branch=master)](https://travis-ci.org/reactific/RxMongo)
-RxMongo is just getting started. Developers and testers are needed. If you want to help, please contact Reid.
+RxMongo is nearing completion of a working pre-release. Current work centers on making the BSON interface perform
+well, simplifying the construction of Codecs, adding a Codec code generator via macros, and adding higher level
+interfaces for collections of homogenous and heterogenous documents. The current implementation uses Akka IO not
+akka-streams. Conversion to akka-streams will occur once the first akka-streams release candidate is available (April?)
 
 # Quick Start
 
 ### Stable: Scala 2.11, SBT 0.13.7, Mongo 3.0
 
-- Not available yet.
+- Not available yet. This is expected in May 2015 unless release of akka-streams is delayed late into April.
 
 ### Development: Scala 2.11, SBT 0.13.7, Mongo 3.0
 
-Will be available in February 2015 with something like this:
+A pre-release version, 0.1-SNAPSHOT, is available on Sonatype Snapshots repository. Use the following SBT
+incantations to include it in your project. Please note that while this version works to some degree it is far from
+being complete or stable. It is suggested that you wait for 0.1 to be completed before basing any work on it. By then
+the basics of the API should be stabilized.
 
 ```scala
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 libraryDependencies := "com.reactific" %% "rxmongo-client" % "0.1.0-SNAPSHOT"
 ```
+
+Other packages you can access are `rxmongo-driver` (lower level driver interface), `rxmongo-examples` (sample programs
+using RxMongo), and `rxmongo-bson` (Binary JSON interface for RxMongo).
 
 # Introduction
 RxMongo is similar in purpose to [ReactiveMongo](https://github.com/ReactiveMongo/ReactiveMongo), but not in
@@ -44,10 +53,11 @@ Many Scala implementations of BSON use a variety of case classes to model the co
 serialize or deserialize accordingly. RxMongo takes a different approach. An RxMongo BSONObject simply wraps an
 Akka ByteString which is a rope-like data structure that avoids buffer copying. RxMongo provides a builder for
 constructing a BSON Object that directly constructs a ByteString with a ByteStringBuilder. At the end, you have
-a buffer that is ready to be written to an I/O channel. Similarly, data streams read from the mongod are retained
-in place and BSONObject simply interprets that data instead of copying it into lots of case classes. Data can be
-extracted to other forms, but that is always a choice, not automatic. The goal of all this is to eliminate data
-copying to and from the BSON binary format which is one of the key elements of a driver that performs well.
+a buffer that is ready to be written to an I/O channel. Similarly, data streams read from the mongod are interpreted
+with a BSONDocument which is used as the underlying representation of a BSONObject or BSONArray.  BSONDocument simply
+interprets the ByteString data instead of copying it into lots of case classes. Data can be extracted to other
+forms, but that is always a choice, not automatic. The goal of all this is to eliminate data copying to and from
+the BSON binary format which is one of the key requirements for a driver that performs well.
 
 
 ### Efficient Query Builder DSL
