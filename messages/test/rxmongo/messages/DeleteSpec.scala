@@ -38,11 +38,9 @@ class DeleteSpec extends Specification {
     "produce correct BSONObject" in {
       val bs = Delete.Codec.write(Delete("a" $ne "b", 1))
       val obj = BSONObject(bs)
-      obj must beEqualTo( BSONObject("q" → BSONObject("a" → BSONObject("$ne" -> "b")), "limit" → 1)
+      obj must beEqualTo(BSONObject("q" → BSONObject("a" → BSONObject("$ne" -> "b")), "limit" → 1)
       )
     }
   }
-
-
 
 }

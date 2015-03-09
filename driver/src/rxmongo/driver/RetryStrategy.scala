@@ -34,7 +34,7 @@ import scala.concurrent.duration._
 class RetryStrategy extends Iterator[FiniteDuration] {
   val maxRetries : Int = 5
   protected var retry : Int = 0
-  def hasNext: Boolean = { retry < maxRetries }
+  def hasNext : Boolean = { retry < maxRetries }
   def next() : FiniteDuration = {
     if (hasNext)
       throw new NoSuchElementException("Retries exhausted")
@@ -46,7 +46,7 @@ class RetryStrategy extends Iterator[FiniteDuration] {
 }
 
 object RetryStrategy {
-  def apply(retries: Int = 5) : RetryStrategy = new RetryStrategy { override val maxRetries = retries }
+  def apply(retries : Int = 5) : RetryStrategy = new RetryStrategy { override val maxRetries = retries }
 }
 
 /** Simple Retry Strategy
@@ -56,11 +56,11 @@ object RetryStrategy {
   * @param maxRetries The maximum number of retries to attempt (defaults to 5)
   */
 case class SimpleRetryStrategy(
-  initialDelay: FiniteDuration = 250.millis,
-  repeatDelay: FiniteDuration = 500.millis,
+  initialDelay : FiniteDuration = 250.millis,
+  repeatDelay : FiniteDuration = 500.millis,
   override val maxRetries : Int = 5) extends RetryStrategy {
 
-  override def nextDelay: FiniteDuration = {
+  override def nextDelay : FiniteDuration = {
     if (retry == 1)
       initialDelay
     else
@@ -73,8 +73,8 @@ case class SimpleRetryStrategy(
   * @param delay The amount of delay to increase on each successive attempt (defaults to 250ms)
   * @param maxRetries The maximum number of retries to attempt (defaults to 5)
   */
-case class LinearRetryStrategy (
-  delay: FiniteDuration = 250.millis,
+case class LinearRetryStrategy(
+  delay : FiniteDuration = 250.millis,
   override val maxRetries : Int = 5) extends RetryStrategy {
   override def nextDelay : FiniteDuration = {
     delay * retry
@@ -88,7 +88,7 @@ case class LinearRetryStrategy (
   * @param maxRetries Maximum number of retries to attempt (defaults to 5)
   */
 case class FibonacciRetryStrategy(
-  delay: FiniteDuration = 250.millis,
+  delay : FiniteDuration = 250.millis,
   override val maxRetries : Int = 5) extends RetryStrategy {
   var last = 1
   var lastLast = 0
@@ -98,7 +98,7 @@ case class FibonacciRetryStrategy(
     last = nextLast
     delay * nextLast
   }
-  override def reset : Unit = { super.reset ; last = 1; lastLast = 0 }
+  override def reset : Unit = { super.reset; last = 1; lastLast = 0 }
 }
 
 /** Geometric Retry Strategy
@@ -108,9 +108,9 @@ case class FibonacciRetryStrategy(
   * @param maxRetries The maximum number of retry to attempt (defaults to 5)
   */
 case class GeometricRetryStrategy(
-  delay: FiniteDuration = 250.millis,
+  delay : FiniteDuration = 250.millis,
   override val maxRetries : Int = 5) extends RetryStrategy {
-  override def nextDelay: FiniteDuration = {
+  override def nextDelay : FiniteDuration = {
     delay * retry * retry
   }
 }

@@ -22,7 +22,7 @@
 
 package rxmongo
 
-import rxmongo.bson.{BSONCodec, BSONValue}
+import rxmongo.bson.{ BSONCodec, BSONValue }
 
 import scala.language.implicitConversions
 

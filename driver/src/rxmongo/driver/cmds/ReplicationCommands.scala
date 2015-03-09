@@ -121,16 +121,16 @@ case class ReplSetReconfigCmd(
   * Forces the current primary to step down and become a secondary, forcing an election.
   * @see [[http://docs.mongodb.org/master/reference/command/replSetStepDown/]]
   * @param avoidReelectionSecs Optional. A number of seconds for the member to avoid election to primary. If you do not
-  *                  specify a value for <seconds>, replSetStepDown will attempt to avoid reelection to
-  *                  primary for 60 seconds from the time that the mongod received the replSetStepDown
-  *                  command.
+  *                 specify a value for <seconds>, replSetStepDown will attempt to avoid reelection to
+  *                 primary for 60 seconds from the time that the mongod received the replSetStepDown
+  *                 command.
   * @param force Optional. New in version 2.0: Forces the primary to step down even if there are no secondary members
-  *    that could become primary.
+  *   that could become primary.
   * @param secondaryCatchupPeriodSecs	Optional. The amount of time that the mongod will wait for another secondary in
-  *                         the replica set to catch up to the primary. If no secondary catches up before
-  *                         this period ends, then the command will fail and the member will not step down,
-  *                         unless you specify { force: true }. The default value is 10 seconds, unless you
-  *                         set { force: true }, which changes the default to 0.
+  *                        the replica set to catch up to the primary. If no secondary catches up before
+  *                        this period ends, then the command will fail and the member will not step down,
+  *                        unless you specify { force: true }. The default value is 10 seconds, unless you
+  *                        set { force: true }, which changes the default to 0.
   */
 case class ReplSetStepDownCmd(
   avoidReelectionSecs : Option[Int] = None,
@@ -147,7 +147,7 @@ case class ReplSetStepDownCmd(
   * Explicitly override the default logic for selecting a member to replicate from.
   * @see [[http://docs.mongodb.org/master/reference/command/replSetSyncFrom/]]
   * @param from The name and port number of the replica set member that this member should replicate from.
-  *   Use the [hostname]:[port] form.
+  *  Use the [hostname]:[port] form.
   */
 case class ReplSetSyncFromCmd(
   from : String) extends AdminCommand(BSONObject("replSetSyncFrom" → from))

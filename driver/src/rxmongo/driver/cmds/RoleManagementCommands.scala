@@ -34,7 +34,7 @@ import rxmongo.driver.{ Command, WriteConcern }
   * @param thisDbRole A role to inherent from this database
   * @param roles Other roles to inherit privileges from other databases
   * @param writeConcern Optional. The level of write concern for the modification. The writeConcern document takes
-  *              the same fields as the getLastError command.
+  *             the same fields as the getLastError command.
   */
 case class CreateRoleCmd(
   db : String,
@@ -60,7 +60,7 @@ case class CreateRoleCmd(
   * @param thisDbRole A role to inherent from this database
   * @param roles Other roles to inherit privileges from other databases
   * @param writeConcern Optional. The level of write concern for the modification. The writeConcern document takes
-  *              the same fields as the getLastError command.
+  *             the same fields as the getLastError command.
   */
 case class UpdateRoleCmd(
   db : String,
@@ -83,7 +83,7 @@ case class UpdateRoleCmd(
   * @param db The name of the database
   * @param role The name of the role to drop
   * @param writeConcern Optional. The level of write concern for the modification. The writeConcern document takes
-  *              the same fields as the getLastError command.
+  *             the same fields as the getLastError command.
   */
 case class DropRoleCmd(
   db : String,
@@ -100,7 +100,7 @@ case class DropRoleCmd(
   * @see [[http://docs.mongodb.org/master/reference/command/dropAllRolesFromDatabase/]]
   * @param db The name of the database.
   * @param writeConcern Optional. The level of write concern for the modification. The writeConcern document takes
-  *              the same fields as the getLastError command.
+  *             the same fields as the getLastError command.
   */
 case class DropAllRolesFromDatabaseCmd(
   db : String,
@@ -118,7 +118,7 @@ case class DropAllRolesFromDatabaseCmd(
   * @param roleName The name of the user-defined role to grant privileges to.
   * @param privileges The privileges to add to the role.
   * @param writeConcern Optional. The level of write concern for the modification. The writeConcern document takes
-  *              the same fields as the getLastError command.
+  *             the same fields as the getLastError command.
   */
 case class GrantPrivilegesToRoleCmd(
   db : String,
@@ -139,7 +139,7 @@ case class GrantPrivilegesToRoleCmd(
   * @param roleName The user-defined role to revoke privileges from.
   * @param privileges An array of privileges to remove from the role.
   * @param writeConcern Optional. The level of write concern for the modification. The writeConcern document takes
-  *              the same fields as the getLastError command.
+  *             the same fields as the getLastError command.
   */
 case class RevokePrivilegesFromRoleCmd(
   db : String,
@@ -161,7 +161,7 @@ case class RevokePrivilegesFromRoleCmd(
   * @param thisDbRole A role, in this database, from which to inherit.
   * @param roles An array of roles from which to inherit.
   * @param writeConcern Optional. The level of write concern for the modification. The writeConcern document takes
-  *              the same fields as the getLastError command.
+  *             the same fields as the getLastError command.
   */
 case class GrantRolesToRoleCmd(
   db : String,
@@ -184,7 +184,7 @@ case class GrantRolesToRoleCmd(
   * @param thisDbRole The inherited roles, in this database, to remove.
   * @param roles The inherited roles, in any database, to remove.
   * @param writeConcern Optional. The level of write concern to apply to this operation. The writeConcern document
-  *              uses the same fields as the getLastError command.
+  *             uses the same fields as the getLastError command.
   */
 case class RevokeRolesFromRoleCmd(
   db : String,
