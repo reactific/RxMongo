@@ -73,7 +73,7 @@ object WriteConcern {
     }
   }
 
-  implicit object Codec extends Codec[WriteConcern] {
+  implicit object Codec extends DocumentCodec[WriteConcern] {
     val size : Int = +4 + 3 + 4 + 10 + 1 + 3
     def write(value : WriteConcern, bldr : BSONBuilder) : BSONBuilder = {
       bldr.sizeHint(bldr.length + size)
@@ -90,8 +90,7 @@ object WriteConcern {
       bldr.boolean("j", value.journal)
     }
 
-    def read(itr : ByteIterator) : WriteConcern = {
-      val doc : BSONDocument = BSONDocument(itr)
+    def read(doc : BSONDocument) : WriteConcern = {
       val kind = doc.get("w") match {
         case Some((tc, i)) ⇒
           TypeCode(tc) match {

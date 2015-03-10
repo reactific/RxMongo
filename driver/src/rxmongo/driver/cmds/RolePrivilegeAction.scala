@@ -35,13 +35,12 @@ case class Role(role : String, db : String) extends BSONProvider {
 }
 
 object Role {
-  implicit object Codec extends Codec[Role] {
+  implicit object Codec extends DocumentCodec[Role] {
     def write(value : Role, bldr : BSONBuilder) : BSONBuilder = {
       bldr.string("role", value.role).string("db", value.db)
     }
-    def read(itr : ByteIterator) : Role = {
-      val value = BSONDocument(itr)
-      Role(value.asString("role"), value.asString("db"))
+    def read(doc : BSONDocument) : Role = {
+      Role(doc.asString("role"), doc.asString("db"))
     }
   }
 }
@@ -503,19 +502,18 @@ case class Privilege(
   actions : Seq[Action])
 
 object Privilege {
-  implicit object Codec extends Codec[Privilege] {
+  implicit object Codec extends DocumentCodec[Privilege] {
     def write(value : Privilege, bldr : BSONBuilder) : BSONBuilder = {
       bldr.
         obj("resource", BSONObject("db" -> value.db, "collection" -> value.collection)).
         array("actions", value.actions)
     }
-    def read(itr : ByteIterator) : Privilege = {
-      val value = BSONDocument(itr)
-      val resource = value.asObject("resource")
+    def read(doc : BSONDocument) : Privilege = {
+      val resource = doc.asObject("resource")
       Privilege(
         resource.getAsString("db"),
         resource.getAsString("collection"),
-        value.asSeq[Action]("actions")(Action.Codec)
+        doc.asSeq[Action]("actions")(Action.Codec)
       )
     }
   }

@@ -46,6 +46,14 @@ case class BSONDocument private[rxmongo] (
     }
   }
 
+  def asOrElse[T](key : String, default : T, code : TypeCode, conv : (ByteIterator) ⇒ T) : T = {
+    data.get(key) match {
+      case Some((c, itr)) if c == code.code ⇒ conv(itr)
+      case Some((c, itr)) ⇒ throw new IllegalArgumentException(s"Field '$key' has type ${TypeCode(c).typeName} not ${code.typeName}")
+      case None ⇒ default
+    }
+  }
+
   def asOption[T](key : String, code : TypeCode, conv : (ByteIterator) ⇒ T) : Option[T] = {
     data.get(key) map {
       case (cd, bi) ⇒
@@ -95,6 +103,55 @@ case class BSONDocument private[rxmongo] (
   def asTimestamp(key : String) : Long = as[Long](key, TimestampCode, { itr ⇒ itr.clone().getLong })
   def asLong(key : String) : Long = as[Long](key, LongCode, { itr ⇒ itr.clone().getLong })
 
+  def asDoubleOrElse(key : String, d : Double) : Double = {
+    asOrElse[Double](key, d, DoubleCode, { itr ⇒ itr.clone().getDouble })
+  }
+  def asStringOrElse(key : String, d : String) : String = {
+    asOrElse[String](key, d, StringCode, { itr ⇒ itr.clone().getStr })
+  }
+  def asObjectOrElse(key : String, d : BSONObject) : BSONObject = {
+    asOrElse[BSONObject](key, d, ObjectCode, { itr ⇒ itr.clone().getObject })
+  }
+  def asArrayOrElse(key : String, d : BSONArray) : BSONArray = {
+    asOrElse[BSONArray](key, d, ArrayCode, { itr ⇒ itr.clone().getArray })
+  }
+  def asBinaryOrElse(key : String, d : (BinarySubtype, Array[Byte])) : (BinarySubtype, Array[Byte]) = {
+    asOrElse[(BinarySubtype, Array[Byte])](key, d, BinaryCode, { itr ⇒ itr.clone().getBinary })
+  }
+  def asObjectIDOrElse(key : String, d : Array[Byte]) : Array[Byte] = {
+    asOrElse[Array[Byte]](key, d, ObjectIDCode, { itr ⇒ itr.clone().getObjectID })
+  }
+  def asBooleanOrElse(key : String, d : Boolean) : Boolean = {
+    asOrElse[Boolean](key, d, BooleanCode, { itr ⇒ itr.clone().getByte != 0 })
+  }
+  def asDateOrElse(key : String, d : Date) : Date = {
+    asOrElse[Date](key, d, DateCode, { itr ⇒ new Date(itr.clone().getLong) })
+  }
+  def asRegexOrElse(key : String, d : Pattern) : Pattern = {
+    asOrElse[Pattern](key, d, RegexCode, { itr ⇒ itr.clone().getRegex })
+  }
+  def asDBPointerOrElse(key : String, d : (String, Array[Byte])) : (String, Array[Byte]) = {
+    asOrElse[(String, Array[Byte])](key, d, DBPointerCode, { itr ⇒ itr.clone().getDBPointer })
+  }
+  def asJavaScriptOrElse(key : String, d : String) : String = {
+    asOrElse[String](key, d, JavaScriptCode, { itr ⇒ itr.clone().getStr })
+  }
+  def asSymbolOrElse(key : String, d : String) : String = {
+    asOrElse[String](key, d, SymbolCode, { itr ⇒ itr.clone().getStr })
+  }
+  def asScopedJavaScriptOrElse(key : String, d : (String, BSONObject)) : (String, BSONObject) = {
+    asOrElse[(String, BSONObject)](key, d, ScopedJSCode, { itr ⇒ itr.clone().getScopedJavaScript })
+  }
+  def asIntOrElse(key : String, d : Int) : Int = {
+    asOrElse[Int](key, d, IntegerCode, { itr ⇒ itr.clone().getInt })
+  }
+  def asTimestampOrElse(key : String, d : Long) : Long = {
+    asOrElse[Long](key, d, TimestampCode, { itr ⇒ itr.clone().getLong })
+  }
+  def asLongOrElse(key : String, d : Long) : Long = {
+    asOrElse[Long](key, d, LongCode, { itr ⇒ itr.clone().getLong })
+  }
+
   def asObjectOfType[T](key : String)(implicit codec : Codec[T]) : T = {
     as[T](key, ObjectCode, { itr ⇒ codec.read(itr) })
   }
@@ -137,8 +194,19 @@ case class BSONDocument private[rxmongo] (
     asOptionSeq[T](key, ArrayCode, codec)
   }
 
+  def asOptionalMap[T](key : String)(implicit codec : Codec[T]) : Option[immutable.Map[String, T]] = {
+    asOption[BSONObject](key, ObjectCode, { itr ⇒ Codec.BSONObjectCodec.read(itr) }) map { obj ⇒
+      obj.doc.map {
+        case (k, (b, bi)) if b == codec.code.code ⇒ k → codec.read(bi.clone())
+        case (k, (b, bi)) ⇒
+          throw new IllegalArgumentException(s"Field '$key' has type ${TypeCode(b).typeName} not ${codec.typeName}")
+      }.toMap
+    }
+  }
+
   def asOptionalString(key : String) : Option[String] = { asOption[String](key, StringCode, StringCodec) }
   def asOptionalInt(key : String) : Option[Int] = { asOption[Int](key, IntegerCode, IntCodec) }
+  def asOptionalLong(key : String) : Option[Long] = { asOption[Long](key, LongCode, LongCodec) }
   def asOptionalDouble(key : String) : Option[Double] = { asOption[Double](key, DoubleCode, DoubleCodec) }
   def asOptionalDate(key : String) : Option[Date] = { asOption[Date](key, DateCode, DateCodec) }
   def asOptionalBoolean(key : String) : Option[Boolean] = { asOption[Boolean](key, BooleanCode, BooleanCodec) }

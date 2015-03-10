@@ -214,7 +214,7 @@ class BSONSpec extends Specification with ByteStringTestUtils {
       if (suitableForTimingTests) {
         val (count1, time1) = profiler.get_one_item("makeAnObject")
         count1 must beEqualTo(8191)
-        time1 must beLessThan(40000.0 * count1) //  < 40 μs each
+        time1 must beLessThan(75000.0 * count1) //  < 75 μs each
         val (count2, time2) = profiler.get_one_item("TreeTop")
         count2 must beEqualTo(1)
         time2 must beLessThan(5000000000.0) // < 5 seconds for constructing a 2^12 binary tree
@@ -275,64 +275,3 @@ class BSONSpec extends Specification with ByteStringTestUtils {
     }
   }
 }
-
-/*
-object Helper {
-
-  val data = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
-  val anArray = Seq(42.0D, 84.0D)
-  val anArraySeq = Seq(BSONDouble(42.0D), BSONDouble(84.0D))
-  val anArrayBSON : BSONArray = BSONArray(anArray)
-  val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
-  val aTime = System.currentTimeMillis()
-
-  def makeObj(b : BSONBuilder = BSONBuilder()) : BSONBuilder = Profiler.profile("makeObj") {
-    b.
-      double("double", 42.0D).
-      string("string", "fourty-two").
-      obj("obj", anObject).
-      array("array", anArrayBSON).
-      binary("binary", data, UserDefinedBinary).
-      undefined("undefined").
-      objectID("objectid", data).
-      boolean("boolean", value = true).
-      date("date", aTime).
-      nil("null").
-      regex("regex", "pattern", "ilmsux").
-      dbPointer("dbpointer", "referent", data).
-      jsCode("jscode", "function(x) { return x + 1; };").
-      symbol("symbol", "symbol").
-      scopedJsCode("scopedjscode", "function(x)", anObject).
-      integer("integer", 42).
-      timestamp("timestamp", 42L).
-      long("long", 42L)
-    b
-  }
-
-  def makeObject : BSONObject = makeObj().toBSONObject
-
-  def makeObject(width : Int, depth : Int) : BSONObject = {
-    val kids = if (depth > 0) {
-      for (i ← 1 to width) yield {
-        makeObject(width, depth - 1)
-      }
-    } else Seq.empty[BSONObject]
-    val bldr = BSONBuilder()
-    bldr.sizeHint(450 * (width + 1))
-    makeObj(bldr)
-    bldr.array("kids", kids.toSeq)
-    bldr.toBSONObject
-  }
-
-  val suitableForTimingTests : Boolean = {
-    if (System.getenv("TRAVIS") != null)
-      false
-    else {
-      val os = ManagementFactory.getOperatingSystemMXBean
-      val processors = os.getAvailableProcessors
-      val avg = os.getSystemLoadAverage
-      avg < processors / 2
-    }
-  }
-}
-*/

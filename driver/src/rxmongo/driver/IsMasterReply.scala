@@ -24,7 +24,6 @@ package rxmongo.driver
 
 import java.util.Date
 
-import akka.util.{ ByteIterator, ByteStringBuilder }
 import rxmongo.bson._
 
 /** Represents The IsMasterCmd Response From Mongo
@@ -66,9 +65,9 @@ case class IsMasterReply(
   setName : Option[String] = None,
   setVersion : Option[Int] = None,
   me : Option[String] = None,
-  hosts : Option[Array[String]] = None,
-  passives : Option[Array[String]] = None,
-  arbiters : Option[Array[String]] = None,
+  hosts : Option[Iterable[String]] = None,
+  passives : Option[Iterable[String]] = None,
+  arbiters : Option[Iterable[String]] = None,
   arbiterOnly : Option[Boolean] = None,
   passive : Option[Boolean] = None,
   hidden : Option[Boolean] = None,
@@ -76,7 +75,7 @@ case class IsMasterReply(
   electionId : Option[Long] = None)
 
 object IsMasterReply {
-  implicit object IsMasterReplyCodec extends Codec[IsMasterReply] {
+  implicit object IsMasterReplyCodec extends DocumentCodec[IsMasterReply] {
     /** Convert T into BSONValue
       *
       * @param value The value, T, to be written to BSON
@@ -96,9 +95,9 @@ object IsMasterReply {
       value.setName.map { v ⇒ bldr.string("setName", v) }
       value.setVersion.map { v ⇒ bldr.integer("setVersion", v) }
       value.me.map { v ⇒ bldr.string("me", v) }
-      value.hosts.map { v ⇒ bldr.array("hosts", v.toSeq) }
-      value.passives.map { v ⇒ bldr.array("passives", v.toSeq) }
-      value.arbiters.map { v ⇒ bldr.array("arbiters", v.toSeq) }
+      value.hosts.map { v ⇒ bldr.array("hosts", v) }
+      value.passives.map { v ⇒ bldr.array("passives", v) }
+      value.arbiters.map { v ⇒ bldr.array("arbiters", v) }
       value.arbiterOnly.map { v ⇒ bldr.boolean("arbiterOnly", v) }
       value.passive.map { v ⇒ bldr.boolean("passive", v) }
       value.hidden.map { v ⇒ bldr.boolean("hidden", v) }
@@ -112,30 +111,29 @@ object IsMasterReply {
       * @param value The BSONValue to be converted
       * @return A Try[T] that results from reading T from BSON
       */
-    override def read(itr : ByteIterator) : IsMasterReply = {
-      val map = BSONDocument(itr).asAnyMap
+    override def read(doc : BSONDocument) : IsMasterReply = {
       IsMasterReply(
-        map.getOrElse("ok", 0.0D).asInstanceOf[Double],
-        map.getOrElse("ismaster", false).asInstanceOf[Boolean],
-        map.getOrElse("maxBsonObjectSize", 0).asInstanceOf[Int],
-        map.getOrElse("maxMessageSizeBytes", 0).asInstanceOf[Int],
-        map.getOrElse("maxWriteBatchSize", 0).asInstanceOf[Int],
-        map.getOrElse("localTime", new Date(0)).asInstanceOf[Date],
-        map.getOrElse("maxWireVersion", 0).asInstanceOf[Int],
-        map.getOrElse("minWireVersion", 0).asInstanceOf[Int],
-        map.get("secondary").map { v ⇒ v.asInstanceOf[Boolean] },
-        map.get("primary").map { v ⇒ v.asInstanceOf[String] },
-        map.get("setName").map { v ⇒ v.asInstanceOf[String] },
-        map.get("setVersion").map { v ⇒ v.asInstanceOf[Int] },
-        map.get("me").map { v ⇒ v.asInstanceOf[String] },
-        map.get("hosts").map { v ⇒ v.asInstanceOf[Array[String]] },
-        map.get("passives").map { v ⇒ v.asInstanceOf[Array[String]] },
-        map.get("arbiters").map { v ⇒ v.asInstanceOf[Array[String]] },
-        map.get("arbiterOnly").map { v ⇒ v.asInstanceOf[Boolean] },
-        map.get("passive").map { v ⇒ v.asInstanceOf[Boolean] },
-        map.get("hidden").map { v ⇒ v.asInstanceOf[Boolean] },
-        map.get("tags").map { v ⇒ v.asInstanceOf[Map[String, String]] },
-        map.get("electionId").map { v ⇒ v.asInstanceOf[Int] }
+        doc.asDoubleOrElse("ok", 0.0D),
+        doc.asBooleanOrElse("ismaster", d = false),
+        doc.asIntOrElse("maxBsonObjectSize", 0),
+        doc.asIntOrElse("maxMessageSizeBytes", 0),
+        doc.asIntOrElse("maxWriteBatchSize", 0),
+        doc.asDateOrElse("localTime", new Date(0)),
+        doc.asIntOrElse("maxWireVersion", 0),
+        doc.asIntOrElse("minWireVersion", 0),
+        doc.asOptionalBoolean("secondary"),
+        doc.asOptionalString("primary"),
+        doc.asOptionalString("setName"),
+        doc.asOptionalInt("setVersion"),
+        doc.asOptionalString("me"),
+        doc.asOptionalArray[String]("hosts"),
+        doc.asOptionalArray[String]("passives"),
+        doc.asOptionalArray[String]("arbiters"),
+        doc.asOptionalBoolean("arbiterOnly"),
+        doc.asOptionalBoolean("passive"),
+        doc.asOptionalBoolean("hidden"),
+        doc.asOptionalMap[String]("tags"),
+        doc.asOptionalLong("electionId")
       )
     }
   }

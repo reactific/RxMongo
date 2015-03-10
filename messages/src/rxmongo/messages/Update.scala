@@ -22,7 +22,7 @@
 
 package rxmongo.messages
 
-import akka.util.{ ByteString, ByteIterator }
+import akka.util.{ ByteString }
 import rxmongo.bson._
 
 case class Update(selector : BSONObject, updater : BSONObject, upsert : Boolean, multi : Boolean, isolated : Boolean)
@@ -36,9 +36,8 @@ object Update {
     Update(selector.result, updater.result, upsert, multi, isolated)
   }
 
-  implicit object Codec extends Codec[Update] {
-    def read(value : ByteIterator) : Update = {
-      val doc = BSONDocument(value)
+  implicit object Codec extends DocumentCodec[Update] {
+    def read(doc : BSONDocument) : Update = {
       val q = doc.asObject("q")
       val (selector, isolated) = {
         if (q.contains("$isolated"))

@@ -22,22 +22,20 @@
 
 package rxmongo.driver
 
-import akka.util.ByteIterator
 import rxmongo.bson._
 
 case class WriteError(index : Int, code : Int, errmsg : String)
 
 object WriteError {
-  implicit object Codec extends Codec[WriteError] {
+  implicit object Codec extends DocumentCodec[WriteError] {
     override def write(value : WriteError, bldr : BSONBuilder) : BSONBuilder = {
       bldr.
         integer("index", value.index).
         integer("code", value.code).
         string("errmsg", value.errmsg)
     }
-    override def read(itr : ByteIterator) : WriteError = {
-      val value = BSONDocument(itr)
-      WriteError(value.asInt("index"), value.asInt("code"), value.asString("errmsg"))
+    override def read(doc : BSONDocument) : WriteError = {
+      WriteError(doc.asInt("index"), doc.asInt("code"), doc.asString("errmsg"))
     }
   }
 }
@@ -45,15 +43,14 @@ object WriteError {
 case class WriteConcernError(code : Int, errmsg : String)
 
 object WriteConcernError {
-  implicit object Codec extends Codec[WriteConcernError] {
+  implicit object Codec extends DocumentCodec[WriteConcernError] {
     override def write(value : WriteConcernError, bldr : BSONBuilder) : BSONBuilder = {
       bldr.
         integer("code", value.code).
         string("errmsg", value.errmsg)
     }
-    override def read(itr : ByteIterator) : WriteConcernError = {
-      val value = BSONDocument(itr)
-      WriteConcernError(value.asInt("code"), value.asString("errmsg"))
+    override def read(doc : BSONDocument) : WriteConcernError = {
+      WriteConcernError(doc.asInt("code"), doc.asString("errmsg"))
     }
   }
 }

@@ -34,13 +34,13 @@ import rxmongo.bson._
   * argument affects this value.
   * @param avgObjSize The average size of an object in the collection. The scale argument does not affect this value.
   * @param storageSize The total amount of storage allocated to this collection for document storage. The scale
-  *  argument affects this value. For mmapv1, storageSize will not decrease as you remove or
-  *  shrink documents.
+  * argument affects this value. For mmapv1, storageSize will not decrease as you remove or
+  * shrink documents.
   * @param numExtents The total number of contiguously allocated data file regions. Only present when using
   * the mmapv1 storage engine.
   * @param nindexes The number of indexes on the collection. All collections have at least one index on the _id field.
   * @param lastExtentSize The size of the last extent allocated. The scale argument affects this value. Only present
-  *     when using the mmapv1 storage engine.
+  *    when using the mmapv1 storage engine.
   * @param userFlags Reports the flags on this collection set by the user. See the collMod command for more information
   * on setting user flags and usePowerOf2Sizes. Only appears when using the mmapv1 storage engine.
   * @param totalIndexSize The total size of all indexes. The scale argument affects this value.
@@ -53,9 +53,9 @@ import rxmongo.bson._
   * @param wiredTiger wiredTiger only appears when using the wiredTiger storage engine. This document contains data
   * reported directly by the WiredTiger engine and other data for internal diagnostic use.
   * @param indexDetails A document that reports data from the storage engine for each index in the collection. The
-  *   fields in this document are the names of the indexes, while the values themselves are documents
-  *   that contain statistics for the index provided by the storage engine. These statistics are for
-  *   internal diagnostic use.
+  *  fields in this document are the names of the indexes, while the values themselves are documents
+  *  that contain statistics for the index provided by the storage engine. These statistics are for
+  *  internal diagnostic use.
   */
 case class CollStatsReply(
   ns : String,
@@ -145,12 +145,11 @@ object CollStatsReply {
 case class ExtentInfo(len : Int, file : Int, offset : Int)
 
 object ExtentInfo {
-  implicit object Codec extends Codec[ExtentInfo] {
-    override def read(itr : ByteIterator) : ExtentInfo = {
-      val value = BSONDocument(itr)
-      val obj = value.asMap[Int]("loc:")
+  implicit object Codec extends DocumentCodec[ExtentInfo] {
+    override def read(doc : BSONDocument) : ExtentInfo = {
+      val obj = doc.asMap[Int]("loc:")
       ExtentInfo(
-        value.getOrElse("len", 0).asInstanceOf[Int],
+        doc.getOrElse("len", 0).asInstanceOf[Int],
         obj.getOrElse("file", 0),
         obj.getOrElse("offset", 0)
       )
