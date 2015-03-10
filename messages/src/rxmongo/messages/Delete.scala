@@ -42,22 +42,10 @@ object Delete {
       val doc = BSONDocument(value)
       Delete(doc.asObject("q"), doc.asInt("limit"))
     }
-    def write(value : Delete, builder : ByteStringBuilder) : ByteStringBuilder = {
+    def write(value : Delete, builder : BSONBuilder) : BSONBuilder = {
       builder.obj("q", value.query)
       builder.integer("limit", value.limit)
-    }
-  }
-
-  implicit object BSONCodec extends BSONCodec[Delete, BSONObject] {
-    def code : TypeCode = ObjectCode
-    def write(value : Delete) : BSONObject = {
-      BSONBuilder().
-        obj("q", value.query).
-        integer("limit", value.limit).
-        result
-    }
-    def read(value : BSONObject) : Delete = {
-      Delete(value.getObj("q"), value.getAsInt("limit"))
+      builder
     }
   }
 }

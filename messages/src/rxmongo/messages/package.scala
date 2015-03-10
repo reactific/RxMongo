@@ -22,7 +22,7 @@
 
 package rxmongo
 
-import rxmongo.bson.{ BSONCodec, BSONValue }
+import rxmongo.bson.Codec
 
 import scala.language.implicitConversions
 
@@ -34,8 +34,8 @@ package object messages {
   implicit def logicalExpression(exp1 : BooleanExpression) : LogicalExpression =
     new LogicalExpression(exp1)
 
-  implicit def pairLiteral[T, B <: BSONValue](pair : (String, T))(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
-    new BooleanFieldExpression(pair._1).$eq[T, B](pair._2)
+  implicit def pairLiteral[T](pair : (String, T))(implicit codec : Codec[T]) : BooleanExpression = {
+    new BooleanFieldExpression(pair._1).$eq[T](pair._2)
   }
 
 }

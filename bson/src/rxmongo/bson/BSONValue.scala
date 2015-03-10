@@ -43,7 +43,6 @@ trait BSONValue {
     bldr.result()
   }
   def pair : (Byte, ByteIterator) = code.code → toByteString.iterator
-  def buffer : ByteString = toByteString
   override def toString = value.toString
 }
 

@@ -22,33 +22,39 @@
 
 package rxmongo.driver.cmds
 
-import akka.util.ByteString
+import akka.util.{ ByteIterator, ByteString }
 import rxmongo.bson._
 
 case class Role(role : String, db : String) extends BSONProvider {
-  def toByteString : ByteString = {
+  def wrapAndTerminate : ByteString = {
     val b = BSONBuilder()
     b.string("role", role)
     b.string("db", db)
-    b.toByteString
+    b.wrapAndTerminate
   }
 }
 
 object Role {
-  implicit object Codec extends BSONCodec[Role, BSONObject] {
-    def code : TypeCode = ObjectCode
-    def write(value : Role) : BSONObject = BSONObject("role" -> value.role, "db" -> value.db)
-    def read(value : BSONObject) : Role = { Role(value.getAsString("role"), value.getAsString("db")) }
+  implicit object Codec extends Codec[Role] {
+    def write(value : Role, bldr : BSONBuilder) : BSONBuilder = {
+      bldr.string("role", value.role).string("db", value.db)
+    }
+    def read(itr : ByteIterator) : Role = {
+      val value = BSONDocument(itr)
+      Role(value.asString("role"), value.asString("db"))
+    }
   }
 }
 
 sealed trait Action
 object Action {
-  implicit object Codec extends BSONCodec[Action, BSONString] {
-    def code : TypeCode = StringCode
-    def write(value : Action) : BSONString = { BSONString(value.toString) }
-    def read(value : BSONString) : Action = {
-      value.value match {
+  implicit object Codec extends Codec[Action] {
+    override val code : TypeCode = StringCode
+    def write(value : Action, bldr : BSONBuilder) : BSONBuilder = {
+      rxmongo.bson.Codec.StringCodec.write(value.toString, bldr); bldr
+    }
+    def read(itr : ByteIterator) : Action = {
+      itr.getStr match {
         case "find" ⇒ FindAction
         case "insert" ⇒ InsertAction
         case "remove" ⇒ RemoveAction
@@ -497,20 +503,19 @@ case class Privilege(
   actions : Seq[Action])
 
 object Privilege {
-  implicit object Codec extends BSONCodec[Privilege, BSONObject] {
-    def code : TypeCode = ObjectCode
-    def write(value : Privilege) : BSONObject = {
-      val b = BSONBuilder()
-      b.obj("resource", BSONObject("db" -> value.db, "collection" -> value.collection))
-      b.array("actions", value.actions)
-      b.result
+  implicit object Codec extends Codec[Privilege] {
+    def write(value : Privilege, bldr : BSONBuilder) : BSONBuilder = {
+      bldr.
+        obj("resource", BSONObject("db" -> value.db, "collection" -> value.collection)).
+        array("actions", value.actions)
     }
-    def read(value : BSONObject) : Privilege = {
-      val resource = value.getObj("resource")
+    def read(itr : ByteIterator) : Privilege = {
+      val value = BSONDocument(itr)
+      val resource = value.asObject("resource")
       Privilege(
         resource.getAsString("db"),
         resource.getAsString("collection"),
-        value.getAsArray[Action, BSONString]("actions")(Action.Codec)
+        value.asSeq[Action]("actions")(Action.Codec)
       )
     }
   }

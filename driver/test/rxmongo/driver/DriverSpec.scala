@@ -31,7 +31,7 @@ import akka.pattern.ask
 import org.specs2.execute.Result
 import rxmongo.bson.BSONObject
 
-import scala.concurrent.{ Future, Await }
+import scala.concurrent.{ Await }
 import scala.concurrent.duration._
 
 class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
@@ -71,7 +71,8 @@ class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
       val conn = Await.result(future, Duration(1, "s"))
       conn.isInstanceOf[ActorRef] must beTrue
       val c = conn.asInstanceOf[ActorRef]
-      val future2 = c.ask(QueryMessage("rxmongo.test", BSONObject("foo" -> 1)))
+      val msg = QueryMessage("rxmongo.test", BSONObject("foo" -> 1))
+      val future2 = c.ask(msg)
       val x = Await.result(future2, 1.seconds)
       driver.close(500.millis)
       x.isInstanceOf[ReplyMessage] must beTrue

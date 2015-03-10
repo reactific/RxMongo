@@ -205,17 +205,17 @@ class BSONSpec extends Specification {
 
     "build and compact a 100,000 object of 18 fields, quickly" in {
       val startTime = System.nanoTime()
-      val obj = Helper.makeObject(10000, 1)
+      val obj = Helper.makeObject(1000, 1)
       val endTime = System.nanoTime
-      val len = obj.buffer.length
+      val len = obj.toByteString.length
       val constructionTime = endTime - startTime
+      println("Construction:" + constructionTime)
+      println(Profiler.format_one_item("makeObj"))
       if (Helper.suitableForTimingTests) {
         constructionTime must beLessThan(2000000000L) // < 1 seconds for 10,000 nodes
       } else {
         skipped(": machine too busy for timing tests")
       }
-      println("Construction:" + constructionTime)
-      println(Profiler.format_one_item("makeObj"))
       success
     }
   }
@@ -232,7 +232,8 @@ class BSONSpec extends Specification {
         "array" -> Helper.anArray,
         "map" -> map,
         "binary" -> Helper.data,
-        "undefined" -> null,
+        "null" → BSONNull,
+        "undefined" -> BSONUndefined,
         "boolean" -> true,
         "date" -> date,
         "regex" -> regex,
@@ -245,7 +246,8 @@ class BSONSpec extends Specification {
       b.get("array") must beEqualTo(Some(Helper.anArrayBSON))
       b.get("map") must beEqualTo(Some(BSONObject(map)))
       b.get("binary") must beEqualTo(Some(BSONBinary(Helper.data, UserDefinedBinary)))
-      b.get("undefined") must beEqualTo(Some(BSONNull))
+      b.get("null") must beEqualTo(Some(BSONNull))
+      b.get("undefined") must beEqualTo(Some(BSONUndefined))
       b.get("boolean") must beEqualTo(Some(BSONBoolean(value = true)))
       b.get("date") must beEqualTo(Some(BSONDate(date)))
       b.get("regex") must beEqualTo(Some(BSONRegex(regex)))
@@ -264,8 +266,8 @@ object Helper {
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
   val aTime = System.currentTimeMillis()
 
-  def makeObj : BSONBuilder = Profiler.profile("makeObj") {
-    val b = BSONBuilder().
+  def makeObj(b : BSONBuilder = BSONBuilder()) : BSONBuilder = Profiler.profile("makeObj") {
+    b.
       double("double", 42.0D).
       string("string", "fourty-two").
       obj("obj", anObject).
@@ -287,16 +289,18 @@ object Helper {
     b
   }
 
-  def makeObject : BSONObject = makeObj.toBSONObject
+  def makeObject : BSONObject = makeObj().toBSONObject
 
   def makeObject(width : Int, depth : Int) : BSONObject = {
-    val bldr = makeObj
-    if (depth > 0) {
-      val kids = for (i ← 1 to width) yield {
+    val kids = if (depth > 0) {
+      for (i ← 1 to width) yield {
         makeObject(width, depth - 1)
       }
-      bldr.array("kids", kids.toSeq)
-    }
+    } else Seq.empty[BSONObject]
+    val bldr = BSONBuilder()
+    bldr.sizeHint(450 * (width + 1))
+    makeObj(bldr)
+    bldr.array("kids", kids.toSeq)
     bldr.toBSONObject
   }
 

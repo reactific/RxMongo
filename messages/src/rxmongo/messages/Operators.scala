@@ -22,6 +22,7 @@
 
 package rxmongo.messages
 
+import akka.util.ByteString
 import rxmongo.bson._
 
 import scala.util.matching.Regex
@@ -29,7 +30,8 @@ import scala.util.matching.Regex
 /** Expression */
 class Expression extends BSONBuilder
 
-class BooleanExpression extends Expression
+class BooleanExpression() extends Expression
+object BooleanExpression { def apply() : BooleanExpression = new BooleanExpression }
 
 class BooleanFieldExpression(fieldName : String) extends BooleanExpression {
 
@@ -37,110 +39,93 @@ class BooleanFieldExpression(fieldName : String) extends BooleanExpression {
     * @param value
     * @return
     */
-  def $eq[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
-    appendAs[T, B](fieldName, value)
-    this
-  }
+  def $eq[T](value : T)(implicit codec : Codec[T]) : BooleanExpression = { field[T](fieldName, value) }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/ne/]]
     * @param value
     * @return
     */
-  def $ne[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
-    obj(fieldName, Map("$ne" -> value))
-    this
-  }
+  def $ne[T](value : T)(implicit codec : Codec[T]) : BooleanExpression = { obj(fieldName, "$ne", value) }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/gt/]]
     * @param value
     * @return
     */
-  def $gt[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
-    obj(fieldName, Map("$gt" -> value))
-    this
-  }
+  def $gt[T](value : T)(implicit codec : Codec[T]) : BooleanExpression = { obj(fieldName, "$gt", value) }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/lt/]]
     * @param value
     * @return
     */
-  def $lt[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
-    obj(fieldName, Map("$lt" -> value))
-    this
-  }
+  def $lt[T](value : T)(implicit codec : Codec[T]) : BooleanExpression = { obj(fieldName, "$lt", value) }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/gte/]]
     * @param value
     * @return
     */
-  def $gte[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
-    obj(fieldName, Map("$gte" -> value))
-    this
-  }
+  def $gte[T](value : T)(implicit codec : Codec[T]) : BooleanExpression = { obj(fieldName, "$gte", value) }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/lte/]]
     * @param value
     * @return
     */
-  def $lte[T, B <: BSONValue](value : T)(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
-    obj(fieldName, Map("$lte" -> value))
-    this
-  }
+  def $lte[T](value : T)(implicit codec : Codec[T]) : BooleanExpression = { obj(fieldName, "$lte", value) }
 
-  def $lte[T, B <: BSONValue](values : Iterable[T])(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
-    embeddedArray[T, B](fieldName, "$lte", values)
-    this
+  def $lte[T](values : Iterable[T])(implicit codec : Codec[T]) : BooleanExpression = {
+    arrayObj[T](fieldName, "$lte", values)
   }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/in/]]
     * @param values
     * @return
     */
-  def $in[T, B <: BSONValue](values : T*)(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
-    embeddedArray[T, B](fieldName, "$in", values)
-    this
+  def $in[T](values : T*)(implicit codec : Codec[T]) : BooleanExpression = {
+    arrayObj[T](fieldName, "$in", values)
   }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/nin/]]
     * @param values
     * @return
     */
-  def $nin[T, B <: BSONValue](values : T*)(implicit codec : BSONCodec[T, B]) : BooleanExpression = {
-    embeddedArray[T, B](fieldName, "$nin", values)
-    this
+  def $nin[T](values : T*)(implicit codec : Codec[T]) : BooleanExpression = {
+    arrayObj[T](fieldName, "$nin", values)
   }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/not/]]
     * @param values
     * @return
     */
-  def $not(values : BooleanExpression) : BooleanExpression = { obj(fieldName, Map("$not" -> values.result)); this }
+  def $not(values : BooleanExpression) : BooleanExpression = { obj(fieldName, "$not", values.result) }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/exists/]]
     * @param value
     * @return
     */
-  def $exists(value : Boolean) : BooleanExpression = { obj(fieldName, Map("$exists" -> value)); this }
+  def $exists(value : Boolean) : BooleanExpression = { obj(fieldName, "$exists", value) }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/type/]]
     * @param code
     * @return
     */
-  def $type(code : TypeCode) : BooleanExpression = { obj(fieldName, Map("$type" -> code.code.toInt)); this }
+  def $type(code : TypeCode) : BooleanExpression = { obj(fieldName, "$type", code.code.toInt) }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/mod/]]
     * @param divisor
     * @param remainder
     * @return
     */
-  def $mod(divisor : Int, remainder : Int) = { obj(fieldName, Map("$mod" → Seq(divisor, remainder))) }
+  def $mod(divisor : Int, remainder : Int) = {
+    arrayObj(fieldName, "$mod", Seq(divisor, remainder))(Codec.IntCodec)
+  }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/mod/]]
     * @param divisor
     * @param remainder
     * @return
     */
-  def $mod(divisor : Long, remainder : Long) = { obj(fieldName, Map("$mod" → Seq(divisor, remainder))) }
+  def $mod(divisor : Long, remainder : Long) = {
+    arrayObj(fieldName, "$mod", Seq(divisor, remainder))(Codec.LongCodec)
+  }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/regex/]]
     * @param pattern
@@ -148,7 +133,7 @@ class BooleanFieldExpression(fieldName : String) extends BooleanExpression {
     * @return
     */
   def $regex(pattern : String, options : String) = {
-    obj(fieldName, Map("$regex" → s"/$pattern/", "$options" → s"'$options'"))
+    anyObj(fieldName, Map("$regex" → s"/$pattern/", "$options" → s"'$options'"))
   }
 
   // TODO: Support conversion between Scala Regex and Perl Regex
@@ -158,7 +143,7 @@ class BooleanFieldExpression(fieldName : String) extends BooleanExpression {
     * @param pattern
     * @return
     */
-  def $regex(pattern : String) = { obj(fieldName, Map("$regex" → s"/$pattern/")) }
+  def $regex(pattern : String) = { obj(fieldName, "$regex", s"/$pattern/") }
 
   // TODO: Support $all query modifier
   def $all = ???
@@ -170,7 +155,11 @@ class BooleanFieldExpression(fieldName : String) extends BooleanExpression {
     * @param size
     * @return
     */
-  def $size(size : Int) = { obj(fieldName, Map("$size" → size)) }
+  def $size(size : Int) = { anyObj(fieldName, Map("$size" → size)) }
+}
+
+object BooleanFieldExpression {
+  def apply(fieldName : String) : BooleanFieldExpression = new BooleanFieldExpression(fieldName)
 }
 
 object $text {
@@ -179,9 +168,7 @@ object $text {
     * @return
     */
   def apply(search : String) = {
-    val e = new BooleanExpression
-    e.obj("$text", Map("$search" → search))
-    e
+    BooleanExpression().anyObj("$text", Map("$search" → search))
   }
 
   /** @see [[http://docs.mongodb.org/master/reference/operator/query/text/]]
@@ -190,9 +177,7 @@ object $text {
     * @return
     */
   def $text(search : String, language : String) = {
-    val e = new BooleanExpression
-    e.obj("$text", Map("$search" → search, "$language" → language))
-    e
+    BooleanExpression().anyObj("$text", Map("$search" → search, "$language" → language))
   }
 }
 
@@ -202,9 +187,7 @@ object $where {
     * @return
     */
   def apply(javascript : String) = {
-    val e = new BooleanExpression
-    e.string("$where", javascript)
-    e
+    BooleanExpression().string("$where", javascript)
   }
 }
 
@@ -246,9 +229,7 @@ object $or {
     * @return
     */
   def apply(expressions : BooleanExpression*) : BooleanExpression = {
-    val e = new BooleanExpression
-    e.array("$or", expressions.map { ex ⇒ ex.result })
-    e
+    BooleanExpression().array("$or", expressions.map { ex ⇒ ex.result })
   }
 }
 
@@ -258,9 +239,7 @@ object $nor {
     * @return
     */
   def apply(expressions : BooleanExpression*) : BooleanExpression = {
-    val e = new BooleanExpression
-    e.array("$nor", expressions.map { ex ⇒ ex.result })
-    e
+    BooleanExpression().array("$nor", expressions.map { ex ⇒ ex.result })
   }
 }
 
@@ -270,15 +249,13 @@ object $not extends BooleanExpression {
     * @return
     */
   def apply(expr : Expression with BooleanExpression) : BooleanExpression = {
-    val e = new BooleanExpression
-    e.obj("$not", expr.result)
-    e
+    BooleanExpression().obj("$not", expr.result)
   }
 }
 
 class UpdateExpression extends Expression {
   def +(other : UpdateExpression) : UpdateExpression = {
-    buffer ++= other.buffer.result
+    bldr ++= other.bldr.result
     this
   }
 
@@ -290,31 +267,21 @@ object UpdateExpression {
   import rxmongo.bson._
 
   private[rxmongo] def apply(operator : String, value : BSONBuilder) : UpdateExpression = {
-    val e = UpdateExpression()
-    e.putPrefix(ObjectCode, operator).
-      putObj(value)
-    e
+    UpdateExpression().obj(operator, value)
   }
 
-  private[rxmongo] def apply[T, B <: BSONValue](operator : String, field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
-    val e = UpdateExpression()
-    e.putPrefix(ObjectCode, operator)
-    val codedValue = codec.write(value)
+  private[rxmongo] def apply[T](operator : String, field : String, value : T)(implicit codec : Codec[T]) : UpdateExpression = {
     val b = BSONBuilder()
-    b.append(field, codedValue)
-    e.putObj(b)
-    e
+    b.field(field, value)
+    UpdateExpression().obj(operator, b.wrapAndTerminate)
   }
 
-  private[rxmongo] def apply[T, B <: BSONValue](operator : String, fields : Iterable[(String, T)])(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  private[rxmongo] def apply[T](operator : String, fields : Iterable[(String, T)])(implicit codec : Codec[T]) : UpdateExpression = {
     val b = BSONBuilder()
     for ((name, value) ← fields) {
-      b.append(name, codec.write(value))
+      b.field(name, value)
     }
-    val e = UpdateExpression()
-    e.putPrefix(ObjectCode, operator)
-    e.putObj(b)
-    e
+    UpdateExpression().obj(operator, b.wrapAndTerminate)
   }
 }
 
@@ -342,15 +309,15 @@ object $inc {
   }
 
   def apply(field : String, value : Int) : UpdateExpression = {
-    UpdateExpression("$inc", field, value)
+    UpdateExpression("$inc", field, value)(Codec.IntCodec)
   }
 
   def apply(field : String, value : Long) : UpdateExpression = {
-    UpdateExpression("$inc", field, value)
+    UpdateExpression("$inc", field, value)(Codec.LongCodec)
   }
 
   def apply(field : String, value : Double) : UpdateExpression = {
-    UpdateExpression("$inc", field, value)
+    UpdateExpression("$inc", field, value)(Codec.DoubleCodec)
   }
 }
 
@@ -364,7 +331,7 @@ object $mul {
     * @return this
     */
   def apply(field : String, value : Int) : UpdateExpression = {
-    UpdateExpression("$mul", field, value)
+    UpdateExpression("$mul", field, value)(Codec.IntCodec)
   }
 
   /** Multiplies the value of the field by the specified amount.
@@ -375,7 +342,7 @@ object $mul {
     * @return this
     */
   def apply(field : String, value : Long) : UpdateExpression = {
-    UpdateExpression("$mul", field, value)
+    UpdateExpression("$mul", field, value)(Codec.LongCodec)
   }
 
   /** Multiplies the value of the field by the specified amount.
@@ -386,7 +353,7 @@ object $mul {
     * @return this
     */
   def apply(field : String, value : Double) : UpdateExpression = {
-    UpdateExpression("$mul", field, value)
+    UpdateExpression("$mul", field, value)(Codec.DoubleCodec)
   }
 }
 
@@ -407,7 +374,7 @@ object $rename {
   }
 
   def apply(field : String, newName : String) : UpdateExpression = {
-    UpdateExpression("$rename", field, newName)
+    UpdateExpression("$rename", field, newName)(Codec.StringCodec)
   }
 }
 
@@ -418,14 +385,13 @@ object $setOnInsert {
     * @param value
     * @param codec
     * @tparam T
-    * @tparam B
     * @return
     */
-  def apply[T, B <: BSONValue](fieldName : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](fieldName : String, value : T)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$setOnInsert", fieldName, value)(codec)
   }
 
-  def apply[T, B <: BSONValue](pairs : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](pairs : (String, T)*)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$setOnInsert", pairs)(codec)
   }
 }
@@ -438,10 +404,9 @@ object $set {
     * @param value Value to set field to
     * @param codec codec to use to turn value into BSONValue
     * @tparam T Scala type for the value
-    * @tparam B BSONType for the value
     * @return this
     */
-  def apply[T, B <: BSONValue](fieldName : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](fieldName : String, value : T)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$set", fieldName, value)(codec)
   }
 
@@ -451,10 +416,9 @@ object $set {
     * @param fields The name/value pairs to set in the updated document
     * @param codec codec to use to turn value into BSONValue
     * @tparam T Scala type for the value
-    * @tparam B BSONType for the value
     * @return this
     */
-  def apply[T, B <: BSONValue](fields : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](fields : (String, T)*)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$set", fields)(codec)
   }
 
@@ -468,7 +432,7 @@ object $unset {
     * @return this
     */
   def apply(fields : String*) : UpdateExpression = {
-    UpdateExpression("$unset", fields.map { s ⇒ s → "" })
+    UpdateExpression("$unset", fields.map { s ⇒ s → "" })(Codec.StringCodec)
   }
 }
 
@@ -480,10 +444,9 @@ object $min {
     * @param value The value to use for updating the field
     * @param codec The codec to use to conver the value to a BSONValue
     * @tparam T The scala type of the value
-    * @tparam B The BSONValue type of the value
     * @return this
     */
-  def apply[T, B <: BSONValue](field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](field : String, value : T)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$min", field, value)(codec)
   }
 
@@ -493,10 +456,9 @@ object $min {
     * @param pairs The name/value pairs of the fields to update
     * @param codec The codec to use to conver the value to a BSONValue
     * @tparam T The scala type of the value
-    * @tparam B The BSONValue type of the value
     * @return this
     */
-  def apply[T, B <: BSONValue](pairs : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](pairs : (String, T)*)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$min", pairs)(codec)
   }
 }
@@ -511,10 +473,9 @@ object $max {
     * @param value The value to use for updating the field
     * @param codec The codec to use to conver the value to a BSONValue
     * @tparam T The scala type of the value
-    * @tparam B The BSONValue type of the value
     * @return this
     */
-  def apply[T, B <: BSONValue](field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](field : String, value : T)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$max", field, value)(codec)
   }
 
@@ -524,10 +485,9 @@ object $max {
     * @param fields The name/value pairs of the fields to update
     * @param codec The codec to use to conver the value to a BSONValue
     * @tparam T The scala type of the value
-    * @tparam B The BSONValue type of the value
     * @return this
     */
-  def apply[T, B <: BSONValue](fields : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](fields : (String, T)*)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$max", fields)
   }
 }
@@ -552,7 +512,7 @@ object $currentDate {
     * @return this
     */
   def apply(fields : (String, Boolean)*) : UpdateExpression = {
-    UpdateExpression[Boolean, BSONBoolean]("$currentDate", fields)
+    UpdateExpression[Boolean]("$currentDate", fields)
   }
 }
 
@@ -565,10 +525,9 @@ object $addToSet {
     * @param value The value to add to the array field
     * @param codec The codec to use to conver the value to a BSONValue
     * @tparam T The Scala type of the value
-    * @tparam B The BSONValue type of the value
     * @return this
     */
-  def apply[T, B <: BSONValue](field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](field : String, value : T)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$addToSet", field, value)(codec)
   }
 
@@ -579,17 +538,13 @@ object $addToSet {
     * @param values The value to add to the array field
     * @param codec The codec to use to conver the value to a BSONValue
     * @tparam T The Scala type of the value
-    * @tparam B The BSONValue type of the value
     * @return this
     */
-  def apply[T, B <: BSONValue](field : String, values : Seq[T])(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
-    val e = UpdateExpression()
-    e.putPrefix(ObjectCode, "$addToSet")
-    val bldr = BSONBuilder()
+  def apply[T](field : String, values : Seq[T])(implicit codec : Codec[T]) : UpdateExpression = {
+    val bldr = ByteString.newBuilder
     bldr.putPrefix(ObjectCode, field)
-    bldr.array("$each", values)
-    e.putObj(bldr)
-    e
+    bldr.array("$each", values)(codec)
+    UpdateExpression().obj("$addToSet", bldr.wrapAndTerminate)
   }
 }
 
@@ -603,9 +558,7 @@ object $pop {
     * @return Å new UpdateExpression containing the \$pop operator
     */
   def apply(field : String, head : Boolean = true) : UpdateExpression = {
-    val e = UpdateExpression()
-    e.obj("$pop", field → (if (head) -1 else 1))
-    e
+    UpdateExpression().obj("$pop", field, if (head) -1 else 1)(Codec.IntCodec)
   }
 
   def head(field : String) = apply(field, head = true)
@@ -623,16 +576,12 @@ object $pullAll {
     * @param values The values of the field that will be removed
     * @param codec A codec for translating the values
     * @tparam T The scala type of the values
-    * @tparam B The BSONValue type of the values
     * @return A new UpdateExpression containing the \$pull operator
     */
-  def apply[T, B <: BSONValue](field : String, values : Seq[T])(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
-    val e = UpdateExpression()
-    e.putPrefix(ObjectCode, "$pull")
+  def apply[T](field : String, values : Seq[T])(implicit codec : Codec[T]) : UpdateExpression = {
     val b = BSONBuilder()
     b.array(field, values)(codec)
-    e.putObj(b)
-    e
+    UpdateExpression().obj("$pull", b)
   }
 }
 
@@ -647,7 +596,7 @@ object $pull {
     * @tparam B The BSONValue type of the values
     * @return A new UpdateExpression with the \$pull operator
     */
-  def apply[T, B <: BSONValue](field : String, value : T)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](field : String, value : T)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$pull", field, value)(codec)
   }
 
@@ -659,7 +608,7 @@ object $pull {
     * @tparam B The BSONValue type of the values
     * @return A new UpdateExpression with the \$pull operator
     */
-  def apply[T, B <: BSONValue](fields : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](fields : (String, T)*)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$pull", fields)(codec)
   }
 
@@ -687,12 +636,12 @@ object $push {
     * @tparam B
     * @return
     */
-  def apply[T, B <: BSONValue](fields : (String, T)*)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](fields : (String, T)*)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$push", fields)(codec)
   }
 
-  def apply[T, B <: BSONValue](fieldName : String, each : Seq[T], slice : Int = Int.MinValue,
-    position : Int = -1, sort : Int = 0)(implicit codec : BSONCodec[T, B]) : UpdateExpression = {
+  def apply[T](fieldName : String, each : Seq[T], slice : Int = Int.MinValue,
+    position : Int = -1, sort : Int = 0)(implicit codec : Codec[T]) : UpdateExpression = {
     val b2 = BSONBuilder()
     b2.array("$each", each)
     if (slice != Int.MinValue)

@@ -22,7 +22,7 @@
 
 package rxmongo.messages
 
-import akka.util.{ ByteString, ByteIterator, ByteStringBuilder }
+import akka.util.{ ByteString, ByteIterator }
 import rxmongo.bson._
 
 case class Update(selector : BSONObject, updater : BSONObject, upsert : Boolean, multi : Boolean, isolated : Boolean)
@@ -48,12 +48,12 @@ object Update {
       }
       Update(selector, doc.asObject("u"), doc.asBoolean("upsert"), doc.asBoolean("multi"), isolated)
     }
-    def write(value : Update, builder : ByteStringBuilder) : ByteStringBuilder = {
+    def write(value : Update, builder : BSONBuilder) : BSONBuilder = {
       val selector = if (value.isolated) {
         val bldr = ByteString.newBuilder
         value.selector.doc.addTo(bldr)
         bldr.integer("$isolated", 1)
-        BSONObject(bldr.toByteString)
+        BSONObject(bldr.wrapAndTerminate)
       } else value.selector
       builder.
         obj("q", selector).

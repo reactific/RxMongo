@@ -27,7 +27,6 @@ import java.nio.ByteOrder
 
 import akka.util.{ ByteString, ByteStringBuilder }
 import com.reactific.hsp.Profiler
-import org.specs2.execute.Result
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
 trait ByteStringUtils {
@@ -65,8 +64,9 @@ trait ByteStringUtils {
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
   val aTime = System.currentTimeMillis()
 
-  def makeAnObject(profiler: Profiler = Profiler) : BSONBuilder = profiler.profile("makeObj") {
-    val b = BSONBuilder().
+  def makeAnObject(profiler : Profiler = Profiler) : BSONBuilder = profiler.profile("makeObj") {
+    val b = BSONBuilder()
+    b.
       double("double", 42.0D).
       string("string", "fourty-two").
       obj("obj", anObject).
@@ -88,7 +88,7 @@ trait ByteStringUtils {
     b
   }
 
-  def makeObject(profiler: Profiler = Profiler) : BSONObject = makeAnObject(profiler).toBSONObject
+  def makeObject(profiler : Profiler = Profiler) : BSONObject = makeAnObject(profiler).toBSONObject
 
   def makeObject(width : Int, depth : Int) : BSONObject = {
     val bldr = makeAnObject()

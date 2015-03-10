@@ -105,7 +105,7 @@ structures. Most often you will use a BSONObject which is often confused with a 
 BSONArray as well. RxMongo makes a distinction between these two by having both BSONObject and BSONArray derive from
 BSONDocument. BSONDocuments are, essentially, a `Map[String,BSONValue]`. BSONObjects can be constructed quite simply,
 however, since their constructor accepts a `Map[String,Any]` and does the corresponding translations from Any to
-BSONValue. This works for most typical data types. Where you need a specialized translator, you can write a BSONCodec
+BSONValue. This works for most typical data types. Where you need a specialized translator, you can write a Codec
 (see below).
 
 ```scala
@@ -239,9 +239,9 @@ object DriverBasics extends App {
 
 ```
 
-### Writing A BSONCodec
+### Writing A Codec
 
-A BSONCodec is a small object that can encode and decode values into and out of BSONValue. This allows all manner of
-Scala objects to be placed into a BSONObject or BSONArray with the conversions handled implicitly.
+A Codec is a small object that can encode and decode values into and out of a ByteString. This allows all manner of
+Scala objects to be placed into a byte buffer with the conversions handled implicitly.
 
 *example TBD*

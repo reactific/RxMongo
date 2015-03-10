@@ -38,7 +38,7 @@ case class ReplicaSetMemberConfiguration(
   votes : Int = 1) extends BSONProvider {
   require(votes == 0 || votes == 1, "0 <= votes <= 1")
   require(priority >= 0.0 && priority <= 1000.0, "0 <= priority <= 1000")
-  def toByteString : ByteString = {
+  def wrapAndTerminate : ByteString = {
     val b = BSONBuilder()
     b.integer("_id", _id)
     b.string("host", host)
@@ -48,7 +48,7 @@ case class ReplicaSetMemberConfiguration(
     b.obj("tags", BSONObject.from(tags.toSeq))
     b.integer("slaveDelay", slaveDelay)
     b.integer("votes", votes)
-    b.toByteString
+    b.wrapAndTerminate
   }
 }
 
@@ -60,7 +60,7 @@ case class ReplicaSetConfiguration(
   chainingAllowed : Boolean = true,
   getLastErrorModes : BSONObject = BSONObject(),
   heartbeatTimeoutSec : Int = 10) extends BSONProvider {
-  def toByteString : ByteString = {
+  def wrapAndTerminate : ByteString = {
     val b = BSONBuilder()
     b.string("_id", _id)
     b.integer("version", version)
@@ -72,7 +72,7 @@ case class ReplicaSetConfiguration(
     s.boolean("chainingAllowed", chainingAllowed)
     s.integer("heartbeatTimeoutSec", heartbeatTimeoutSec)
     b.obj("settings", s)
-    b.toByteString
+    b.wrapAndTerminate
   }
 }
 /** replSetFreeze
@@ -121,16 +121,16 @@ case class ReplSetReconfigCmd(
   * Forces the current primary to step down and become a secondary, forcing an election.
   * @see [[http://docs.mongodb.org/master/reference/command/replSetStepDown/]]
   * @param avoidReelectionSecs Optional. A number of seconds for the member to avoid election to primary. If you do not
-  *                specify a value for <seconds>, replSetStepDown will attempt to avoid reelection to
-  *                primary for 60 seconds from the time that the mongod received the replSetStepDown
-  *                command.
+  *               specify a value for <seconds>, replSetStepDown will attempt to avoid reelection to
+  *               primary for 60 seconds from the time that the mongod received the replSetStepDown
+  *               command.
   * @param force Optional. New in version 2.0: Forces the primary to step down even if there are no secondary members
-  *  that could become primary.
+  * that could become primary.
   * @param secondaryCatchupPeriodSecs	Optional. The amount of time that the mongod will wait for another secondary in
-  *                       the replica set to catch up to the primary. If no secondary catches up before
-  *                       this period ends, then the command will fail and the member will not step down,
-  *                       unless you specify { force: true }. The default value is 10 seconds, unless you
-  *                       set { force: true }, which changes the default to 0.
+  *                      the replica set to catch up to the primary. If no secondary catches up before
+  *                      this period ends, then the command will fail and the member will not step down,
+  *                      unless you specify { force: true }. The default value is 10 seconds, unless you
+  *                      set { force: true }, which changes the default to 0.
   */
 case class ReplSetStepDownCmd(
   avoidReelectionSecs : Option[Int] = None,

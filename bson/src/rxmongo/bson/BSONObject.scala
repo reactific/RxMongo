@@ -39,6 +39,8 @@ case class BSONObject private[bson] ( final val doc : BSONDocument) extends BSON
       k -> BSONValue(b, bi.clone())
   }
 
+  override def toByteString : ByteString = doc.toByteString
+
   private[bson] def addTo(bldr : ByteStringBuilder) : Unit = {
     bldr ++= doc.toByteString
   }
@@ -50,7 +52,12 @@ case class BSONObject private[bson] ( final val doc : BSONDocument) extends BSON
     }
   }
 
-  def get(key : String) : Option[BSONValue] = doc.get(key).map { case (b, bi) ⇒ BSONValue(b, bi.clone()) }
+  def get(key : String) : Option[BSONValue] = {
+    doc.get(key).map {
+      case (b, bi) ⇒
+        BSONValue(b, bi.clone())
+    }
+  }
 
   def +[B1 >: BSONValue](kv : (String, B1)) : BSONObject = {
     val pair = kv._1 → kv._2.asInstanceOf[BSONValue].pair
@@ -72,12 +79,21 @@ case class BSONObject private[bson] ( final val doc : BSONDocument) extends BSON
 
   override def size : Int = iterator.size
 
-  /*  def filter(filt : (String,BSONValue) ⇒ Boolean) : BSONObject = {
-    BSONObject(value.filter { case (key,(typeCode,itr)) ⇒
-      filt(key,BSONValue(typeCode,itr))
+  def byteSize : Int = {
+    doc.docItr match {
+      case Some(itr) ⇒ itr.length
+      case None ⇒ doc.iterator.foldLeft(0) { case (sum, (key, (bc, bi))) ⇒ sum + bi.length }
+
+    }
+  }
+
+  def filter(filt : (String, BSONValue) ⇒ Boolean) : BSONObject = {
+    BSONObject(doc.filter {
+      case (key, (typeCode, itr)) ⇒
+        filt(key, BSONValue(typeCode, itr))
     })
   }
-*/
+
   override def contains(key : String) : Boolean = doc.contains(key)
 
   def getTypeCode(keyToFind : String) : TypeCode = {
@@ -87,12 +103,12 @@ case class BSONObject private[bson] ( final val doc : BSONDocument) extends BSON
     }
   }
 
-  def getObject(keyToFind : String) : Option[BSONObject] = {
+  def getOptionObj(keyToFind : String) : Option[BSONObject] = {
     get(keyToFind) map { case (v) ⇒ v.asInstanceOf[BSONObject] }
   }
 
   def getObj(keyToFind : String) : BSONObject = {
-    getObject(keyToFind) match {
+    getOptionObj(keyToFind) match {
       case Some(obj) ⇒ obj
       case _ ⇒ throw new NoSuchElementException(keyToFind)
     }
@@ -100,7 +116,7 @@ case class BSONObject private[bson] ( final val doc : BSONDocument) extends BSON
 
   /** Get with conversion to another type
     *
-    * Gets the BSONValue associated with the provided `key`, and converts it to `T` via the BSONCodec[T].
+    * Gets the BSONValue associated with the provided `key`, and converts it to `T` via the Codec[T].
     *
     * @tparam T The type to which the call wishes the BSONValue to be decoded.
     * @param key The key to look up in the object to obtain the value
@@ -109,22 +125,30 @@ case class BSONObject private[bson] ( final val doc : BSONDocument) extends BSON
     *
     * If there is no matching value, or the value could not be deserialized or converted, returns a `None`.
     */
-  def getAs[T, B <: BSONValue](key : String)(implicit codec : BSONCodec[T, B]) : T = {
+  def getAs[T](key : String)(implicit codec : Codec[T]) : T = {
     get(key) match {
-      case Some(value : B @unchecked) if value.code == codec.code ⇒ codec.read(value)
+      case Some(value : BSONValue @unchecked) if value.code == codec.code ⇒ codec.read(value)
       case Some(value : BSONValue) ⇒ throw new IllegalArgumentException(
         s"Expected type ${codec.typeName} for key '$key' but got type ${value.typeName}")
       case None ⇒ throw new NoSuchElementException(key)
     }
   }
 
-  def getAsObject[T](key : String)(implicit codec : BSONCodec[T, BSONObject]) : T = {
-    getAs[T, BSONObject](key)(codec)
+  def getAsObject[T](key : String)(implicit codec : Codec[T]) : T = {
+    getAs[T](key)(codec)
   }
 
-  def getAsSeq[T, B <: BSONValue](key : String)(implicit codec : BSONCodec[T, B]) : Iterator[T] = {
+  def getAsSeq[T](key : String)(implicit codec : Codec[T]) : Seq[T] = getAsIterator[T](key).toSeq
+
+  def getAsIterator[T](key : String)(implicit codec : Codec[T]) : Iterator[T] = {
     get(key) match {
-      case Some(v : BSONValue) if v.code == ArrayCode ⇒ doc.asInstanceOf[BSONArray].as[T, B]
+      case Some(v : BSONValue) if v.code == ArrayCode ⇒
+        iterator.map {
+          case v : BSONValue if v.code == codec.code ⇒ codec.read(v)
+          case v : BSONValue ⇒ throw new IllegalArgumentException(
+            s"Expected type ${codec.typeName} but got type ${v.typeName}"
+          )
+        }
       case Some(v : BSONValue) ⇒ throw new IllegalArgumentException(
         s"Expected type BSONArray for key '$key' but got type ${v.typeName}"
       )
@@ -132,45 +156,42 @@ case class BSONObject private[bson] ( final val doc : BSONDocument) extends BSON
     }
   }
 
-  def getAsMap[T, B <: BSONValue](key : String)(implicit codec : BSONCodec[T, B]) : immutable.Map[String, T] = {
+  def getAsMap[T](key : String)(implicit codec : Codec[T]) : immutable.Map[String, T] = {
     iterator.map {
-      case (k, v : B @unchecked) if v.code == codec.code ⇒ k -> codec.read(v)
+      case (k, v : BSONValue @unchecked) if v.code == codec.code ⇒ k -> codec.read(v)
       case (k, v) ⇒
         throw new IllegalArgumentException(
           s"Expected type ${codec.typeName} for key '$k' but got type ${v.typeName}")
     }.toMap
   }
 
-  def getAsString(key : String) : String = getAs[String, BSONString](key)
-  def getAsInt(key : String) : Int = getAs[Int, BSONInteger](key)
-  def getAsLong(key : String) : Long = getAs[Long, BSONLong](key)
-  def getAsDouble(key : String) : Double = getAs[Double, BSONDouble](key)
-  def getAsDate(key : String) : Date = getAs[Date, BSONDate](key)
-  def getAsBoolean(key : String) : Boolean = getAs[Boolean, BSONBoolean](key)
-  def getAsArray[T, B <: BSONValue](key : String)(implicit codec : BSONCodec[T, B]) : Seq[T] = {
-    getAsSeq[T, B](key).toSeq
-  }
+  def getAsString(key : String) : String = getAs[String](key)
+  def getAsInt(key : String) : Int = getAs[Int](key)
+  def getAsLong(key : String) : Long = getAs[Long](key)
+  def getAsDouble(key : String) : Double = getAs[Double](key)
+  def getAsDate(key : String) : Date = getAs[Date](key)
+  def getAsBoolean(key : String) : Boolean = getAs[Boolean](key)
 
-  def getOptionalObject[T](key : String)(implicit codec : BSONCodec[T, BSONObject]) : Option[T] = {
-    try { Some(getAs[T, BSONObject](key)(codec)) } catch { case x : Exception ⇒ None }
+  def getOptionalObject[T](key : String)(implicit codec : Codec[T]) : Option[T] = {
+    try { Some(getAs[T](key)(codec)) } catch { case x : Exception ⇒ None }
   }
-  def getOptionalArray[T, B <: BSONValue](key : String)(implicit codec : BSONCodec[T, B]) : Option[Seq[T]] = {
-    try { Some(getAsArray[T, B](key)(codec)) } catch { case x : Exception ⇒ None }
+  def getOptionalArray[T](key : String)(implicit codec : Codec[T]) : Option[Seq[T]] = {
+    try { Some(getAsSeq[T](key)(codec)) } catch { case x : Exception ⇒ None }
   }
   def getOptionalString(key : String) : Option[String] = {
-    try { Some(getAs[String, BSONString](key)) } catch { case x : Exception ⇒ None }
+    try { Some(getAs[String](key)) } catch { case x : Exception ⇒ None }
   }
   def getOptionalInt(key : String) : Option[Int] = {
-    try { Some(getAs[Int, BSONInteger](key)) } catch { case x : Exception ⇒ None }
+    try { Some(getAs[Int](key)) } catch { case x : Exception ⇒ None }
   }
   def getOptionalDouble(key : String) : Option[Double] = {
-    try { Some(getAs[Double, BSONDouble](key)) } catch { case x : Exception ⇒ None }
+    try { Some(getAs[Double](key)) } catch { case x : Exception ⇒ None }
   }
   def getOptionalDate(key : String) : Option[Date] = {
-    try { Some(getAs[Date, BSONDate](key)) } catch { case x : Exception ⇒ None }
+    try { Some(getAs[Date](key)) } catch { case x : Exception ⇒ None }
   }
   def getOptionalBoolean(key : String) : Option[Boolean] = {
-    try { Some(getAs[Boolean, BSONBoolean](key)) } catch { case x : Exception ⇒ None }
+    try { Some(getAs[Boolean](key)) } catch { case x : Exception ⇒ None }
   }
 
   def matches(other : BSONObject) : Boolean = {
@@ -185,7 +206,7 @@ case class BSONObject private[bson] ( final val doc : BSONDocument) extends BSON
 
   def toAnyMap : Map[String, Any] = toMap.map { case (k, v) ⇒ k -> v.value }
 
-  def to[T](implicit codec : BSONCodec[T, BSONObject]) : T = codec.read(this)
+  def to[T](implicit codec : Codec[T]) : T = codec.read(this)
 
   override def toString() : String = {
     val s = new StringBuilder
@@ -223,18 +244,26 @@ object BSONObject {
 
   def apply(data : Map[String, Any]) : BSONObject = from(data.toSeq)
 
-  def apply[T](key : String, value : T)(implicit codec : BSONCodec[T, BSONObject]) : BSONObject = {
+  def apply[T](key : String, value : T)(implicit codec : Codec[T]) : BSONObject = {
     val bldr = BSONBuilder()
     bldr.obj(key, BSONObject(value))
     bldr.toBSONObject
   }
 
-  def apply[T](value : T)(implicit codec : BSONCodec[T, BSONObject]) : BSONObject = codec.write(value)
+  def apply[T](value : T)(implicit codec : Codec[T]) : BSONObject = {
+    BSONObject(codec.write(value))
+  }
+
+  def from(key : String, value : Any) : BSONObject = {
+    val bldr = BSONBuilder()
+    bldr.anyField(key, value)
+    bldr.toBSONObject
+  }
 
   def from(data : Seq[(String, Any)]) : BSONObject = {
-    val bldr = BSONBuilder()
-    bldr.append(data)
-    bldr.toBSONObject
+    val bldr = ByteString.newBuilder
+    bldr.putAnyObject(data)
+    BSONObject(bldr.result())
   }
 
 }

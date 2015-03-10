@@ -80,7 +80,7 @@ abstract class Channel(remote : InetSocketAddress, options : ConnectionOptions, 
       writeFailures, unsolicitedReplies, spuriousMessages)
   }
 
-  def handleRequest(requestMsg : RequestMessage) : Unit
+  def handleRequest(requestMsg : RequestMessage, msg_to_send : ByteString) : Unit
 
   def handleReply(replyMsg : ReplyMessage, toActor : ActorRef) : Unit = {
     toActor ! replyMsg
@@ -99,7 +99,7 @@ abstract class Channel(remote : InetSocketAddress, options : ConnectionOptions, 
     requestBytes += msg_to_send.length
     if (message.requiresResponse)
       pendingResponses.put(message.requestId, replyTo)
-    handleRequest(message)
+    handleRequest(message, msg_to_send)
   }
 
   final def doReply(msg : ByteString) = {

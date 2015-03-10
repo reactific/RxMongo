@@ -45,12 +45,13 @@ object Dependencies {
   val logback_prod    = "ch.qos.logback"       % "logback-classic"              % "1.1.2"
   val specs           = "org.specs2"          %% "specs2-core"                  % "2.4.15"     % "test"
   val hsp             = "com.reactific"       %% "hotspot-profiler"             % "0.1.0-SNAPSHOT" % "test"
+  val scala_compiler  = "org.scala-lang"      % "scala-compiler"                % "2.11.5"
 
   val common = Seq(specs, logback_test, hsp)
 
   val bson = common ++ Seq( akka_actor)
 
-  val macros = common
+  val macros = common ++ Seq( scala_compiler )
 
   val messages = common
 

@@ -35,7 +35,7 @@ class Projection extends BSONProvider {
 
   private val builder = BSONBuilder()
 
-  def toByteString = builder.toByteString
+  def wrapAndTerminate = builder.wrapAndTerminate
 
   /** Include named fields in the query results
     *

@@ -22,6 +22,7 @@
 
 package rxmongo.driver
 
+import akka.util.{ ByteStringBuilder, ByteIterator }
 import rxmongo.bson._
 
 /** Reply From The CollStatsCmd
@@ -33,28 +34,28 @@ import rxmongo.bson._
   * argument affects this value.
   * @param avgObjSize The average size of an object in the collection. The scale argument does not affect this value.
   * @param storageSize The total amount of storage allocated to this collection for document storage. The scale
-  *   argument affects this value. For mmapv1, storageSize will not decrease as you remove or
-  *   shrink documents.
+  *  argument affects this value. For mmapv1, storageSize will not decrease as you remove or
+  *  shrink documents.
   * @param numExtents The total number of contiguously allocated data file regions. Only present when using
-  *  the mmapv1 storage engine.
+  * the mmapv1 storage engine.
   * @param nindexes The number of indexes on the collection. All collections have at least one index on the _id field.
   * @param lastExtentSize The size of the last extent allocated. The scale argument affects this value. Only present
-  *      when using the mmapv1 storage engine.
+  *     when using the mmapv1 storage engine.
   * @param userFlags Reports the flags on this collection set by the user. See the collMod command for more information
   * on setting user flags and usePowerOf2Sizes. Only appears when using the mmapv1 storage engine.
   * @param totalIndexSize The total size of all indexes. The scale argument affects this value.
   * @param indexSizes This field specifies the key and size of every existing index on the collection.
-  *  The scale argument affects this value.
+  * The scale argument affects this value.
   * @param capped This field will be “true” if the collection is capped. Not present if collection is not capped
   * @param max Shows the maximum number of documents that may be present in a capped collection. Not present if
   * collection is not capped.
   * @param maxSize Shows the maximum size of a capped collection. Not present if collection is not capped.
   * @param wiredTiger wiredTiger only appears when using the wiredTiger storage engine. This document contains data
-  *  reported directly by the WiredTiger engine and other data for internal diagnostic use.
+  * reported directly by the WiredTiger engine and other data for internal diagnostic use.
   * @param indexDetails A document that reports data from the storage engine for each index in the collection. The
-  *    fields in this document are the names of the indexes, while the values themselves are documents
-  *    that contain statistics for the index provided by the storage engine. These statistics are for
-  *    internal diagnostic use.
+  *   fields in this document are the names of the indexes, while the values themselves are documents
+  *   that contain statistics for the index provided by the storage engine. These statistics are for
+  *   internal diagnostic use.
   */
 case class CollStatsReply(
   ns : String,
@@ -78,15 +79,13 @@ case class CollStatsReply(
   indexDetails : Option[BSONObject] = None)
 
 object CollStatsReply {
-  implicit object CollStatsReplyCodec extends BSONCodec[CollStatsReply, BSONObject] {
-    override def code : TypeCode = ObjectCode
-
+  implicit object CollStatsReplyCodec extends Codec[CollStatsReply] {
     /** Convert T into BSONValue
       *
       * @param value The value, T, to be written to BSON
       * @return A Try[BSONValue] resulting from writing T to BSON
       */
-    override def write(value : CollStatsReply) : BSONObject = {
+    override def write(value : CollStatsReply, bldr : BSONBuilder) : BSONBuilder = {
       val b = BSONBuilder()
       b.string("ns", value.ns)
       b.integer("count", value.count)
@@ -108,7 +107,7 @@ object CollStatsReply {
       value.maxSize.map { maxSize ⇒ b.integer("maxSize", maxSize) }
       value.wiredTiger.map { wt ⇒ b.obj("wiredTiger", wt) }
       value.indexDetails.map { id ⇒ b.obj("indexDetails", id) }
-      b.result
+      b
     }
 
     /** Convert BSONValue Into T
@@ -116,28 +115,28 @@ object CollStatsReply {
       * @param value The BSONValue to be converted
       * @return A Try[T] that results from reading T from BSON
       */
-    override def read(value : BSONObject) : CollStatsReply = {
-      val map = value.toAnyMap
+    override def read(itr : ByteIterator) : CollStatsReply = {
+      val value = BSONDocument(itr)
       CollStatsReply(
-        value.getAsString("ns"),
-        value.getAsInt("count"),
-        value.getAsInt("size"),
-        value.getAsInt("avgObjSize"),
-        value.getAsInt("storageSize"),
-        value.getAsInt("numExtents"),
-        value.getAsInt("nindexes"),
-        value.getAsInt("lastExtentSize"),
-        value.getOptionalInt("systemFlags"),
-        value.getOptionalInt("userFlags"),
-        value.getAsInt("totalIndexSize"),
-        value.getAsMap[Int, BSONInteger]("indexSizes"),
-        value.getAsSeq[ExtentInfo, BSONObject]("extents")(ExtentInfo.Codec).toSeq,
-        value.getAsDouble("ok"),
+        value.asString("ns"),
+        value.asInt("count"),
+        value.asInt("size"),
+        value.asInt("avgObjSize"),
+        value.asInt("storageSize"),
+        value.asInt("numExtents"),
+        value.asInt("nindexes"),
+        value.asInt("lastExtentSize"),
+        value.asOptionalInt("systemFlags"),
+        value.asOptionalInt("userFlags"),
+        value.asInt("totalIndexSize"),
+        value.asMap[Int]("indexSizes"),
+        value.asSeq[ExtentInfo]("extents")(ExtentInfo.Codec).toSeq,
+        value.asDouble("ok"),
         if (value.contains("capped")) true else false,
-        value.getOptionalInt("max"),
-        value.getOptionalInt("maxSize"),
-        value.getObject("wiredTiger"),
-        value.getObject("indexDetails")
+        value.asOptionalInt("max"),
+        value.asOptionalInt("maxSize"),
+        value.asOptionalObject("wiredTiger"),
+        value.asOptionalObject("indexDetails")
       )
     }
   }
@@ -146,19 +145,20 @@ object CollStatsReply {
 case class ExtentInfo(len : Int, file : Int, offset : Int)
 
 object ExtentInfo {
-  implicit object Codec extends BSONCodec[ExtentInfo, BSONObject] {
-    override def code : TypeCode = ObjectCode
-    override def write(value : ExtentInfo) : BSONObject = {
-      BSONObject("len" → value.len, "loc:" → BSONObject("file" → value.file, "offset" → value.offset))
-    }
-    override def read(value : BSONObject) : ExtentInfo = {
-      val obj = value.getAsMap[Int, BSONInteger]("loc:")
+  implicit object Codec extends Codec[ExtentInfo] {
+    override def read(itr : ByteIterator) : ExtentInfo = {
+      val value = BSONDocument(itr)
+      val obj = value.asMap[Int]("loc:")
       ExtentInfo(
         value.getOrElse("len", 0).asInstanceOf[Int],
         obj.getOrElse("file", 0),
         obj.getOrElse("offset", 0)
       )
     }
-
+    override def write(value : ExtentInfo, bldr : BSONBuilder) : BSONBuilder = {
+      bldr.integer("len", value.len)
+      bldr.anyObj("loc:", Seq("file" → value.file, "offset" → value.offset))
+      bldr
+    }
   }
 }

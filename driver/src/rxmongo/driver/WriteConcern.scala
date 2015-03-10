@@ -49,7 +49,7 @@ case class WriteConcern(
   kind : WriteConcernKind,
   timeout : FiniteDuration,
   journal : Boolean) extends BSONProvider {
-  def toByteString = { WriteConcern.Codec.write(this) }
+  def wrapAndTerminate = { WriteConcern.Codec.write(this) }
   override def toBSONObject = { BSONObject(WriteConcern.Codec.write(this)) }
 }
 
@@ -74,10 +74,9 @@ object WriteConcern {
   }
 
   implicit object Codec extends Codec[WriteConcern] {
-    override val code : TypeCode = ObjectCode
-    override val sizeHint = 4 + 3 + 4 + 10 + 1 + 3
-
-    def write(value : WriteConcern, bldr : ByteStringBuilder) : ByteStringBuilder = {
+    val size : Int = +4 + 3 + 4 + 10 + 1 + 3
+    def write(value : WriteConcern, bldr : BSONBuilder) : BSONBuilder = {
+      bldr.sizeHint(bldr.length + size)
       value.kind match {
         case NoAcknowledgmentWC ⇒ bldr.integer("w", -1)
         case ErrorsOnlyWC ⇒ bldr.integer("w", 0)

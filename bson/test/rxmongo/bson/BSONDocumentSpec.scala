@@ -420,6 +420,8 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       obj1 must beEqualTo(obj2)
     }
 
+      def makeDocument : BSONDocument = { BSONDocument(makeAnObject().wrapAndTerminate) }
+
     "support equality of complex" in {
       val obj1 : BSONDocument = makeDocument
       val obj2 : BSONDocument = makeDocument
@@ -427,7 +429,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
     }
 
     "interpret documents from ByteString quickly" in {
-      val bs : ByteString = makeAnObject().toByteString
+      val bs : ByteString = makeAnObject().wrapAndTerminate
       val repetitions = 100000
       val limit = 80000.0 * repetitions
       val profiler = timedTest(limit, "ByteString Interpretation", { profiler : Profiler ⇒
@@ -454,7 +456,4 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       construction / repetitions must beLessThan(50000.0)
     }
   }
-
-  def makeDocument : BSONDocument = { BSONDocument(makeAnObject().toByteString) }
-
 }

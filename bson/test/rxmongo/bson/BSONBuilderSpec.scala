@@ -28,7 +28,7 @@ import akka.util.{ ByteStringBuilder, ByteString }
 import org.specs2.mutable.Specification
 
 /** Test Suite For Builder object  */
-class BuilderSpec extends Specification {
+class BSONBuilderSpec extends Specification {
 
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
 
@@ -56,7 +56,7 @@ class BuilderSpec extends Specification {
     field(bldr, code, fieldName)
   }
 
-  "Builder" should {
+  "BSONBuilder" should {
     "build double correctly" in {
       val data = 42.0D
       val expected : ByteString = {
@@ -67,7 +67,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.double("double", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build string correctly" in {
@@ -83,7 +83,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.string("string", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build object correctly" in {
@@ -101,7 +101,8 @@ class BuilderSpec extends Specification {
       val obj = BSONObject(Map("string" -> BSONString("fourty-two"), "double" -> BSONDouble(42.0)))
       val builder2 = BSONBuilder()
       builder2.obj("obj", obj)
-      builder2.toByteString must beEqualTo(expected)
+      val actual = builder2.wrapAndTerminate
+      actual must beEqualTo(expected)
     }
 
     "build array correctly" in {
@@ -129,7 +130,8 @@ class BuilderSpec extends Specification {
       val dbl = BSONDouble(42.0)
       val builder = BSONBuilder()
       builder.array("array", str, dbl)
-      builder.toByteString must beEqualTo(expected)
+      val actual = builder.wrapAndTerminate
+      actual must beEqualTo(expected)
     }
 
     "build binary correctly" in {
@@ -145,7 +147,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.binary("binary", data.getBytes(utf8), BinarySubtype.UserDefinedBinary)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
 
     }
 
@@ -157,7 +159,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.undefined("undefined")
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build objectID correctly" in {
@@ -170,7 +172,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.objectID("objectid", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build boolean correctly" in {
@@ -185,7 +187,7 @@ class BuilderSpec extends Specification {
       val builder = BSONBuilder()
       builder.boolean("true", value = true)
       builder.boolean("false", value = false)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build utcDate correctly" in {
@@ -198,7 +200,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.date("utc", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build nil correctly" in {
@@ -209,7 +211,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.nil("nil")
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build regex correctly" in {
@@ -222,7 +224,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.regex("regex", "pattern", "ilmsux")
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build dbPointer correctly" in {
@@ -236,7 +238,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.dbPointer("dbpointer", "referent", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build jsCode correctly" in {
@@ -249,7 +251,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.jsCode("jscode", code)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build symbol correctly" in {
@@ -262,7 +264,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.symbol("symbol", symbol)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build scopedJsCode correctly" in {
@@ -285,7 +287,7 @@ class BuilderSpec extends Specification {
       val obj = BSONObject(Map("string" -> "fourty-two", "double" -> 42.0))
       val builder2 = BSONBuilder()
       builder2.scopedJsCode("scopedJsCode", code, obj)
-      builder2.toByteString must beEqualTo(expected)
+      builder2.wrapAndTerminate must beEqualTo(expected)
 
     }
 
@@ -299,7 +301,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.integer("integer", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build timestamp correctly" in {
@@ -312,7 +314,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.timestamp("timestamp", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build long correctly" in {
@@ -325,7 +327,7 @@ class BuilderSpec extends Specification {
       }
       val builder = BSONBuilder()
       builder.long("long", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
   }
 }

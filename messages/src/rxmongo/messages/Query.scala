@@ -46,7 +46,7 @@ case class Query() extends BSONBuilder {
     * @return
     */
   def hint(index : String) : Query = {
-    obj("$hint", Map(index → 1))
+    obj("$hint", index, 1)
     this
   }
 
@@ -76,7 +76,7 @@ case class Query() extends BSONBuilder {
     * @return
     */
   def max(fields : (String, Any)*) : Query = {
-    obj("$max", fields.head, fields.tail : _*)
+    anyObj("$max", fields.head, fields.tail : _*)
     this
   }
 
@@ -86,7 +86,7 @@ case class Query() extends BSONBuilder {
     * @return
     */
   def min(fields : (String, Any)*) : Query = {
-    obj("$min", fields.head, fields.tail : _*)
+    anyObj("$min", fields.head, fields.tail : _*)
     this
   }
 
@@ -97,7 +97,7 @@ case class Query() extends BSONBuilder {
     * @return
     */
   def orderBy(field : String, ascending : Boolean = true) : Query = {
-    obj("$orderby", Map(field → (if (ascending) 1 else -1)))
+    obj("$orderby", field, if (ascending) 1 else -1)
     this
   }
 

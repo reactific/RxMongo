@@ -75,8 +75,7 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
 
   val pendingRequests = mutable.Queue.empty[RequestMessage]
 
-  @inline def sendMessage(requestMsg : RequestMessage) : Unit = {
-    val msg_to_send = requestMsg.finish
+  @inline def sendMessage(requestMsg : RequestMessage, msg_to_send : ByteString) : Unit = {
     val msg = Write(msg_to_send, Ack)
     connection ! msg
     ackPending = true
@@ -84,12 +83,12 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
     log.debug("Sent Request: {} ({} bytes, queuelen={})", requestMsg, msg_to_send.length, pendingRequests.length)
   }
 
-  @inline def handleRequest(requestMsg : RequestMessage) : Unit = {
+  @inline def handleRequest(requestMsg : RequestMessage, msg_to_send : ByteString) : Unit = {
     if (ackPending || responsePending) {
       pendingRequests += requestMsg
       log.debug("Qued Request: {} (queuelen={})", requestMsg, pendingRequests.length)
     } else {
-      sendMessage(requestMsg)
+      sendMessage(requestMsg, msg_to_send)
     }
   }
 
@@ -98,7 +97,8 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
     connection ! ResumeReading
     responsePending = false
     if (!ackPending && pendingRequests.nonEmpty) {
-      sendMessage(pendingRequests.dequeue())
+      val msg = pendingRequests.dequeue()
+      sendMessage(msg, msg.finish)
     }
   }
 
@@ -149,7 +149,8 @@ class AkkaIOChannel(remote : InetSocketAddress, options : ConnectionOptions, lis
       ackPending = false
       log.debug("Ack with queuelen={}", pendingRequests.length)
       if (!responsePending && pendingRequests.nonEmpty) {
-        sendMessage(pendingRequests.dequeue())
+        val msg = pendingRequests.dequeue()
+        sendMessage(msg, msg.finish)
       }
 
     case Received(data : ByteString) ⇒ // Receive a reply from Mongo

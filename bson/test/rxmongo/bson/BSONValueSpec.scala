@@ -24,7 +24,7 @@ package rxmongo.bson
 
 import java.util.regex.Pattern
 
-import akka.util.{ ByteString }
+import akka.util.{ ByteStringBuilder, ByteIterator, ByteString }
 import org.specs2.mutable.Specification
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
@@ -394,12 +394,38 @@ class BSONValueSpec extends Specification with ByteStringUtils {
       obj.getAsDouble("str") must throwA[IllegalArgumentException]
     }
 
+    "construct from a Map" in {
+      val embedded : ByteString = {
+        val builder = preamble(4 + 3 + 5, 16, "a")
+        builder.putInt(1)
+        builder.putByte(0)
+        builder.result()
+      }
+      val expected : ByteString = {
+        val builder = preamble(embedded.length + 6 + 5, 3, "$inc")
+        builder ++= embedded
+        builder.putByte(0)
+        builder.result()
+      }
+
+      val obj = BSONObject("$inc" → BSONObject("a" → 1))
+      val actual = obj.toByteString
+      actual must beEqualTo(expected)
+    }
+
     "find a user implemented Codec" in {
       case class UserDefined(val1 : String, val2 : Double)
-      implicit object UserDefinedCodec extends BSONCodec[UserDefined, BSONObject] {
-        val code = ObjectCode
-        def read(value : BSONObject) : UserDefined = { UserDefined(value.getAsString("val1"), value.getAsDouble("val2")) }
-        def write(value : UserDefined) : BSONObject = { BSONObject("val1" -> value.val1, "val2" -> value.val2) }
+      implicit object UserDefinedCodec extends Codec[UserDefined] {
+        override val code = ObjectCode
+        def read(itr : ByteIterator) : UserDefined = {
+          val doc = BSONDocument(itr)
+          UserDefined(doc.asString("val1"), doc.asDouble("val2"))
+        }
+        def write(value : UserDefined, bldr : BSONBuilder) : BSONBuilder = {
+          bldr.string("val1", value.val1)
+          bldr.double("val2", value.val2)
+          bldr
+        }
       }
       val obj = UserDefined("val1", 42.0)
       val obj2 = BSONObject("obj", obj)

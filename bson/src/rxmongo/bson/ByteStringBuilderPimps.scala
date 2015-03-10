@@ -22,19 +22,14 @@
 
 package rxmongo.bson
 
-import java.nio.ByteOrder
 import java.nio.charset.StandardCharsets
 import java.util.Date
 import java.util.regex.Pattern
 
-import akka.util.{ ByteIterator, ByteString, ByteStringBuilder }
+import akka.util.{ ByteStringBuilder, ByteIterator, ByteString }
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
-trait ByteStringBuilderPimps {
-
-  implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
-
-  val bldr : ByteStringBuilder
+trait ByteStringBuilderPimps extends ByteStringBuilderWrapper {
 
   @inline private[rxmongo] def putCStr(s : String) : ByteStringBuilder = {
     val bytes = s.getBytes(StandardCharsets.UTF_8)
@@ -76,7 +71,7 @@ trait ByteStringBuilderPimps {
   }
 
   @inline private[rxmongo] def putDoc(value : BSONBuilder) : ByteStringBuilder = {
-    bldr ++= value.result.buffer
+    bldr ++= value.wrapAndTerminate
     bldr
   }
 
@@ -94,7 +89,7 @@ trait ByteStringBuilderPimps {
     for ((key : String, t : T @unchecked) ← fields) {
       docBuilder.field(key, t)
     }
-    bldr ++= docBuilder.toByteString
+    bldr ++= docBuilder.wrapAndTerminate
   }
 
   private[rxmongo] def putAnyObject(fields : Iterable[(String, Any)]) : ByteStringBuilder = {
@@ -102,7 +97,7 @@ trait ByteStringBuilderPimps {
     for ((key : String, any : Any) ← fields) {
       docBuilder.anyField(key, any)
     }
-    bldr ++= docBuilder.toByteString
+    bldr ++= docBuilder.wrapAndTerminate
   }
 
   @inline private[rxmongo] def putArray(value : BSONArray) : ByteStringBuilder = putDoc(value.doc)
@@ -112,13 +107,16 @@ trait ByteStringBuilderPimps {
   private[rxmongo] def putArray[T](elems : Iterable[T])(implicit codec : Codec[T]) : ByteStringBuilder = {
     val arrayBuilder = ByteString.newBuilder
     elems.zipWithIndex.foreach { (x : (T, Int)) ⇒ arrayBuilder.field(x._2.toString, x._1) }
-    bldr ++= arrayBuilder.toByteString
+    bldr ++= arrayBuilder.wrapAndTerminate
   }
 
   private[rxmongo] def putAnyArray(elems : Iterable[Any]) : ByteStringBuilder = {
     val arrayBuilder = ByteString.newBuilder
-    elems.zipWithIndex.foreach { (x : (Any, Int)) ⇒ arrayBuilder.anyField(x._2.toString, x._1) }
-    bldr ++= arrayBuilder.toByteString
+    elems.zipWithIndex.foreach {
+      case (value, index) ⇒
+        arrayBuilder.anyField(index.toString, value)
+    }
+    bldr ++= arrayBuilder.wrapAndTerminate
   }
 
   private[rxmongo] def putBinary(subtype : BinarySubtype, blob : Iterator[Byte]) : ByteStringBuilder = {
@@ -209,6 +207,7 @@ trait ByteStringBuilderPimps {
 
   private[rxmongo] def put[T](value : T)(implicit codec : Codec[T]) : ByteStringBuilder = {
     codec.write(value, bldr)
+    bldr
   }
 
   @inline def double(key : String, value : Double) : ByteStringBuilder = {
@@ -231,19 +230,18 @@ trait ByteStringBuilderPimps {
     putDoc(value)
   }
 
-  @inline def anyObj(key : String, value : Iterable[(String, Any)]) : ByteStringBuilder = {
-    putPrefix(ObjectCode, key)
-    putAnyObject(value)
+  @inline def obj[T](key : String, fieldKey : String, fieldValue : T)(implicit codec : Codec[T]) : ByteStringBuilder = {
+    obj(key, BSONBuilder().field(fieldKey, fieldValue))
   }
 
-  @inline def obj[T](key : String, values : Iterable[(String, T)])(implicit codec : Codec[T]) : ByteStringBuilder = {
+  @inline def obj[T](key : String, value : T)(implicit codec : Codec[T]) : ByteStringBuilder = {
     putPrefix(ObjectCode, key)
-    putObject(values)
+    bldr ++= codec.write(value)
   }
 
-  @inline def obj[T](key : String, value : T)(implicit encoder : Encoder[T]) = {
+  @inline def obj[T](key : String, fields : Map[String, T])(implicit codec : Codec[T]) : ByteStringBuilder = {
     putPrefix(ObjectCode, key)
-    bldr ++= encoder.write(value)
+    putObject[T](fields)
   }
 
   @inline def obj(key : String, value : ByteString) : ByteStringBuilder = {
@@ -251,30 +249,43 @@ trait ByteStringBuilderPimps {
     bldr ++= value
   }
 
+  @inline def anyObj(key : String, value : Iterable[(String, Any)]) : ByteStringBuilder = {
+    putPrefix(ObjectCode, key)
+    putAnyObject(value)
+  }
+
+  @inline def anyObj(key : String, field1 : (String, Any), fields : (String, Any)*) : ByteStringBuilder = {
+    anyObj(key, field1 +: fields.toSeq)
+  }
+
+  @inline def anyObj(key : String, fields : Map[String, Any]) : ByteStringBuilder = {
+    bldr.anyObj(key, fields.toSeq)
+  }
+
   @inline def array(key : String, value : BSONArray) : ByteStringBuilder = {
     putPrefix(ArrayCode, key)
     putArray(value)
   }
 
-  @inline def array[T](key : String, values : Iterable[T])(implicit codec : Codec[T]) = {
+  @inline def array[T](key : String, values : Iterable[T])(implicit codec : Codec[T]) : ByteStringBuilder = {
     putPrefix(ArrayCode, key)
     val arrayBuilder = ByteString.newBuilder
     values.zipWithIndex.foreach {
       case (v, i) ⇒
-        arrayBuilder.putPrefix(ObjectCode, i.toString)
+        arrayBuilder.putPrefix(codec.code, i.toString)
         codec.write(v, arrayBuilder)
     }
-    bldr ++= arrayBuilder.toByteString
+    bldr ++= arrayBuilder.wrapAndTerminate
   }
 
-  @inline def anyArray(key : String, values : Iterable[Any]) = {
+  @inline def anyArray(key : String, values : Iterable[Any]) : ByteStringBuilder = {
     putPrefix(ArrayCode, key)
     putAnyArray(values)
   }
 
   @inline def array(key : String, v1 : Any, values : Any*) : ByteStringBuilder = {
     putPrefix(ArrayCode, key)
-    putAnyArray(Seq(v1) ++ values)
+    putAnyArray(v1 +: values)
   }
 
   @inline def binary(key : String, blob : Array[Byte], subtype : BinarySubtype) : ByteStringBuilder = {
@@ -327,7 +338,7 @@ trait ByteStringBuilderPimps {
 
   @inline def regex(key : String, regex : Pattern) : ByteStringBuilder = {
     putPrefix(RegexCode, key)
-    bldr.putRegex(regex)
+    putRegex(regex)
   }
 
   @inline def dbPointer(key : String, referent : String, id : Array[Byte]) : ByteStringBuilder = {
@@ -347,7 +358,7 @@ trait ByteStringBuilderPimps {
 
   @inline def scopedJsCode(key : String, code : String, scope : BSONObject) : ByteStringBuilder = {
     putPrefix(ScopedJSCode, key)
-    bldr.putScopedJavaScript(code, scope)
+    putScopedJavaScript(code, scope)
   }
 
   @inline def integer(key : String, value : Int) : ByteStringBuilder = {
@@ -365,44 +376,65 @@ trait ByteStringBuilderPimps {
     bldr.putLong(value)
   }
 
-  def toByteString : ByteString = {
-    val content = bldr.result()
-    val bsb = ByteString.newBuilder
-    bsb.putInt(content.length + 5) // 4 for length, 1 for terminating 0 byte
-    bsb ++= content
-    bsb.putByte(0)
-    bsb.result()
-  }
-
-  def toBSONObject : BSONObject = BSONObject(toByteString)
-
   def field[T](key : String, value : T)(implicit codec : Codec[T]) : ByteStringBuilder = {
     putPrefix(codec.code, key)
     codec.write(value, bldr)
+    bldr
+  }
+
+  def addFieldsOf[T](value : T)(implicit codec : Codec[T]) : ByteStringBuilder = {
+    val doc = BSONDocument(codec.write(value))
+    for ((key, (code, itr)) ← doc) {
+      putPrefix(code, key)
+      bldr ++= itr
+    }
+    bldr
   }
 
   def anyField(key : String, anyVal : Any) : ByteStringBuilder = {
     anyVal match {
-      case BSONNull ⇒ putPrefix(NullCode, key)
-      case BSONUndefined ⇒ putPrefix(UndefinedCode, key)
+      case null ⇒
+        putPrefix(NullCode, key)
+      case BSONNull ⇒
+        putPrefix(NullCode, key)
+      case BSONUndefined ⇒
+        putPrefix(UndefinedCode, key)
       case v : BSONValue ⇒
-        putPrefix(v.code, key); bldr ++= v.buffer
-      case i : Int ⇒ integer(key, i)
-      case l : Long ⇒ long(key, l)
-      case d : Double ⇒ double(key, d)
-      case f : Float ⇒ double(key, f)
-      case b : Boolean ⇒ boolean(key, b)
-      case s : Short ⇒ integer(key, s)
-      case s : String ⇒ string(key, s)
-      case d : Date ⇒ date(key, d.getTime)
-      case b : ByteString ⇒ binary(key, b, UserDefinedBinary)
-      case p : Pattern ⇒ regex(key, p)
-      case (bs : BinarySubtype, ar : Array[Byte]) ⇒ binary(key, ar, bs)
-      case (r : String, ar : Array[Byte]) ⇒ dbPointer(key, r, ar)
-      case (c : String, s : BSONObject) ⇒ scopedJsCode(key, c, s)
-      case m : Map[String, Any] @unchecked ⇒ anyObj(key, m)
+        putPrefix(v.code, key)
+        bldr ++= v.toByteString
+      case i : Int ⇒
+        integer(key, i)
+      case l : Long ⇒
+        long(key, l)
+      case d : Double ⇒
+        double(key, d)
+      case f : Float ⇒
+        double(key, f)
+      case b : Boolean ⇒
+        boolean(key, b)
+      case s : Short ⇒
+        integer(key, s)
+      case s : String ⇒
+        string(key, s)
+      case d : Date ⇒
+        date(key, d.getTime)
+      case b : ByteString ⇒
+        binary(key, b, UserDefinedBinary)
+      case p : Pattern ⇒
+        regex(key, p)
+      case (bs : BinarySubtype, ar : Array[Byte]) ⇒
+        binary(key, ar, bs)
+      case (r : String, ar : Array[Byte]) ⇒
+        dbPointer(key, r, ar)
+      case (c : String, s : BSONObject) ⇒
+        scopedJsCode(key, c, s)
+      case m : Map[String, Any] @unchecked ⇒
+        anyObj(key, m)
+      case a : Array[Byte] ⇒
+        binary(key, a, UserDefinedBinary)
       case i : Iterable[Any] ⇒
-        putPrefix(ArrayCode, key); putAnyArray(i.toSeq)
+        putPrefix(ArrayCode, key)
+        putAnyArray(i.toSeq)
       case (b : Byte, bi : ByteIterator) ⇒
         putPrefix(b, key)
         bldr ++= bi.clone()
@@ -414,13 +446,18 @@ trait ByteStringBuilderPimps {
 
   def put(value : BSONConstructor) : ByteStringBuilder = {
     value.addTo(bldr)
+    bldr
   }
 
-  def addFieldsOf[T](value : T)(implicit codec : Codec[T]) = {
-    val doc = BSONDocument(codec.write(value))
-    for ((key, (code, itr)) ← doc) {
-      putPrefix(code, key)
-      bldr ++= itr
-    }
+  def arrayObj[T](key : String, arrayKey : String, values : Iterable[T])(implicit codec : Codec[T]) : ByteStringBuilder = {
+    bldr.putPrefix(ObjectCode, key)
+    val b = BSONBuilder().array(arrayKey, values)
+    bldr ++= b.wrapAndTerminate
   }
+
+  def field(key : String, value : BSONValue) : ByteStringBuilder = {
+    putPrefix(value.code, key)
+    bldr ++= value.toByteString
+  }
+
 }

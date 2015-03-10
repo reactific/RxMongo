@@ -29,8 +29,8 @@ import rxmongo.bson.{ BSONBuilder, BSONObject, BSONProvider }
 sealed trait StorageEngineConfig extends BSONProvider {
   def name : String
   def doc : BSONObject
-  def toByteString : ByteString = {
-    BSONBuilder().obj(name, doc).toByteString
+  def wrapAndTerminate : ByteString = {
+    BSONBuilder().obj(name, doc).wrapAndTerminate
   }
 }
 
@@ -58,16 +58,16 @@ case class MMapV1Config(doc : BSONObject) extends { val name : String = "mmapv1"
   * whether the index references a document. 2d, geoHaystack, and text indexes behave similarly to
   * the 2dsphere indexes.
   * @param background Builds the index in the background so that building an index does not block other database
-  *   activities. Specify true to build in the background. The default value is false.
+  *  activities. Specify true to build in the background. The default value is false.
   * @param name The name of the index. If unspecified, MongoDB generates an index name by concatenating the names of
   * the indexed fields and the sort order. Whether user specified or MongoDB generated, index names
   * including their full namespace (i.e. database.collection) cannot be longer than the Index Name Limit.
   * @param expireAfterSeconds Specifies a value, in seconds, as a TTL to control how long MongoDB retains documents in
-  *           this collection. This applies only to TTL indexes.
+  *          this collection. This applies only to TTL indexes.
   * @param storageEngine Allows users to specify configuration to the storage engine on a per-index basis when
-  *      creating an index. Storage engine configuration specified when creating indexes are validated
-  *      and logged to the oplog during replication to support replica sets with members that use
-  *      different storage engines.
+  *     creating an index. Storage engine configuration specified when creating indexes are validated
+  *     and logged to the oplog during replication to support replica sets with members that use
+  *     different storage engines.
   * @param weights For Text indices, specifies the weights to assign fields in the document
   * @param default_language For Text indices, specifies the default language for the text
   * @param language_override For Text indices, specifies the field name that provides the language of the text
@@ -78,8 +78,8 @@ case class MMapV1Config(doc : BSONObject) extends { val name : String = "mmapv1"
   * @param max For 2d indices, the upper inclusive boundary for the longitude and latitude values. The default
   * value is 180.0.
   * @param bucketSize For geoHaystack indexes, specify the number of units within which to group the location
-  *   values; i.e. group in the same bucket those location values that are within the specified
-  *   number of units to each other. The value must be greater than 0.
+  *  values; i.e. group in the same bucket those location values that are within the specified
+  *  number of units to each other. The value must be greater than 0.
   */
 case class IndexOptions(
   unique : Option[Boolean] = None,
@@ -95,7 +95,7 @@ case class IndexOptions(
   min : Option[Double] = None,
   max : Option[Double] = None,
   bucketSize : Option[Double] = None) extends BSONProvider {
-  def toByteString : ByteString = {
+  def wrapAndTerminate : ByteString = {
     val b = BSONBuilder()
     unique.map { unique ⇒ b.boolean("unique", unique) }
     sparse.map { sparse ⇒ b.boolean("sparse", sparse) }
@@ -114,7 +114,7 @@ case class IndexOptions(
     min.map { min ⇒ b.double("min", min) }
     max.map { max ⇒ b.double("max", max) }
     bucketSize.map { bucketSize ⇒ b.double("bucketSize", bucketSize) }
-    b.toByteString
+    b.wrapAndTerminate
   }
 }
 
@@ -127,7 +127,7 @@ sealed trait IndexTrait extends BSONProvider {
     BSONBuilder()
   }
   def name : String
-  final def toByteString : ByteString = construct.toByteString
+  final def wrapAndTerminate : ByteString = construct.wrapAndTerminate
 }
 
 /** A Simple Single-Field Index

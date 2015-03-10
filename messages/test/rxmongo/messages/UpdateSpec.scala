@@ -36,23 +36,23 @@ class UpdateSpec extends Specification {
     }
 
     "construct from Query" in {
-      Update(Query("a" $ne "b"), $set("foo" → "bar"), upsert = true, multi = false, isolated = false) must beEqualTo(
-        Update(BSONObject("$query" → BSONObject("a" → BSONObject("$ne" → "b"))),
-          BSONObject("$set" → BSONObject("foo" → "bar")), true, false, false)
-      )
+      val actual = Update(Query("a" $ne "b"), $set("foo" → "bar"), upsert = true, multi = false, isolated = false)
+      val expected = Update(BSONObject("$query" → BSONObject("a" → BSONObject("$ne" → "b"))),
+        BSONObject("$set" → BSONObject("foo" → "bar")), upsert = true, multi = false, isolated = false)
+      actual must beEqualTo(expected)
     }
 
     "produce correct BSONObject" in {
       val bs = Update.Codec.write(Update("a" $ne "b", $set("foo" → "bar"), upsert = true, multi = false, isolated = true))
       val obj = BSONObject(bs)
       obj must beEqualTo(
-          BSONObject(
-            "q" → BSONObject("a" → BSONObject("$ne" → "b"), "$isolated" → 1),
-            "u" → BSONObject("$set" → BSONObject("foo" → "bar")),
-            "upsert" → true,
-            "multi" → false
-          )
+        BSONObject(
+          "q" → BSONObject("a" → BSONObject("$ne" → "b"), "$isolated" → 1),
+          "u" → BSONObject("$set" → BSONObject("foo" → "bar")),
+          "upsert" → true,
+          "multi" → false
         )
+      )
     }
   }
 

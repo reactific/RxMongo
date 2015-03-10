@@ -58,16 +58,18 @@ trait Encoder[T] {
     */
   def typeName : String = code.toString
 
-  /** A hint about the number of bytes that might be placed into the ByteString (default=512) */
-  val sizeHint : Int = 512
-
   /** Add value T to a ByteStringBuilder
     *
     * @param value The value, T, to be written to the builder
     * @param builder The ByteStringBuilder to which the value of type T should be written
     * @return The ByteStringBuilder
     */
-  def write(value : T, builder : ByteStringBuilder) : ByteStringBuilder
+  def write(value : T, builder : BSONBuilder) : BSONBuilder
+
+  def write(value : T, builder : ByteStringBuilder) : ByteString = {
+    val bsb = BSONBuilder(builder)
+    write(value, bsb).wrapAndTerminate
+  }
 
   /** Convert T into ByteString
     * This is a convenience to avoid having to create a ByteStringBuilder and pass it to the other write function.
@@ -77,9 +79,8 @@ trait Encoder[T] {
     * @return A ByteString that corresponds to the value T written as BSON bytes.
     */
   def write(value : T) : ByteString = {
-    val bsb = ByteString.newBuilder
-    bsb.sizeHint(sizeHint)
-    write(value, bsb).toByteString
+    val bsb = BSONBuilder()
+    write(value, bsb).wrapAndTerminate
   }
 
   /** Convenience method to get an Option[BSONValue]
@@ -115,7 +116,12 @@ trait Encoder[T] {
   *
   * @tparam T The type from which this Encoder encodes
   */
-trait Decoder[T] {
+trait Decoder[T] extends ((ByteIterator) ⇒ T) {
+
+  def read(value : BSONValue) : T = read(value.toByteString.iterator)
+
+  def apply(itr : ByteIterator) : T = read(itr)
+
   /** Convert ByteIterator Into T
     *
     * @param itr The ByteIterator from which the value for T is read
@@ -151,111 +157,127 @@ trait Decoder[T] {
   */
 trait Codec[T] extends Decoder[T] with Encoder[T]
 
+trait DocumentCodec[T] extends Codec[T] {
+
+  def read(itr : ByteIterator) : T = {
+    read(BSONDocument(itr))
+  }
+
+  def read(doc : BSONDocument) : T
+}
+
 object Codec {
 
   implicit object DoubleCodec extends Codec[Double] {
     override val code = DoubleCode
     def read(itr : ByteIterator) : Double = itr.getDouble
-    def write(value : Double, bldr : ByteStringBuilder) : ByteStringBuilder = bldr.putDouble(value)
+    def write(value : Double, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putDouble(value); bldr }
   }
 
   implicit object StringCodec extends Codec[String] {
     override val code = StringCode
     def read(itr : ByteIterator) : String = itr.getStr
-    def write(value : String, bldr : ByteStringBuilder) : ByteStringBuilder = bldr.putStr(value)
+    def write(value : String, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putStr(value); bldr }
   }
 
   implicit object BSONObjectCodec extends Codec[BSONObject] {
     def read(itr : ByteIterator) : BSONObject = { itr.getObject }
-    def write(value : BSONObject, builder : ByteStringBuilder) : ByteStringBuilder = { builder.putObject(value); builder }
+    def write(value : BSONObject, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putObject(value); bldr }
   }
 
   implicit object BSONArrayCodec extends Codec[BSONArray] {
     override val code = ArrayCode
     def read(itr : ByteIterator) : BSONArray = { itr.getArray }
-    def write(value : BSONArray, builder : ByteStringBuilder) : ByteStringBuilder = { builder.putArray(value); builder }
+    def write(value : BSONArray, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putArray(value); bldr }
   }
 
   implicit object BinaryCodec extends Codec[(BinarySubtype, Array[Byte])] {
     override val code = BinaryCode
     def read(itr : ByteIterator) : (BinarySubtype, Array[Byte]) = itr.getBinary
-    def write(value : (BinarySubtype, Array[Byte]), bldr : ByteStringBuilder) : ByteStringBuilder = {
-      bldr.putBinary(value._1, value._2)
+    def write(value : (BinarySubtype, Array[Byte]), bldr : BSONBuilder) : BSONBuilder = {
+      bldr.bldr.putBinary(value._1, value._2)
+      bldr
     }
   }
 
   implicit object ObjectIDCodec extends Codec[Array[Byte]] {
     override val code = ObjectIDCode
     def read(itr : ByteIterator) : Array[Byte] = itr.getObjectID
-    def write(value : Array[Byte], bldr : ByteStringBuilder) : ByteStringBuilder = bldr.putObjectID(value)
+    def write(value : Array[Byte], bldr : BSONBuilder) : BSONBuilder = {
+      bldr.bldr.putObjectID(value)
+      bldr
+    }
   }
 
   implicit object BooleanCodec extends Codec[Boolean] {
     override val code = BooleanCode
     def read(itr : ByteIterator) : Boolean = itr.getBoolean
-    def write(value : Boolean, bldr : ByteStringBuilder) : ByteStringBuilder = bldr.putBoolean(value)
+    def write(value : Boolean, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putBoolean(value); bldr }
   }
 
   implicit object DateCodec extends Codec[Date] {
     override val code = DateCode
     def read(itr : ByteIterator) : Date = new Date(itr.getLong)
-    def write(value : Date, bldr : ByteStringBuilder) : ByteStringBuilder = bldr.putLong(value.getTime)
+    def write(value : Date, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putLong(value.getTime); bldr }
   }
 
   implicit object RegexCodec extends Codec[Pattern] {
     override val code = RegexCode
     def read(itr : ByteIterator) : Pattern = itr.getRegex
-    def write(value : Pattern, bldr : ByteStringBuilder) : ByteStringBuilder = bldr.putRegex(value)
+    def write(value : Pattern, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putRegex(value); bldr }
   }
 
   implicit object DBPointerCodec extends Codec[(String, Array[Byte])] {
     override val code = DBPointerCode
     def read(itr : ByteIterator) : (String, Array[Byte]) = itr.getDBPointer
-    def write(value : (String, Array[Byte]), bldr : ByteStringBuilder) : ByteStringBuilder = {
-      bldr.putDBPointer(value._1, value._2)
+    def write(value : (String, Array[Byte]), bldr : BSONBuilder) : BSONBuilder = {
+      bldr.bldr.putDBPointer(value._1, value._2)
+      bldr
     }
   }
 
-  implicit object JavaScriptCodec extends Codec[String] {
+  object JavaScriptCodec extends Codec[String] {
     override val code = JavaScriptCode
     def read(itr : ByteIterator) : String = itr.getStr
-    def write(value : String, bldr : ByteStringBuilder) : ByteStringBuilder = bldr.putStr(value)
+    def write(value : String, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putStr(value); bldr }
   }
 
-  implicit object SymbolCodec extends Codec[String] {
+  object SymbolCodec extends Codec[String] {
     override val code = SymbolCode
     def read(itr : ByteIterator) : String = itr.getStr
-    def write(value : String, bldr : ByteStringBuilder) : ByteStringBuilder = bldr.putStr(value)
+    def write(value : String, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putStr(value); bldr }
   }
 
   implicit object ScopedJavaScriptCodec extends Codec[(String, BSONObject)] {
     def read(itr : ByteIterator) : (String, BSONObject) = itr.getScopedJavaScript
-    def write(value : (String, BSONObject), builder : ByteStringBuilder) : ByteStringBuilder = {
-      builder.putScopedJavaScript(value._1, value._2)
+    def write(value : (String, BSONObject), bldr : BSONBuilder) : BSONBuilder = {
+      bldr.bldr.putScopedJavaScript(value._1, value._2)
+      bldr
     }
   }
 
   implicit object IntCodec extends Codec[Int] {
     override val code = IntegerCode
     def read(itr : ByteIterator) : Int = itr.getInt
-    def write(value : Int, bldr : ByteStringBuilder) : ByteStringBuilder = bldr.putInt(value)
+    def write(value : Int, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putInt(value); bldr }
   }
 
-  implicit object TimestampCodec extends Codec[Long] {
+  object TimestampCodec extends Codec[Long] {
     override val code = TimestampCode
     def read(itr : ByteIterator) : Long = itr.getLong
-    def write(value : Long, bldr : ByteStringBuilder) : ByteStringBuilder = bldr.putLong(value)
+    def write(value : Long, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putLong(value); bldr }
   }
 
   implicit object LongCodec extends Codec[Long] {
     override val code = LongCode
     def read(itr : ByteIterator) : Long = itr.getLong
-    def write(value : Long, bldr : ByteStringBuilder) : ByteStringBuilder = bldr.putLong(value)
+    def write(value : Long, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr.putLong(value); bldr }
   }
 
   implicit object ByteStringCodec extends Codec[ByteString] {
     override val code : TypeCode = ObjectCode
     def read(itr : ByteIterator) : ByteString = itr.toByteString
-    def write(value : ByteString, bldr : ByteStringBuilder) : ByteStringBuilder = bldr ++= value
+    def write(value : ByteString, bldr : BSONBuilder) : BSONBuilder = { bldr.bldr ++= value; bldr }
   }
+
 }

@@ -24,6 +24,7 @@ package rxmongo.driver
 
 import java.util.Date
 
+import akka.util.{ ByteIterator, ByteStringBuilder }
 import rxmongo.bson._
 
 /** Represents The IsMasterCmd Response From Mongo
@@ -75,38 +76,35 @@ case class IsMasterReply(
   electionId : Option[Long] = None)
 
 object IsMasterReply {
-  implicit object IsMasterReplyCodec extends BSONCodec[IsMasterReply, BSONObject] {
-    override def code : TypeCode = ObjectCode
-
+  implicit object IsMasterReplyCodec extends Codec[IsMasterReply] {
     /** Convert T into BSONValue
       *
       * @param value The value, T, to be written to BSON
       * @return A Try[BSONValue] resulting from writing T to BSON
       */
-    override def write(value : IsMasterReply) : BSONObject = {
-      val b = BSONBuilder()
-      b.double("ok", value.ok)
-      b.boolean("ismaster", value.ismaster)
-      b.integer("maxBsonObjectSize", value.maxBsonObjectSize)
-      b.integer("maxMessageSizeBytes", value.maxMessageSizeBytes)
-      b.integer("maxWriteBatchSize", value.maxWriteBatchSize)
-      b.date("localTime", value.localTime)
-      b.integer("maxWireVersion", value.maxWireVersion)
-      b.integer("minWireVersion", value.minWireVersion)
-      value.secondary.map { v ⇒ b.boolean("secondary", v) }
-      value.primary.map { v ⇒ b.string("primary", v) }
-      value.setName.map { v ⇒ b.string("setName", v) }
-      value.setVersion.map { v ⇒ b.integer("setVersion", v) }
-      value.me.map { v ⇒ b.string("me", v) }
-      value.hosts.map { v ⇒ b.array("hosts", v.toSeq) }
-      value.passives.map { v ⇒ b.array("passives", v.toSeq) }
-      value.arbiters.map { v ⇒ b.array("arbiters", v.toSeq) }
-      value.arbiterOnly.map { v ⇒ b.boolean("arbiterOnly", v) }
-      value.passive.map { v ⇒ b.boolean("passive", v) }
-      value.hidden.map { v ⇒ b.boolean("hidden", v) }
-      value.tags.map { v ⇒ b.obj("tags", v) }
-      value.electionId.map { v ⇒ b.long("electionId", v) }
-      b.result
+    override def write(value : IsMasterReply, bldr : BSONBuilder) : BSONBuilder = {
+      bldr.double("ok", value.ok)
+      bldr.boolean("ismaster", value.ismaster)
+      bldr.integer("maxBsonObjectSize", value.maxBsonObjectSize)
+      bldr.integer("maxMessageSizeBytes", value.maxMessageSizeBytes)
+      bldr.integer("maxWriteBatchSize", value.maxWriteBatchSize)
+      bldr.date("localTime", value.localTime)
+      bldr.integer("maxWireVersion", value.maxWireVersion)
+      bldr.integer("minWireVersion", value.minWireVersion)
+      value.secondary.map { v ⇒ bldr.boolean("secondary", v) }
+      value.primary.map { v ⇒ bldr.string("primary", v) }
+      value.setName.map { v ⇒ bldr.string("setName", v) }
+      value.setVersion.map { v ⇒ bldr.integer("setVersion", v) }
+      value.me.map { v ⇒ bldr.string("me", v) }
+      value.hosts.map { v ⇒ bldr.array("hosts", v.toSeq) }
+      value.passives.map { v ⇒ bldr.array("passives", v.toSeq) }
+      value.arbiters.map { v ⇒ bldr.array("arbiters", v.toSeq) }
+      value.arbiterOnly.map { v ⇒ bldr.boolean("arbiterOnly", v) }
+      value.passive.map { v ⇒ bldr.boolean("passive", v) }
+      value.hidden.map { v ⇒ bldr.boolean("hidden", v) }
+      value.tags.map { v ⇒ bldr.obj("tags", v) }
+      value.electionId.map { v ⇒ bldr.long("electionId", v) }
+      bldr
     }
 
     /** Convert BSONValue Into T
@@ -114,8 +112,8 @@ object IsMasterReply {
       * @param value The BSONValue to be converted
       * @return A Try[T] that results from reading T from BSON
       */
-    override def read(value : BSONObject) : IsMasterReply = {
-      val map = value.toAnyMap
+    override def read(itr : ByteIterator) : IsMasterReply = {
+      val map = BSONDocument(itr).asAnyMap
       IsMasterReply(
         map.getOrElse("ok", 0.0D).asInstanceOf[Double],
         map.getOrElse("ismaster", false).asInstanceOf[Boolean],

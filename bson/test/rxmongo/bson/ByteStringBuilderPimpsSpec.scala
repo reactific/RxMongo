@@ -22,7 +22,7 @@
 
 package rxmongo.bson
 
-import akka.util.{ByteStringBuilder, ByteString}
+import akka.util.{ ByteStringBuilder, ByteString }
 import org.specs2.mutable.Specification
 
 class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
@@ -72,7 +72,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.double("double", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build string correctly" in {
@@ -88,7 +88,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.string("string", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build object correctly #1" in {
@@ -168,7 +168,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       val dbl = BSONDouble(42.0)
       val builder = ByteString.newBuilder
       builder.array("array", data1, data2)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build binary correctly" in {
@@ -184,7 +184,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.binary("binary", data.getBytes(utf8), BinarySubtype.UserDefinedBinary)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
 
     }
 
@@ -196,7 +196,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.undefined("undefined")
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build objectID correctly" in {
@@ -209,7 +209,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.objectID("objectid", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build boolean correctly" in {
@@ -224,7 +224,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       val builder = ByteString.newBuilder
       builder.boolean("true", value = true)
       builder.boolean("false", value = false)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build utcDate correctly" in {
@@ -237,7 +237,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.date("utc", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build nil correctly" in {
@@ -248,7 +248,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.nil("nil")
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build regex correctly" in {
@@ -261,7 +261,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.regex("regex", "pattern", "ilmsux")
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build dbPointer correctly" in {
@@ -275,7 +275,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.dbPointer("dbpointer", "referent", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build jsCode correctly" in {
@@ -288,7 +288,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.jsCode("jscode", code)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build symbol correctly" in {
@@ -301,7 +301,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.symbol("symbol", symbol)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build scopedJsCode correctly" in {
@@ -324,7 +324,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       val obj = BSONObject(Map("string" -> "fourty-two", "double" -> 42.0))
       val builder2 = ByteString.newBuilder
       builder2.scopedJsCode("scopedJsCode", code, obj)
-      builder2.toByteString must beEqualTo(expected)
+      builder2.wrapAndTerminate must beEqualTo(expected)
 
     }
 
@@ -338,7 +338,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.integer("integer", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build timestamp correctly" in {
@@ -351,7 +351,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.timestamp("timestamp", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
 
     "build long correctly" in {
@@ -364,6 +364,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       }
       val builder = ByteString.newBuilder
       builder.long("long", data)
-      builder.toByteString must beEqualTo(expected)
+      builder.wrapAndTerminate must beEqualTo(expected)
     }
-  }}
+  }
+}

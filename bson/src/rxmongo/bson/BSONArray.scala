@@ -38,6 +38,8 @@ case class BSONArray private[bson] ( final val doc : BSONDocument) extends BSONV
     }
   }
 
+  override def toByteString : ByteString = doc.toByteString
+
   private[bson] def addTo(bldr : ByteStringBuilder) : Unit = {
     bldr ++= doc.toByteString
   }
@@ -84,15 +86,14 @@ case class BSONArray private[bson] ( final val doc : BSONDocument) extends BSONV
 
   def asArray : Array[BSONValue] = doc.values.map { case (b, bi) ⇒ BSONValue(b, bi) }.toArray
 
-  def as[T, B <: BSONValue](implicit codec : BSONCodec[T, B]) : Iterator[T] = {
+  def as[T](implicit codec : Codec[T]) : Iterator[T] = {
     iterator.map {
-      case v : BSONValue if v.code == codec.code ⇒ codec.read(v.asInstanceOf[B])
+      case v : BSONValue if v.code == codec.code ⇒ codec.read(v)
       case v : BSONValue ⇒ throw new IllegalArgumentException(
         s"Expected type ${codec.typeName} but got type ${v.typeName}"
       )
     }
   }
-
 }
 
 object BSONArray {
@@ -111,33 +112,33 @@ object BSONArray {
   def apply() : BSONArray = empty
 
   def apply(objs : BSONObject*) : BSONArray = {
-    val arrayBuilder = BSONBuilder()
-    objs.zipWithIndex.foreach {
-      case (v, i) ⇒
-        arrayBuilder.append(i.toString, v)
-    }
-    BSONArray(arrayBuilder.toByteString)
+    val bldr = ByteString.newBuilder
+    bldr.putAnyArray(objs)
+    BSONArray(bldr.result())
   }
 
-  def apply(data : Array[Any]) : BSONArray = {
-    val bldr = BSONBuilder()
-    bldr.array(data)
-    BSONArray(bldr.toByteString)
+  def apply[T](data : Iterable[T])(implicit codec : Codec[T]) : BSONArray = {
+    val bldr = ByteString.newBuilder
+    bldr.putArray(data)
+    BSONArray(bldr.result())
   }
 
-  def apply[T, B <: BSONValue](data : Iterable[T])(implicit codec : BSONCodec[T, B]) : BSONArray = {
-    val bldr = BSONBuilder()
-    bldr.codecArray(data)
-    BSONArray(bldr.buffer.result())
+  def apply[T](data1 : T, data : T*)(implicit codec : Codec[T]) : BSONArray = {
+    val bldr = ByteString.newBuilder
+    val values = data1 +: data
+    bldr.putArray(values)
+    BSONArray(bldr.result())
   }
 
-  def apply[T, B <: BSONValue](data1 : T, data : T*)(implicit codec : BSONCodec[T, B]) : BSONArray = {
-    val bldr = BSONBuilder()
-    val values = Seq(data1) ++ data
-    values.zipWithIndex.foreach {
-      case (v, i) ⇒ bldr.append(i.toString, codec.write(v))
-    }
-    bldr.toByteString
-    BSONArray(bldr.toByteString)
+  def fromAny(data : Array[Any]) : BSONArray = {
+    val bldr = ByteString.newBuilder
+    bldr.putAnyArray(data)
+    BSONArray(bldr.result())
+  }
+
+  def fromAny(data : Iterable[Any]) : BSONArray = {
+    val bldr = ByteString.newBuilder
+    bldr.putAnyArray(data)
+    BSONArray(bldr.result())
   }
 }

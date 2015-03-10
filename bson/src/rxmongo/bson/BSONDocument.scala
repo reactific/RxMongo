@@ -27,13 +27,14 @@ import java.util.Date
 import java.util.regex.Pattern
 
 import akka.util.{ ByteStringBuilder, ByteIterator, ByteString }
+import rxmongo.bson.Codec._
 
 import scala.annotation.switch
-import scala.collection.{ Map, MapLike, mutable }
+import scala.collection._
 
 case class BSONDocument private[rxmongo] (
   private[bson] val data : Map[String, (Byte, ByteIterator)],
-  docItr : Option[ByteIterator] = None) extends BSONProvider with MapLike[String, (Byte, ByteIterator), BSONDocument] with Map[String, (Byte, ByteIterator)] {
+  docItr : Option[ByteIterator] = None) extends MapLike[String, (Byte, ByteIterator), BSONDocument] with Map[String, (Byte, ByteIterator)] {
 
   def get(key : String) : Option[(Byte, ByteIterator)] = data.get(key)
 
@@ -44,6 +45,34 @@ case class BSONDocument private[rxmongo] (
       case None ⇒ throw new NoSuchElementException(s"Field '$key' does not exist.")
     }
   }
+
+  def asOption[T](key : String, code : TypeCode, conv : (ByteIterator) ⇒ T) : Option[T] = {
+    data.get(key) map {
+      case (cd, bi) ⇒
+        if (cd != code.code)
+          throw new IllegalArgumentException(s"Field '$key' has type ${TypeCode(cd).typeName} not ${code.typeName}")
+        else
+          conv(bi)
+    }
+  }
+
+  def asOptionSeq[T](key : String, code : TypeCode, conv : (ByteIterator) ⇒ T) : Option[Seq[T]] = {
+    data.get(key) map {
+      case (cd, bi) ⇒
+        if (cd != ArrayCode.code)
+          throw new IllegalArgumentException(s"Field '$key' has type ${TypeCode(cd).typeName} not ${ArrayCode.typeName}")
+        else {
+          val doc = BSONDocument(bi)
+          for ((k, (c, b)) ← BSONDocument(bi)) yield {
+            if (c != code.code)
+              throw new IllegalArgumentException(s"Field '$k' has type ${TypeCode(c).typeName} not ${code.typeName}")
+            else
+              conv(b)
+          }
+        }.toSeq
+    }
+  }
+
   def asDouble(key : String) : Double = as[Double](key, DoubleCode, { itr ⇒ itr.clone().getDouble })
   def asString(key : String) : String = as[String](key, StringCode, { itr ⇒ itr.clone().getStr })
   def asObject(key : String) : BSONObject = as[BSONObject](key, ObjectCode, { itr ⇒ itr.clone().getObject })
@@ -74,6 +103,46 @@ case class BSONDocument private[rxmongo] (
     as[T](key, ArrayCode, { itr ⇒ codec.read(itr) })
   }
 
+  def asMap[T](key : String)(implicit codec : Codec[T]) : immutable.Map[String, T] = {
+    iterator.map {
+      case (k, (bc, bi)) if bc == codec.code.code ⇒ k → codec.read(bi)
+      case (k, (bc, bi)) ⇒
+        throw new IllegalArgumentException(
+          s"Expected type ${codec.typeName} for key '$k' but got type ${TypeCode(bc).typeName}")
+    }.toMap
+  }
+
+  def asSeq[T](key : String)(implicit codec : Codec[T]) : Seq[T] = {
+    asOptionSeq[T](key, codec.code, codec) match {
+      case Some(x) ⇒ x
+      case None    ⇒ Seq.empty[T]
+    }
+  }
+
+  def asAnyMap : Map[String, Any] = {
+    iterator.map {
+      case (k, (bc, bi)) ⇒ k → BSONValue(bc, bi).value
+    }.toMap
+  }
+
+  def asOptionalObject(key : String) : Option[BSONObject] = {
+    asOption[BSONObject](key, ObjectCode, { bi ⇒ BSONObject(bi) })
+  }
+
+  def asOptionalObjectOfType[T](key : String)(implicit codec : Codec[T]) : Option[T] = {
+    asOption[T](key, ObjectCode, codec)
+  }
+
+  def asOptionalArray[T](key : String)(implicit codec : Codec[T]) : Option[Seq[T]] = {
+    asOptionSeq[T](key, ArrayCode, codec)
+  }
+
+  def asOptionalString(key : String) : Option[String] = { asOption[String](key, StringCode, StringCodec) }
+  def asOptionalInt(key : String) : Option[Int] = { asOption[Int](key, IntegerCode, IntCodec) }
+  def asOptionalDouble(key : String) : Option[Double] = { asOption[Double](key, DoubleCode, DoubleCodec) }
+  def asOptionalDate(key : String) : Option[Date] = { asOption[Date](key, DateCode, DateCodec) }
+  def asOptionalBoolean(key : String) : Option[Boolean] = { asOption[Boolean](key, BooleanCode, BooleanCodec) }
+
   def +[B1 >: (Byte, ByteIterator)](kv : (String, B1)) : BSONDocument = {
     val pair = kv._1 → kv._2.asInstanceOf[(Byte, ByteIterator)]
     BSONDocument(data.+(pair), None)
@@ -91,8 +160,8 @@ case class BSONDocument private[rxmongo] (
 
   def addTo(b : BSONBuilder) : Unit = {
     for ((k, (typeCode, byteIterator)) ← data) {
-      b.putPrefix(typeCode, k)
-      b.buffer ++= byteIterator.clone()
+      b.bldr.putPrefix(typeCode, k)
+      b.bldr ++= byteIterator.clone()
     }
   }
 
@@ -103,16 +172,23 @@ case class BSONDocument private[rxmongo] (
     }
   }
 
-  override def toByteString : ByteString = {
+  def toByteString : ByteString = {
     docItr match {
       case Some(itr) ⇒ itr.clone().toByteString
       case None ⇒
         val bldr = BSONBuilder()
         for ((k, (typeCode, byteIterator)) ← data) {
-          bldr.putPrefix(typeCode, k)
-          bldr.buffer ++= byteIterator.clone()
+          bldr.bldr.putPrefix(typeCode, k)
+          bldr.bldr ++= byteIterator.clone()
         }
-        bldr.toByteString
+        bldr.wrapAndTerminate
+    }
+  }
+
+  def byteSize : Int = {
+    docItr match {
+      case Some(itr) ⇒ itr.length
+      case None ⇒ iterator.foldLeft(0) { case (sum, (key, (bc, bi))) ⇒ sum + bi.len }
     }
   }
 
@@ -147,7 +223,7 @@ object BSONDocument {
   def apply(fields : Map[String, BSONValue]) : BSONDocument = {
     val b = BSONBuilder()
     for ((k, v) ← fields) b.append(k, v)
-    BSONDocument(b.toByteString)
+    BSONDocument(b.wrapAndTerminate)
   }
 
   def apply(buffer : ByteString) : BSONDocument = BSONDocument(buffer.iterator)
