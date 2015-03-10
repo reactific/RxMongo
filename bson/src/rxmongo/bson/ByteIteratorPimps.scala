@@ -22,6 +22,7 @@
 
 package rxmongo.bson
 
+import java.nio.charset.StandardCharsets
 import java.util.regex.Pattern
 
 import akka.util.ByteIterator
@@ -37,12 +38,16 @@ trait ByteIteratorPimps {
 
   val itr : ByteIterator
 
+  @inline def getCStrItr : ByteIterator = {
+    val s = itr.clone().takeWhile { p ⇒ p != 0 }
+    itr.drop(s.len + 1)
+    s
+  }
+
   @inline def getCStr : String = {
     val s = itr.clone().takeWhile { p ⇒ p != 0 }
     itr.drop(s.len + 1)
-    val buf = Array.ofDim[Byte](s.len)
-    s.copyToArray(buf)
-    new String(buf, utf8)
+    new String(s.toArray, StandardCharsets.UTF_8)
   }
 
   def getStr : String = {
@@ -51,7 +56,7 @@ trait ByteIteratorPimps {
     val buf = Array.ofDim[Byte](len)
     itr.getBytes(buf)
     require(itr.getByte == 0.toByte, "Failed to read terminating null in String")
-    new String(buf, utf8)
+    new String(buf, StandardCharsets.UTF_8)
   }
 
   def getBytes(len : Int) : Array[Byte] = {

@@ -22,26 +22,25 @@
 
 package rxmongo.messages
 
-import akka.util.ByteString
 import org.specs2.mutable.Specification
 import rxmongo.bson._
 
-class QuerySpec extends Specification with ByteStringUtils {
+class QuerySpec extends Specification with ByteStringTestUtils {
 
   "Query" should {
     "construct valid byte string" in { pending }
-    /*
-      val q = Query("a" $eq "b")
-      val embedded : ByteString
-      val bytes : ByteString = {
-        val builder = preamble(21, 1, "$query")
-        builder.putDouble(data) // double value
-        builder.putByte(0) // terminating null
-        builder.result()
-      }
-
-    }
-    */
+    /** TODO: Validate Query against byte string
+      * val q = Query("a" $eq "b")
+      * val embedded : ByteString
+      * val bytes : ByteString = {
+      * val builder = preamble(21, 1, "$query")
+      * builder.putDouble(data) // double value
+      * builder.putByte(0) // terminating null
+      * builder.result()
+      * }
+      *
+      * }
+      */
 
     "accept a simple selector in constructor" in {
       val q = Query("a" $eq "b")

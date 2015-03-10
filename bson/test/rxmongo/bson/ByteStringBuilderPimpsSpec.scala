@@ -22,10 +22,12 @@
 
 package rxmongo.bson
 
-import akka.util.{ ByteStringBuilder, ByteString }
+import java.nio.charset.StandardCharsets
+
+import akka.util.{ ByteString }
 import org.specs2.mutable.Specification
 
-class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
+class ByteStringBuilderPimpsSpec extends Specification with ByteStringTestUtils {
 
   "ByteStringBuilderPimps" should {
     "have working putCStr" in {
@@ -79,7 +81,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       val data = "fourty-two"
       val expected : ByteString = {
         val builder = preamble(28, 2, "string")
-        val str = data.getBytes(utf8)
+        val str = data.getBytes(StandardCharsets.UTF_8)
         builder.putInt(str.length + 1) // length of string
         builder.putBytes(str) // data string
         builder.putByte(0) // string terminator
@@ -150,14 +152,14 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
         val builder = preamble(46, 4, "array")
         builder.putInt(34)
         builder.putByte(2) // string code
-        builder.putBytes("0".getBytes(utf8)) // c string
+        builder.putBytes("0".getBytes(StandardCharsets.UTF_8)) // c string
         builder.putByte(0) // termination of c string
-        val str = data1.getBytes(utf8)
+        val str = data1.getBytes(StandardCharsets.UTF_8)
         builder.putInt(str.length + 1) // length of string
         builder.putBytes(str) // data string
         builder.putByte(0) // string terminator
         builder.putByte(1) // code
-        builder.putBytes("1".getBytes(utf8)) // c string
+        builder.putBytes("1".getBytes(StandardCharsets.UTF_8)) // c string
         builder.putByte(0) // termination of c string
         builder.putDouble(data2) // double value
         builder.putByte(0) // terminating null
@@ -175,7 +177,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
       val data = "fourty-two"
       val expected : ByteString = {
         val builder = preamble(28, 5, "binary")
-        val str = data.getBytes(utf8)
+        val str = data.getBytes(StandardCharsets.UTF_8)
         builder.putInt(str.length) // length of string
         builder.putByte(0x80.toByte) // user defined code
         builder.putBytes(str) // data string
@@ -183,7 +185,7 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringUtils {
         builder.result()
       }
       val builder = ByteString.newBuilder
-      builder.binary("binary", data.getBytes(utf8), BinarySubtype.UserDefinedBinary)
+      builder.binary("binary", data.getBytes(StandardCharsets.UTF_8), BinarySubtype.UserDefinedBinary)
       builder.wrapAndTerminate must beEqualTo(expected)
 
     }

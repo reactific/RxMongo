@@ -38,7 +38,7 @@ trait ByteStringBuilderPimps extends ByteStringBuilderWrapper {
   }
 
   @inline private[rxmongo] def putStr(value : String) : ByteStringBuilder = {
-    val bytes = value.getBytes(utf8)
+    val bytes = value.getBytes(StandardCharsets.UTF_8)
     bldr.putInt(bytes.length + 1)
     bldr.putBytes(bytes)
     bldr.putByte(0)
@@ -269,10 +269,10 @@ trait ByteStringBuilderPimps extends ByteStringBuilderWrapper {
 
   @inline def array[T](key : String, values : Iterable[T])(implicit codec : Codec[T]) : ByteStringBuilder = {
     putPrefix(ArrayCode, key)
-    val arrayBuilder = ByteString.newBuilder
+    val arrayBuilder = BSONBuilder()
     values.zipWithIndex.foreach {
       case (v, i) ⇒
-        arrayBuilder.putPrefix(codec.code, i.toString)
+        arrayBuilder.bldr.putPrefix(codec.code, i.toString)
         codec.write(v, arrayBuilder)
     }
     bldr ++= arrayBuilder.wrapAndTerminate

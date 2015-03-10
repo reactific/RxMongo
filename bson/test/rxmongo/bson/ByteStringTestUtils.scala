@@ -24,23 +24,24 @@ package rxmongo.bson
 
 import java.lang.management.ManagementFactory
 import java.nio.ByteOrder
+import java.nio.charset.StandardCharsets
 
 import akka.util.{ ByteString, ByteStringBuilder }
 import com.reactific.hsp.Profiler
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
-trait ByteStringUtils {
+trait ByteStringTestUtils {
 
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
 
   def cstring(bldr : ByteStringBuilder, str : String) : ByteStringBuilder = {
-    bldr.putBytes(str.getBytes(utf8)) // c string
+    bldr.putBytes(str.getBytes(StandardCharsets.UTF_8)) // c string
     bldr.putByte(0) // termination of c string
     bldr
   }
 
   def string(bldr : ByteStringBuilder, str : String) : ByteStringBuilder = {
-    val bytes = str.getBytes(utf8)
+    val bytes = str.getBytes(StandardCharsets.UTF_8)
     bldr.putInt(bytes.length + 1)
     bldr.putBytes(bytes)
     bldr.putByte(0)
@@ -64,41 +65,44 @@ trait ByteStringUtils {
   val anObject = BSONObject("one" -> BSONDouble(84.0D), "two" -> BSONString("eighty-four"))
   val aTime = System.currentTimeMillis()
 
-  def makeAnObject(profiler : Profiler = Profiler) : BSONBuilder = profiler.profile("makeObj") {
+  def makeAnObject(profiler : Profiler = Profiler) : BSONBuilder = profiler.profile("makeAnObject") {
     val b = BSONBuilder()
-    b.
-      double("double", 42.0D).
-      string("string", "fourty-two").
-      obj("obj", anObject).
-      array("array", anArrayBSON).
-      binary("binary", data, UserDefinedBinary).
-      undefined("undefined").
-      objectID("objectid", data).
-      boolean("boolean", value = true).
-      date("date", aTime).
-      nil("null").
-      regex("regex", "pattern", "ilmsux").
-      dbPointer("dbpointer", "referent", data).
-      jsCode("jscode", "function(x) { return x + 1; };").
-      symbol("symbol", "symbol").
-      scopedJsCode("scopedjscode", "function(x)", anObject).
-      integer("integer", 42).
-      timestamp("timestamp", 42L).
-      long("long", 42L)
+    b.double("double", 42.0D)
+      .string("string", "fourty-two")
+      .obj("obj", anObject)
+      .array("array", anArrayBSON)
+      .binary("binary", data, UserDefinedBinary)
+      .undefined("undefined")
+      .objectID("objectid", data)
+      .boolean("boolean", value = true)
+      .date("date", aTime)
+      .nil("null")
+      .regex("regex", "pattern", "ilmsux")
+      .dbPointer("dbpointer", "referent", data)
+      .jsCode("jscode", "function(x) { return x + 1; };")
+      .symbol("symbol", "symbol")
+      .scopedJsCode("scopedjscode", "function(x)", anObject)
+      .integer("integer", 42)
+      .timestamp("timestamp", 42L)
+      .long("long", 42L)
     b
   }
 
-  def makeObject(profiler : Profiler = Profiler) : BSONObject = makeAnObject(profiler).toBSONObject
+  def makeObject() : BSONObject = makeObject(Profiler)
 
-  def makeObject(width : Int, depth : Int) : BSONObject = {
-    val bldr = makeAnObject()
+  def makeObject(profiler : Profiler) : BSONObject = {
+    profiler.profile("makeObject") { makeAnObject(profiler).toBSONObject }
+  }
+
+  def makeObject(width : Int, depth : Int, profiler : Profiler = Profiler) : BSONObject = {
+    val bldr = makeAnObject(profiler)
     if (depth > 0) {
       val kids = for (i ← 1 to width) yield {
-        makeObject(width, depth - 1)
+        makeObject(width, depth - 1, profiler)
       }
-      bldr.array("kids", kids.toSeq)
+      profiler.profile("append kids") { bldr.array("kids", kids) }
     }
-    bldr.toBSONObject
+    profiler.profile("toBSONObject") { bldr.toBSONObject }
   }
 
   val suitableForTimingTests : Boolean = {

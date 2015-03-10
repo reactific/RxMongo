@@ -42,8 +42,6 @@ package object bson {
   // Everything in Mongo is Little Endian
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
 
-  val utf8 = Charset.forName("UTF-8")
-
   /** Maximum Document Size.
     *
     * Use Mongo's maximum doc size to ensure that we're having sane reading of length fields and we don't OOM

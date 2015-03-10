@@ -22,6 +22,7 @@
 
 package rxmongo.bson
 
+import java.nio.charset.StandardCharsets
 import java.util.Date
 import java.util.regex.Pattern
 
@@ -30,7 +31,9 @@ import com.reactific.hsp.Profiler
 import org.specs2.mutable.Specification
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
-class BSONDocumentSpec extends Specification with ByteStringUtils {
+import scala.collection.Map
+
+class BSONDocumentSpec extends Specification with ByteStringTestUtils {
 
   "BSONDocument" should {
     "construct empty" in {
@@ -128,7 +131,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       val data = "fourty-two"
       val bytes : ByteString = {
         val builder = preamble(28, 5, "binary")
-        val str = data.getBytes(utf8)
+        val str = data.getBytes(StandardCharsets.UTF_8)
         builder.putInt(str.length) // length of string
         builder.putByte(0x80.toByte) // user defined code
         builder.putBytes(str) // data string
@@ -138,7 +141,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       val doc = BSONDocument(bytes)
       val (subtype1, array1) = doc.asBinary("binary")
       subtype1 must beEqualTo(UserDefinedBinary)
-      array1 must beEqualTo(data.getBytes(utf8))
+      array1 must beEqualTo(data.getBytes(StandardCharsets.UTF_8))
       val itr = doc.iterator
       itr.hasNext must beTrue
       val (key, (typeCode, byteIterator)) = itr.next()
@@ -146,7 +149,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       typeCode must beEqualTo(BinaryCode.code)
       val (subtype2, array2) = byteIterator.getBinary
       subtype2 must beEqualTo(UserDefinedBinary)
-      array2 must beEqualTo(data.getBytes(utf8))
+      array2 must beEqualTo(data.getBytes(StandardCharsets.UTF_8))
     }
 
     "interpret undefined correctly" in {
@@ -434,9 +437,7 @@ class BSONDocumentSpec extends Specification with ByteStringUtils {
       val limit = 80000.0 * repetitions
       val profiler = timedTest(limit, "ByteString Interpretation", { profiler : Profiler ⇒
         val docs = profiler.profile("Construction") {
-          for (i ← 1 to 100000) yield {
-            BSONDocument(bs)
-          }
+          for (i ← 1 to 100000) yield { BSONDocument(bs) }
         }
         profiler.profile("Validation") {
           for (doc ← docs) {

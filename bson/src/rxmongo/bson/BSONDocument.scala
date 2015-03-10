@@ -229,38 +229,38 @@ object BSONDocument {
   def apply(buffer : ByteString) : BSONDocument = BSONDocument(buffer.iterator)
 
   def apply(itr : ByteIterator) : BSONDocument = {
-    val bldr = new mutable.MapBuilder[String, (Byte, ByteIterator), Map[String, (Byte, ByteIterator)]](Map.empty[String, (Byte, ByteIterator)])
     val docItr = itr.clone()
     val byteLen = itr.getInt
     var code = itr.getByte
+    var seq = Seq.empty[(String, (Byte, ByteIterator))]
     while (itr.hasNext && code != 0) {
       val key = itr.getCStr
       val save = itr.clone()
       val bi : ByteIterator = (code : @switch) match {
-        case 1  ⇒ save.slice(0, itr.skipDouble) // Double
-        case 2  ⇒ save.slice(0, itr.skipLength) // String
-        case 3  ⇒ save.slice(0, itr.skipDocument) // Object
-        case 4  ⇒ save.slice(0, itr.skipDocument) // Array
-        case 5  ⇒ save.slice(0, itr.skipLength + itr.skipByte) // Binary
-        case 6  ⇒ save.slice(0, 0) // Undefined
-        case 7  ⇒ save.slice(0, itr.skipObjId) // ObjectID
-        case 8  ⇒ save.slice(0, itr.skipByte) // Boolean
-        case 9  ⇒ save.slice(0, itr.skipLong) // Date
-        case 10 ⇒ save.slice(0, 0) // Null
-        case 11 ⇒ save.slice(0, itr.skipCStr + itr.skipCStr) // Regex
-        case 12 ⇒ save.slice(0, itr.skipLength + itr.skipObjId) // DBPointer
-        case 13 ⇒ save.slice(0, itr.skipLength) // JavaScript
-        case 14 ⇒ save.slice(0, itr.skipLength) // Symbol
-        case 15 ⇒ save.slice(0, itr.skipDocument) // Scoped JavaScript
-        case 16 ⇒ save.slice(0, itr.skipInt) // Integer
-        case 17 ⇒ save.slice(0, itr.skipLong) // Timestamp
-        case 18 ⇒ save.slice(0, itr.skipLong) // Long
+        case 1  ⇒ save.take(itr.skipDouble) // Double
+        case 2  ⇒ save.take(itr.skipLength) // String
+        case 3  ⇒ save.take(itr.skipDocument) // Object
+        case 4  ⇒ save.take(itr.skipDocument) // Array
+        case 5  ⇒ save.take(itr.skipLength + itr.skipByte) // Binary
+        case 6  ⇒ save.take(0) // Undefined
+        case 7  ⇒ save.take(itr.skipObjId) // ObjectID
+        case 8  ⇒ save.take(itr.skipByte) // Boolean
+        case 9  ⇒ save.take(itr.skipLong) // Date
+        case 10 ⇒ save.take(0) // Null
+        case 11 ⇒ save.take(itr.skipCStr + itr.skipCStr) // Regex
+        case 12 ⇒ save.take(itr.skipLength + itr.skipObjId) // DBPointer
+        case 13 ⇒ save.take(itr.skipLength) // JavaScript
+        case 14 ⇒ save.take(itr.skipLength) // Symbol
+        case 15 ⇒ save.take(itr.skipDocument) // Scoped JavaScript
+        case 16 ⇒ save.take(itr.skipInt) // Integer
+        case 17 ⇒ save.take(itr.skipLong) // Timestamp
+        case 18 ⇒ save.take(itr.skipLong) // Long
         case _  ⇒ throw new NoSuchElementException("Unrecognized BSON Type Code")
       }
-      bldr += key -> (code → bi)
+      seq = seq :+ (key -> (code → bi))
       code = itr.getByte
     }
-    val map = bldr.result()
+    val map = seq.toMap
     new BSONDocument(map, Some(docItr))
   }
 }

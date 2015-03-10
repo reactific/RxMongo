@@ -22,6 +22,7 @@
 
 package rxmongo.bson
 
+import java.nio.charset.StandardCharsets
 import java.util.regex.Pattern
 
 import akka.util.{ ByteStringBuilder, ByteIterator, ByteString }
@@ -29,7 +30,7 @@ import org.specs2.mutable.Specification
 import rxmongo.bson.BinarySubtype.UserDefinedBinary
 
 /** BSON Document Test Suite */
-class BSONValueSpec extends Specification with ByteStringUtils {
+class BSONValueSpec extends Specification with ByteStringTestUtils {
 
   "BSONObject" should {
     "construct empty" in {
@@ -118,7 +119,7 @@ class BSONValueSpec extends Specification with ByteStringUtils {
       val data = "fourty-two"
       val bytes : ByteString = {
         val builder = preamble(28, 5, "binary")
-        val str = data.getBytes(utf8)
+        val str = data.getBytes(StandardCharsets.UTF_8)
         builder.putInt(str.length) // length of string
         builder.putByte(0x80.toByte) // user defined code
         builder.putBytes(str) // data string
@@ -132,7 +133,7 @@ class BSONValueSpec extends Specification with ByteStringUtils {
       key must beEqualTo("binary")
       val (subtype, arr) = value.value
       subtype must beEqualTo(UserDefinedBinary)
-      arr must beEqualTo(data.getBytes(utf8))
+      arr must beEqualTo(data.getBytes(StandardCharsets.UTF_8))
     }
 
     "interpret undefined correctly" in {

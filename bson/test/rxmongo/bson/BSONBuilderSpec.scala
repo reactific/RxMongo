@@ -23,6 +23,7 @@
 package rxmongo.bson
 
 import java.nio.ByteOrder
+import java.nio.charset.StandardCharsets
 
 import akka.util.{ ByteStringBuilder, ByteString }
 import org.specs2.mutable.Specification
@@ -33,13 +34,13 @@ class BSONBuilderSpec extends Specification {
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
 
   def cstring(bldr : ByteStringBuilder, str : String) : ByteStringBuilder = {
-    bldr.putBytes(str.getBytes(utf8)) // c string
+    bldr.putBytes(str.getBytes(StandardCharsets.UTF_8)) // c string
     bldr.putByte(0) // termination of c string
     bldr
   }
 
   def string(bldr : ByteStringBuilder, str : String) : ByteStringBuilder = {
-    val bytes = str.getBytes(utf8)
+    val bytes = str.getBytes(StandardCharsets.UTF_8)
     bldr.putInt(bytes.length + 1)
     bldr.putBytes(bytes)
     bldr.putByte(0)
@@ -74,7 +75,7 @@ class BSONBuilderSpec extends Specification {
       val data = "fourty-two"
       val expected : ByteString = {
         val builder = preamble(28, 2, "string")
-        val str = data.getBytes(utf8)
+        val str = data.getBytes(StandardCharsets.UTF_8)
         builder.putInt(str.length + 1) // length of string
         builder.putBytes(str) // data string
         builder.putByte(0) // string terminator
@@ -112,14 +113,14 @@ class BSONBuilderSpec extends Specification {
         val builder = preamble(46, 4, "array")
         builder.putInt(34)
         builder.putByte(2) // string code
-        builder.putBytes("0".getBytes(utf8)) // c string
+        builder.putBytes("0".getBytes(StandardCharsets.UTF_8)) // c string
         builder.putByte(0) // termination of c string
-        val str = data1.getBytes(utf8)
+        val str = data1.getBytes(StandardCharsets.UTF_8)
         builder.putInt(str.length + 1) // length of string
         builder.putBytes(str) // data string
         builder.putByte(0) // string terminator
         builder.putByte(1) // code
-        builder.putBytes("1".getBytes(utf8)) // c string
+        builder.putBytes("1".getBytes(StandardCharsets.UTF_8)) // c string
         builder.putByte(0) // termination of c string
         builder.putDouble(data2) // double value
         builder.putByte(0) // terminating null
@@ -138,7 +139,7 @@ class BSONBuilderSpec extends Specification {
       val data = "fourty-two"
       val expected : ByteString = {
         val builder = preamble(28, 5, "binary")
-        val str = data.getBytes(utf8)
+        val str = data.getBytes(StandardCharsets.UTF_8)
         builder.putInt(str.length) // length of string
         builder.putByte(0x80.toByte) // user defined code
         builder.putBytes(str) // data string
@@ -146,7 +147,7 @@ class BSONBuilderSpec extends Specification {
         builder.result()
       }
       val builder = BSONBuilder()
-      builder.binary("binary", data.getBytes(utf8), BinarySubtype.UserDefinedBinary)
+      builder.binary("binary", data.getBytes(StandardCharsets.UTF_8), BinarySubtype.UserDefinedBinary)
       builder.wrapAndTerminate must beEqualTo(expected)
 
     }

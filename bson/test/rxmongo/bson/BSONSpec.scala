@@ -22,7 +22,6 @@
 
 package rxmongo.bson
 
-import java.lang.management.ManagementFactory
 import java.util.Date
 import java.util.regex.Pattern
 
@@ -32,7 +31,7 @@ import org.specs2.mutable.Specification
 import rxmongo.bson.BinarySubtype._
 
 /** Test Suite For BSON object */
-class BSONSpec extends Specification {
+class BSONSpec extends Specification with ByteStringTestUtils {
 
   sequential
 
@@ -119,11 +118,11 @@ class BSONSpec extends Specification {
   "BSON" should {
     "build and interpret reflectively" in {
       val startime = System.nanoTime()
-      val bsonObject = Helper.makeObject
+      val bsonObject = makeObject()
       val endtime = System.nanoTime
       val constructiontime = endtime - startime
 
-      if (Helper.suitableForTimingTests)
+      if (suitableForTimingTests)
         constructiontime must beLessThan(200000000L)
 
       val double = bsonObject.get("double")
@@ -173,10 +172,10 @@ class BSONSpec extends Specification {
 
       val pair = binary.get.value.asInstanceOf[(BinarySubtype, Array[Byte])]
       pair._1 must beEqualTo(UserDefinedBinary)
-      pair._2 must beEqualTo(Helper.data)
+      pair._2 must beEqualTo(data)
 
       undefined.get.value.asInstanceOf[Unit] must beEqualTo({})
-      objectid.get.value.asInstanceOf[Array[Byte]] must beEqualTo(Helper.data)
+      objectid.get.value.asInstanceOf[Array[Byte]] must beEqualTo(data)
       boolean.get.value.asInstanceOf[Boolean] must beEqualTo(true)
       date.get.value.asInstanceOf[Date].getTime must beLessThan(System.currentTimeMillis)
       nil.get.value.asInstanceOf[Unit] must beEqualTo({})
@@ -186,14 +185,14 @@ class BSONSpec extends Specification {
 
       val (referent, objid) = dbpointer.get.value.asInstanceOf[(String, Array[Byte])]
       referent must beEqualTo("referent")
-      objid must beEqualTo(Helper.data)
+      objid must beEqualTo(data)
 
       jscode.get.value.asInstanceOf[String] must beEqualTo("function(x) { return x + 1; };")
       symbol.get.value.asInstanceOf[String] must beEqualTo("symbol")
 
       val (code, scope) = scopedJsCode.get.value.asInstanceOf[(String, BSONObject)]
       code must beEqualTo("function(x)")
-      scope must beEqualTo(Helper.anObject)
+      scope must beEqualTo(anObject)
 
       integer.get.value.asInstanceOf[Int] must beEqualTo(42)
       timestamp.get.value.asInstanceOf[Long] must beEqualTo(42L)
@@ -201,18 +200,38 @@ class BSONSpec extends Specification {
     }
   }
 
-  "BSON Builder" should {
+  "BSONBuilder" should {
 
-    "build and compact a 100,000 object of 18 fields, quickly" in {
-      val startTime = System.nanoTime()
-      val obj = Helper.makeObject(1000, 1)
-      val endTime = System.nanoTime
-      val len = obj.toByteString.length
-      val constructionTime = endTime - startTime
-      println("Construction:" + constructionTime)
-      println(Profiler.format_one_item("makeObj"))
-      if (Helper.suitableForTimingTests) {
-        constructionTime must beLessThan(2000000000L) // < 1 seconds for 10,000 nodes
+    "warm up the JIT compiler" in {
+      val warmpup = makeObject(2, 10)
+      success
+    }
+
+    "build a tree of 2^12 (8,192) objects of 18 fields, quickly" in {
+      val profiler = new Profiler
+      val obj = profiler.profile("TreeTop") { makeObject(2, 12, profiler) }
+      profiler.print_profile_summary(System.out)
+      if (suitableForTimingTests) {
+        val (count1, time1) = profiler.get_one_item("makeAnObject")
+        count1 must beEqualTo(8191)
+        time1 must beLessThan(40000.0 * count1) //  < 40 μs each
+        val (count2, time2) = profiler.get_one_item("TreeTop")
+        count2 must beEqualTo(1)
+        time2 must beLessThan(5000000000.0) // < 5 seconds for constructing a 2^12 binary tree
+      } else {
+        skipped(": machine too busy for timing tests")
+      }
+      success
+    }
+
+    "build and compact 100,000 objects of 18 fields, quickly" in {
+      val profiler = new Profiler
+      val obj = profiler.profile("ListTop") { for (i ← 1 to 100000) { makeAnObject(profiler) } }
+      profiler.print_profile_summary(System.out)
+      val (count, constructionTime) = profiler.get_one_item("makeAnObject")
+      if (suitableForTimingTests) {
+        count must beEqualTo(100000)
+        constructionTime must beLessThan(12000.0 * count) // < 12 μs each
       } else {
         skipped(": machine too busy for timing tests")
       }
@@ -228,10 +247,10 @@ class BSONSpec extends Specification {
       val b = BSONObject(
         "double" -> 42.0D,
         "string" -> "fourty-two",
-        "obj" -> Helper.anObject,
-        "array" -> Helper.anArray,
+        "obj" -> anObject,
+        "array" -> anArray,
         "map" -> map,
-        "binary" -> Helper.data,
+        "binary" -> data,
         "null" → BSONNull,
         "undefined" -> BSONUndefined,
         "boolean" -> true,
@@ -242,10 +261,10 @@ class BSONSpec extends Specification {
       )
       b.get("double") must beEqualTo(Some(BSONDouble(42.0D)))
       b.get("string") must beEqualTo(Some(BSONString("fourty-two")))
-      b.get("obj") must beEqualTo(Some(Helper.anObject))
-      b.get("array") must beEqualTo(Some(Helper.anArrayBSON))
+      b.get("obj") must beEqualTo(Some(anObject))
+      b.get("array") must beEqualTo(Some(anArrayBSON))
       b.get("map") must beEqualTo(Some(BSONObject(map)))
-      b.get("binary") must beEqualTo(Some(BSONBinary(Helper.data, UserDefinedBinary)))
+      b.get("binary") must beEqualTo(Some(BSONBinary(data, UserDefinedBinary)))
       b.get("null") must beEqualTo(Some(BSONNull))
       b.get("undefined") must beEqualTo(Some(BSONUndefined))
       b.get("boolean") must beEqualTo(Some(BSONBoolean(value = true)))
@@ -257,6 +276,7 @@ class BSONSpec extends Specification {
   }
 }
 
+/*
 object Helper {
 
   val data = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
@@ -315,3 +335,4 @@ object Helper {
     }
   }
 }
+*/
