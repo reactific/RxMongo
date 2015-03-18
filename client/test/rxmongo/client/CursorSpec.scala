@@ -24,10 +24,10 @@ package rxmongo.client
 
 import rxmongo.bson._
 import rxmongo.messages._
-import rxmongo.driver.{ WriteResult, QueryOptions }
+import rxmongo.driver.{ ReplyMessage, WriteResult, QueryOptions }
 
 import scala.concurrent.Await
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 class CursorSpec extends RxMongoTest("rxmongo", "cursor") {
 
@@ -53,18 +53,32 @@ class CursorSpec extends RxMongoTest("rxmongo", "cursor") {
       result.n must beEqualTo(6)
     }
 
+    "iterate in 3 batches of 2" in mongoTest { () ⇒
+      val future = collection.findRaw(Query("a" $gte 21.0), None, QueryOptions(numberToReturn = 6)) map { msg : ReplyMessage ⇒
+        val itr = ReplyIterator(collection, msg, 2)
+        var count = 0
+        while (itr.hasNext) {
+          val seq = itr.next()
+          count += seq.length
+        }
+        count
+      }
+      val result = Await.result(future, FiniteDuration(1, "seconds"))
+      result must beEqualTo(6)
+    }
+
     "find all 6 documents" in mongoTest { () ⇒
       val result = Await.result(collection.find(Query("a" $gte 21.0),
-        options = QueryOptions(numberToReturn = 10)), FiniteDuration(1, "seconds"))
+        options = QueryOptions(numberToReturn = 2)), FiniteDuration(1, "seconds"))
       result.hasNext must beEqualTo(true)
       val contents = Await.result(result.toFlatSeq, FiniteDuration(1, "seconds"))
       contents.length must beEqualTo(6)
-      contents.exists(obj ⇒ obj.matches(BSONObject("a" → 21.0, "b" → 21L, "c" → 21))) must beTrue
-      contents.exists(obj ⇒ obj.matches(BSONObject("a" → 28.0, "b" → 28L, "c" → 28))) must beTrue
-      contents.exists(obj ⇒ obj.matches(BSONObject("a" → 35.0, "b" → 35L, "c" → 35))) must beTrue
-      contents.exists(obj ⇒ obj.matches(BSONObject("a" → 42.0, "b" → 42L, "c" → 42))) must beTrue
-      contents.exists(obj ⇒ obj.matches(BSONObject("a" → 49.0, "b" → 49L, "c" → 49))) must beTrue
-      contents.exists(obj ⇒ obj.matches(BSONObject("a" → 56.0, "b" → 56L, "c" → 56))) must beTrue
+      contents.exists(doc ⇒ BSONObject(doc).matches(BSONObject("a" → 21.0, "b" → 21L, "c" → 21))) must beTrue
+      contents.exists(doc ⇒ BSONObject(doc).matches(BSONObject("a" → 28.0, "b" → 28L, "c" → 28))) must beTrue
+      contents.exists(doc ⇒ BSONObject(doc).matches(BSONObject("a" → 35.0, "b" → 35L, "c" → 35))) must beTrue
+      contents.exists(doc ⇒ BSONObject(doc).matches(BSONObject("a" → 42.0, "b" → 42L, "c" → 42))) must beTrue
+      contents.exists(doc ⇒ BSONObject(doc).matches(BSONObject("a" → 49.0, "b" → 49L, "c" → 49))) must beTrue
+      contents.exists(doc ⇒ BSONObject(doc).matches(BSONObject("a" → 56.0, "b" → 56L, "c" → 56))) must beTrue
     }
   }
 }

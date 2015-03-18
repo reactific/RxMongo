@@ -74,6 +74,10 @@ trait ByteIteratorPimps {
     BSONDocument(bitr)
   }
 
+  def getDocuments(count : Int) : Seq[BSONDocument] = {
+    for (i ← 1 to count) yield { getDoc }
+  }
+
   @inline def getObject : BSONObject = BSONObject(getDoc)
 
   @inline def getArray : BSONArray = BSONArray(getDoc)

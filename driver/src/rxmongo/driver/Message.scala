@@ -280,15 +280,14 @@ case class QueryMessage(
   * the SQL LIMIT keyword), then it is up to the client driver to ensure that no more than the
   * specified number of document are returned to the calling application. If numberToReturn is 0,
   * the db will used the default return size.
-  * @param forReply The ReplyMessage for an OP_QUERY to which this GetMoreMessage is requesting more data. This is used
-  * instead of a cursorID value so that it is not possible to mix up the cursorID. This means the
-  * original reply message will stick around while we're still getting more messages. We're okay with
-  * that.
+  * @param cursorID The cursorID value from the ReplyMessage for which this message is obtaining more results.
   */
 case class GetMoreMessage(
   fullCollectionName : String,
   numberToReturn : Int,
-  forReply : ReplyMessage) extends RequestMessage(Message.OP_GET_MORE) {
+  cursorID : Long) extends RequestMessage(Message.OP_GET_MORE) {
+
+  override val requiresResponse : Boolean = true
 
   // struct {
   //   MsgHeader header;             // standard message header
@@ -302,14 +301,14 @@ case class GetMoreMessage(
       putInt(0).
       putCStr(fullCollectionName).
       putInt(numberToReturn).
-      putLong(forReply.cursorID)
+      putLong(cursorID)
   }
 
   override def appendTo(builder : StringBuilder) : StringBuilder = {
     super.appendTo(builder).
       append(",fullCollectionName=").append(fullCollectionName).
       append(",numberToReturn=").append(numberToReturn).
-      append(",forReply=").append(forReply.cursorID)
+      append(",cursorID=").append(cursorID)
   }
 
 }
@@ -437,14 +436,14 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
   /** {{{
     * bit   name	description
     * 0	 CursorNotFound	  Set when getMore is called but the cursor id is not valid at the server. Returned with zero
-    *        results.
+    *      results.
     * 1  QueryFailure	    Set when query failed. Results consist of one document containing an “\$err” field describing
-    *        the failure.
+    *      the failure.
     * 2  ShardConfigStale	Drivers should ignore this. Only mongos will ever see this set, in which case, it needs to
-    *        update config from the server.
+    *      update config from the server.
     * 3  AwaitCapable     Set when the server supports the AwaitData Query option. If it does not, a client should sleep
-    *        a little between getMore’s of a Tailable cursor. Mongod version 1.6 supports AwaitData and
-    *        thus always sets AwaitCapable.
+    *      a little between getMore’s of a Tailable cursor. Mongod version 1.6 supports AwaitData and
+    *      thus always sets AwaitCapable.
     * 4-31	 Reserved	    Ignore
     * }}}
     */
@@ -461,7 +460,7 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
   val cursorID = itr.getLong
   val startingFrom = itr.getInt
   val numberReturned = itr.getInt
-  val documents = itr.getObjects(numberReturned)
+  val documents = itr.getDocuments(numberReturned)
 
   def addTo(bldr : ByteStringBuilder) = throw new IllegalStateException("Attempt to build a ReplyMessage")
   override lazy val finish = buffer
@@ -484,7 +483,7 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
 
   def error : Option[String] = {
     if (QueryFailure && documents.nonEmpty) {
-      documents.head.getOptionalString("$err")
+      documents.head.asOptionalString("$err")
     } else {
       None
     }

@@ -40,7 +40,7 @@ import rxmongo.bson._
   * the mmapv1 storage engine.
   * @param nindexes The number of indexes on the collection. All collections have at least one index on the _id field.
   * @param lastExtentSize The size of the last extent allocated. The scale argument affects this value. Only present
-  *    when using the mmapv1 storage engine.
+  *  when using the mmapv1 storage engine.
   * @param userFlags Reports the flags on this collection set by the user. See the collMod command for more information
   * on setting user flags and usePowerOf2Sizes. Only appears when using the mmapv1 storage engine.
   * @param totalIndexSize The total size of all indexes. The scale argument affects this value.
@@ -53,9 +53,9 @@ import rxmongo.bson._
   * @param wiredTiger wiredTiger only appears when using the wiredTiger storage engine. This document contains data
   * reported directly by the WiredTiger engine and other data for internal diagnostic use.
   * @param indexDetails A document that reports data from the storage engine for each index in the collection. The
-  *  fields in this document are the names of the indexes, while the values themselves are documents
-  *  that contain statistics for the index provided by the storage engine. These statistics are for
-  *  internal diagnostic use.
+  * fields in this document are the names of the indexes, while the values themselves are documents
+  * that contain statistics for the index provided by the storage engine. These statistics are for
+  * internal diagnostic use.
   */
 case class CollStatsReply(
   ns : String,
@@ -79,7 +79,7 @@ case class CollStatsReply(
   indexDetails : Option[BSONObject] = None)
 
 object CollStatsReply {
-  implicit object CollStatsReplyCodec extends Codec[CollStatsReply] {
+  implicit object CollStatsReplyCodec extends DocumentCodec[CollStatsReply] {
     /** Convert T into BSONValue
       *
       * @param value The value, T, to be written to BSON
@@ -115,8 +115,7 @@ object CollStatsReply {
       * @param value The BSONValue to be converted
       * @return A Try[T] that results from reading T from BSON
       */
-    override def read(itr : ByteIterator) : CollStatsReply = {
-      val value = BSONDocument(itr)
+    override def read(value : BSONDocument) : CollStatsReply = {
       CollStatsReply(
         value.asString("ns"),
         value.asInt("count"),

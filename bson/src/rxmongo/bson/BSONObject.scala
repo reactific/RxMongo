@@ -28,7 +28,7 @@ import akka.util.{ ByteIterator, ByteString, ByteStringBuilder }
 
 import scala.collection._
 
-case class BSONObject private[bson] ( final val doc : BSONDocument) extends BSONValue
+case class BSONObject( final val doc : BSONDocument) extends BSONValue
   with MapLike[String, BSONValue, BSONObject] with Map[String, BSONValue] {
   final val code : TypeCode = ObjectCode
 

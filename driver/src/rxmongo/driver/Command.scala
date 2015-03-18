@@ -40,7 +40,7 @@ class Command(
   override def appendTo(builder : StringBuilder) : StringBuilder = {
     super.appendTo(builder).
       append(",db=").append(db).
-      append(",options=").append(options).
+      append(",options=").append(options.withNumberToReturn(-1)).
       append(",selector=").append(selector).
       append(",returnFieldsSelector=").append(returnFieldsSelector)
   }

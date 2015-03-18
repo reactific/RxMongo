@@ -66,7 +66,7 @@ abstract class Channel(remote : InetSocketAddress, options : ConnectionOptions, 
 
   log.debug(s"Establishing ${if (isPrimary) "primary" else "secondary"} Channel to $remote ")
 
-  val pendingResponses = mutable.HashMap.empty[Int, ActorRef]
+  val pendingResponses = mutable.HashMap.empty[Int, (Boolean, ActorRef)]
   var requestCounter : Long = 0L
   var requestBytes : Long = 0L
   var replyCounter : Long = 0L
@@ -97,8 +97,7 @@ abstract class Channel(remote : InetSocketAddress, options : ConnectionOptions, 
     // Send a message to Mongo via connection actor
     val msg_to_send = message.finish
     requestBytes += msg_to_send.length
-    if (message.requiresResponse)
-      pendingResponses.put(message.requestId, replyTo)
+    pendingResponses.put(message.requestId, message.requiresResponse -> replyTo)
     handleRequest(message, msg_to_send)
   }
 
@@ -107,10 +106,12 @@ abstract class Channel(remote : InetSocketAddress, options : ConnectionOptions, 
     replyBytes += msg.length
     val reply = ReplyMessage(msg) // Encapsulate that in a ReplyMessage
     pendingResponses.get(reply.responseTo) match {
-      case Some(actor) ⇒
+      case Some((requiresResponse, actor)) ⇒
         pendingResponses.remove(reply.responseTo)
-        log.debug("Handling Reply: {} ({} bytes)", reply, msg.length)
-        handleReply(reply, actor)
+        if (requiresResponse) {
+          log.debug("Handling Reply: {} ({} bytes)", reply, msg.length)
+          handleReply(reply, actor)
+        }
       case None ⇒
         log.warning(s"Received reply ({}) but matching request was not found", reply)
         listener ! Channel.UnsolicitedReply(reply)

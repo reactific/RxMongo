@@ -36,6 +36,8 @@ case class BSONDocument private[rxmongo] (
   private[bson] val data : Map[String, (Byte, ByteIterator)],
   docItr : Option[ByteIterator] = None) extends MapLike[String, (Byte, ByteIterator), BSONDocument] with Map[String, (Byte, ByteIterator)] {
 
+  def to[T](implicit codec : DocumentCodec[T]) : T = codec.read(this)
+
   def get(key : String) : Option[(Byte, ByteIterator)] = data.get(key)
 
   def as[T](key : String, code : TypeCode, conv : (ByteIterator) ⇒ T) : T = {
@@ -260,19 +262,24 @@ case class BSONDocument private[rxmongo] (
     }
   }
 
+  def matches(other : BSONDocument) : Boolean = {
+    for ((k, (tc1, bi1)) ← other) {
+      get(k) match {
+        case Some((tc2, bi2)) ⇒ tc1 == tc2 && util.Arrays.equals(bi1.clone().toArray, bi2.clone().toArray)
+        case None ⇒ return false
+        case _ ⇒ return false
+      }
+    }
+    true
+  }
+
   override def equals(other : Any) : Boolean = other match {
     case that : BSONDocument ⇒
       (this eq that) ||
         (that canEqual this) &&
         (this.size == that.size) && {
           try {
-            this forall {
-              case (k, (tc1, bi1)) ⇒ that.get(k) match {
-                case Some((tc2, bi2)) ⇒ tc1 == tc2 && util.Arrays.equals(bi1.clone().toArray, bi2.clone().toArray)
-                case None ⇒ false
-                case _ ⇒ false
-              }
-            }
+            that.matches(this)
           } catch {
             case ex : ClassCastException ⇒
               println("class cast "); false

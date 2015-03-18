@@ -22,7 +22,7 @@
 
 package rxmongo.examples
 
-import rxmongo.bson.BSONObject
+import rxmongo.bson.BSONDocument
 import rxmongo.client.Client
 import rxmongo.messages.Query
 import scala.concurrent.Await
@@ -55,7 +55,7 @@ object ClientBasics extends App {
     val future = cursor.map { crsr ⇒
       // [6] For each result
       while (crsr.hasNext) {
-        crsr.next.map { results : BSONObject ⇒
+        crsr.next.map { results : BSONDocument ⇒
           // [7] We got an answer to our query, print the results
           println("Results: " + results)
         } recover {

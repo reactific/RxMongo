@@ -24,6 +24,7 @@ package rxmongo.client
 
 import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 
+import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 
@@ -32,7 +33,7 @@ import rxmongo.driver._
 import rxmongo.driver.cmds._
 import rxmongo.messages.{ Delete, Query, Update }
 
-import scala.concurrent.{ Await, Future }
+import scala.concurrent.{ ExecutionContext, Await, Future }
 import scala.concurrent.duration._
 import scala.util.{ Failure, Success, Try }
 
@@ -42,11 +43,15 @@ import scala.util.{ Failure, Success, Try }
   * @param name THe name of the collection in the database
   * @param db A database object
   */
-case class Collection(name : String, db : Database, statsRefresh : FiniteDuration = 1.day)(override implicit val timeout : Timeout = db.timeout,
-  override implicit val writeConcern : WriteConcern = db.writeConcern)
-  extends RxMongoComponent(db.driver) {
+class Collection(val name : String, val db : Database)(
+  override implicit val timeout : Timeout = db.timeout,
+  override implicit val writeConcern : WriteConcern = db.writeConcern,
+  implicit val retryStrategy : RetryStrategy = RetryStrategy.default,
+  implicit val statsRefresh : FiniteDuration = 1.day) extends RxMongoComponent(db.driver) {
 
   val fullName = db.namespace + "." + name
+
+  private[rxmongo] def connection : ActorRef = db.client.connection
 
   require(!name.contains("$"), "Collection names must not contain a $")
   require(name.length > 0, "Collection names may not be empty")
@@ -93,17 +98,19 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     */
   def count() = getRefreshedStats().count
 
+  def count(selector : Query, limit : Int) : Future[Int] = ???
+
   /** Wraps eval to copy data between collections in a single MongoDB instance. */
   def copyTo() = ???
 
   /** Builds an index on a collection. */
-  def createIndex(keys : Index, options : IndexOptions) : Future[BSONObject] = {
+  def createIndex(keys : Index, options : IndexOptions) : Future[BSONDocument] = {
     options.name.map { name ⇒ require(name.length + fullName.length + 1 < 128, "Full index name must be < 128 characters") }
     val cmd = CreateIndicesCmd(db.name, name, Seq(keys -> options))
     db.client.connection.ask(cmd) map processReplyMessage(cmd)
   }
 
-  def createIndices(indices : (Index, IndexOptions)*) : Future[BSONObject] = {
+  def createIndices(indices : (Index, IndexOptions)*) : Future[BSONDocument] = {
     for ((index, options) ← indices) {
       options.name.map { name ⇒ require(name.length + fullName.length + 1 < 128, "Full index name must be < 128 characters") }
     }
@@ -118,11 +125,11 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
   /** Returns the size of the collection. Wraps the size field in the output of the collStats. */
   def dataSize() = ???
 
-  def deleteOne(delete : Delete, ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONObject] = {
+  def deleteOne(delete : Delete, ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONDocument] = {
     remove(Seq(delete), ordered)(to, wc)
   }
 
-  def delete(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONObject] = {
+  def delete(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONDocument] = {
     remove(deletes, ordered)(to, wc)
   }
 
@@ -147,6 +154,19 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
   /** Returns information on the query execution of various methods. */
   def explain() = ???
 
+  def findRaw(selector : Query,
+    projection : Option[Projection] = None,
+    options : QueryOptions = QueryOptions()) : Future[ReplyMessage] = {
+    val msg = QueryMessage(fullName, selector.result, projection.map { p ⇒ p.result }, options)
+    db.client.connection.ask(msg) map {
+      case reply : ReplyMessage ⇒
+        reply.error match {
+          case Some(msg) ⇒ throw new RxMongoError(s"Error while processing query {$selector}: $msg")
+          case None ⇒ reply
+        }
+    }
+  }
+
   /** Performs a query on a collection and returns a cursor object.
     *
     * @param selector The Query that selects the documents to return.
@@ -157,13 +177,14 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
   def find(
     selector : Query,
     projection : Option[Projection] = None,
-    options : QueryOptions = QueryOptions()) : Future[Cursor] = {
+    options : QueryOptions = QueryOptions(),
+    batchSize : Int = 10) : Future[Cursor] = {
     val msg = QueryMessage(fullName, selector.result, projection.map { p ⇒ p.result }, options)
     db.client.connection.ask(msg) map {
       case reply : ReplyMessage ⇒
         reply.error match {
           case Some(msg) ⇒ throw new RxMongoError(s"Error while processing query {$selector}: $msg")
-          case None ⇒ Cursor(this, db.client.connection, msg, reply)
+          case None ⇒ Cursor(this, reply, batchSize)
         }
     }
   }
@@ -173,7 +194,12 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     * @param projection Optional. The Projectiont hat selects the fields in the documents to return.
     * @return
     */
-  def findAll(projection : Option[Projection] = None) : Future[Cursor] = find(Query(), projection)
+  def findAll(
+    projection : Option[Projection] = None,
+    options : QueryOptions = QueryOptions(),
+    batchSize : Int = 10) : Future[Cursor] = {
+    find(Query(), projection, options)
+  }
 
   /** Performs a query and returns a single document.
     * This is simply a convenience function for calling find with the options.numberToReturn set to 1
@@ -182,8 +208,16 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     * @param options Options that control how the query is done and the kind of cursor returned.
     * @return A Cursor to allow iteration over the result set.
     */
-  def findOne(selector : Query, projection : Option[Projection] = None, options : QueryOptions = QueryOptions()) : Future[Cursor] = {
-    find(selector, projection, options.withNumberToReturn(1))
+  def findOne(
+    selector : Query,
+    projection : Option[Projection] = None,
+    options : QueryOptions = QueryOptions()) : Future[Option[BSONDocument]] = {
+    findRaw(selector, projection, options.withNumberToReturn(-1)) map { reply : ReplyMessage ⇒
+      if (reply.numberReturned <= 0)
+        None
+      else
+        Some(reply.documents.head)
+    }
   }
 
   /** Atomically modifies and returns a single document. */
@@ -206,11 +240,11 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     db.client.connection ! msg
   }
 
-  def insertOne(obj : BSONObject)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONObject] = {
+  def insertOne(obj : BSONObject)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONDocument] = {
     insert(Seq(obj), ordered = true)(to, wc)
   }
 
-  def insert(objs : Seq[BSONObject], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONObject] = {
+  def insert(objs : Seq[BSONObject], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONDocument] = {
     val insert = InsertCmd(db.name, name, objs, ordered, wc)
     db.client.connection.ask(insert)(to) map processReplyMessage(insert)
   }
@@ -228,7 +262,7 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     db.client.connection ! delete
   }
 
-  def remove(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONObject] = {
+  def remove(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONDocument] = {
     val delete = DeleteCmd(db.name, name, deletes, ordered, wc)
     db.client.connection.ask(delete)(to) map processReplyMessage(delete)
   }
@@ -238,7 +272,7 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     val rename = RenameCollectionCmd(db.name, name, newName, dropTarget)
     (db.client.connection.ask(rename) map processDoubleOkCommandResult(rename)) map { v ⇒
       if (v)
-        Some(Collection(newName, db, statsRefresh)(timeout, writeConcern))
+        Some(Collection(newName, db)(timeout, writeConcern, retryStrategy, statsRefresh))
       else
         None
     }
@@ -266,8 +300,8 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
     * Apply a single Update selector and updater to the collection.
     * @param u The Update specification
     * @param ordered If true, then when an update statement fails, return without performing the remaining update
-    *               statements. If false, then when an update fails, continue with the remaining update statements,
-    *               if any. Defaults to true.
+    *             statements. If false, then when an update fails, continue with the remaining update statements,
+    *             if any. Defaults to true.
     * @param to The timeout for the update operation
     * @param wc The write concern for the update operation
     * @return A future WriteResult that returns the result of the update operation
@@ -278,7 +312,7 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
   /** Performs diagnostic operations on a collection. */
   def validate() = ???
 
-  private def processReplyMessage[T](cmd : Command)(any : Any) : BSONObject = {
+  private def processReplyMessage[T](cmd : Command)(any : Any) : BSONDocument = {
     any match {
       case reply : ReplyMessage ⇒
         require(cmd.requestId == reply.responseTo,
@@ -303,7 +337,15 @@ case class Collection(name : String, db : Database, statsRefresh : FiniteDuratio
 
   private def processDoubleOkCommandResult(cmd : Command)(any : Any) : Boolean = {
     val doc = processReplyMessage(cmd)(any)
-    doc.getAsDouble("ok") == 1.0
+    doc.asDouble("ok") == 1.0
   }
 
+}
+
+object Collection {
+  def apply(name : String, db : Database)(
+    implicit timeout : Timeout = db.timeout,
+    writeConcern : WriteConcern = db.writeConcern,
+    retryStrategy : RetryStrategy = RetryStrategy.default,
+    statsRefresh : FiniteDuration = 1.day) = new Collection(name, db)(timeout, writeConcern, retryStrategy, statsRefresh)
 }

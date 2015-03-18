@@ -55,9 +55,9 @@ object WriteConcernError {
   }
 }
 
-case class WriteResult private[rxmongo] (obj : BSONObject) {
-  val ok : Int = obj.getAsInt("ok")
-  val n : Int = obj.getAsInt("n")
-  val writeErrors = obj.getOptionalArray[WriteError]("writeErrors")
-  val writeConcernError = obj.getOptionalObject[WriteConcernError]("writeConcernError")
+case class WriteResult private[rxmongo] (doc : BSONDocument) {
+  val ok : Int = doc.asInt("ok")
+  val n : Int = doc.asInt("n")
+  val writeErrors = doc.asOptionalArray[WriteError]("writeErrors")
+  val writeConcernError = doc.asOptionalObjectOfType[WriteConcernError]("writeConcernError")
 }

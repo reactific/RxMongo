@@ -48,19 +48,19 @@ class CollectionSpec extends RxMongoTest("rxmongo", "collection") {
       val index = Index("key1", ascending = true)
       val options = IndexOptions()
       val result = Await.result(collection.createIndex(index, options), atMost)
-      result.getAsDouble("ok") must beEqualTo(1.0)
+      result.asDouble("ok") must beEqualTo(1.0)
     }
 
     "find" in mongoTest { () ⇒
       val result = Await.result(collection.findOne(Query("key1" $eq 42.0)), atMost)
-      result.hasNext must beEqualTo(true)
-      val obj = Await.result(result.next(), atMost)
+      result.isDefined must beTrue
+      val obj : BSONDocument = result.get
       obj.contains("key1") must beTrue
       obj.contains("key2") must beTrue
       obj.contains("key3") must beTrue
-      obj.getAsDouble("key1") must beEqualTo(42.0)
-      obj.getAsLong("key2") must beEqualTo(42L)
-      obj.getAsInt("key3") must beEqualTo(42)
+      obj.asDouble("key1") must beEqualTo(42.0)
+      obj.asLong("key2") must beEqualTo(42L)
+      obj.asInt("key3") must beEqualTo(42)
     }
 
     "update" in mongoTest { () ⇒

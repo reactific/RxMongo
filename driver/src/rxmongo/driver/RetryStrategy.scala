@@ -47,6 +47,7 @@ class RetryStrategy extends Iterator[FiniteDuration] {
 
 object RetryStrategy {
   def apply(retries : Int = 5) : RetryStrategy = new RetryStrategy { override val maxRetries = retries }
+  val default : RetryStrategy = RetryStrategy()
 }
 
 /** Simple Retry Strategy

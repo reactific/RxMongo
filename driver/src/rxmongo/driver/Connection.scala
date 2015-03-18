@@ -29,7 +29,7 @@ import akka.actor._
 import akka.event.LoggingReceive
 import akka.routing.{ Broadcast, DefaultResizer, SmallestMailboxPool }
 
-import rxmongo.bson.{ RxMongoError, BSONObject }
+import rxmongo.bson.{ BSONDocument, RxMongoError }
 import rxmongo.driver.cmds.IsMasterCmd
 
 import scala.concurrent.ExecutionContext
@@ -136,7 +136,7 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
     * The
     * @see [[http://docs.mongodb.org/master/reference/command/isMaster/]]
     */
-  def handleReplicaSetUpdate(doc : BSONObject) : Try[IsMasterReply] = Try {
+  def handleReplicaSetUpdate(doc : BSONDocument) : Try[IsMasterReply] = Try {
     // Convert and save as an IsMasterResponse object
     isMasterResponse = doc.to[IsMasterReply]
     isMasterResponse.setName match {
@@ -360,7 +360,7 @@ class Connection(uri : MongoURI) extends Actor with ActorLogging {
           val doc = msg.documents.head
           if (doc.contains("$err")) {
             val error = new RxMongoError(
-              s"Error result from MongoDB: ${doc.getAsString("$err")} (${doc.getAsInt("code")})")
+              s"Error result from MongoDB: ${doc.asString("$err")} (${doc.asInt("code")})")
             log.error(error, "Invalid response from MongoDB")
             for (client ← replicaSetClients) {
               client ! akka.actor.Status.Failure(error)

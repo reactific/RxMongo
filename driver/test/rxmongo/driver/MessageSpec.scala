@@ -117,7 +117,7 @@ class MessageSpec extends Specification {
         b.putInt(2 + 4 + 16 + 32 + 64 + 128)
         b.putCStr("db.coll")
         b.putInt(0)
-        b.putInt(1)
+        b.putInt(-1)
         b.putObject(selector)
         val payload = b.result()
         val c = ByteString.newBuilder
@@ -161,7 +161,7 @@ class MessageSpec extends Specification {
       }
 
       val replyMessage = ReplyMessage(replyBuff)
-      val msg = GetMoreMessage("db.coll", 1, replyMessage)
+      val msg = GetMoreMessage("db.coll", 1, replyMessage.cursorID)
 
       // struct {
       //   MsgHeader header;             // standard message header
