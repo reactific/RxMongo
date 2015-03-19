@@ -49,6 +49,22 @@ case class BSONDocument private[rxmongo] (
     }
   }
 
+  def asSeq[T](key : String, code: TypeCode, conv : (ByteIterator) ⇒ T) : Seq[T] = {
+    data.get(key) match {
+      case Some((tc, bi)) if tc == ArrayCode.code ⇒ {
+        for ( (k, (c, b)) ← BSONDocument(bi)) yield {
+          if (c != code.code)
+            throw new IllegalArgumentException(s"Field '$k' has type ${TypeCode(c).typeName} not ${code.typeName}")
+          else
+            conv(b)
+        }
+      }.toSeq
+      case Some((cd, bi)) ⇒
+        throw new IllegalArgumentException(s"Field '$key' has type ${TypeCode(cd).typeName} not ${ArrayCode.typeName}")
+      case None ⇒ Seq.empty[T]
+    }
+  }
+
   def asOrElse[T](key : String, default : T, code : TypeCode, conv : (ByteIterator) ⇒ T) : T = {
     data.get(key) match {
       case Some((c, itr)) if c == code.code ⇒ conv(itr)
@@ -173,12 +189,7 @@ case class BSONDocument private[rxmongo] (
     }
   }
 
-  def asSeq[T](key : String)(implicit codec : Codec[T]) : Seq[T] = {
-    asOptionSeq[T](key, codec.code, codec) match {
-      case Some(x) ⇒ x
-      case None    ⇒ Seq.empty[T]
-    }
-  }
+  def asSeq[T](key : String)(implicit codec : Codec[T]) : Seq[T] = asSeq[T](key, ObjectCode, codec)
 
   def asMapOf[T](implicit codec : Codec[T]) : Map[String, T] = {
     iterator.map {
@@ -300,6 +311,45 @@ case class BSONDocument private[rxmongo] (
   }
 }
 
+class BSONIterator(itr: ByteIterator) extends Iterator[(String,(Byte,ByteIterator))] {
+  val byteLen = itr.getInt
+  require(itr.len + 4 == byteLen)
+  var code = itr.getByte
+
+  def hasNext : Boolean = itr.hasNext && code != 0
+
+  def next : (String,(Byte,ByteIterator)) = {
+    if (!hasNext)
+      throw new NoSuchElementException("Exhausted BSONIterator")
+    val key = itr.getCStr
+    val save = itr.clone()
+    val currCode = code
+    val bi : ByteIterator = (currCode : @switch) match {
+      case 1  ⇒ save.take(itr.skipDouble) // Double
+      case 2  ⇒ save.take(itr.skipLength) // String
+      case 3  ⇒ save.take(itr.skipDocument) // Object
+      case 4  ⇒ save.take(itr.skipDocument) // Array
+      case 5  ⇒ save.take(itr.skipLength + itr.skipByte) // Binary
+      case 6  ⇒ save.take(0) // Undefined
+      case 7  ⇒ save.take(itr.skipObjId) // ObjectID
+      case 8  ⇒ save.take(itr.skipByte) // Boolean
+      case 9  ⇒ save.take(itr.skipLong) // Date
+      case 10 ⇒ save.take(0) // Null
+      case 11 ⇒ save.take(itr.skipCStr + itr.skipCStr) // Regex
+      case 12 ⇒ save.take(itr.skipLength + itr.skipObjId) // DBPointer
+      case 13 ⇒ save.take(itr.skipLength) // JavaScript
+      case 14 ⇒ save.take(itr.skipLength) // Symbol
+      case 15 ⇒ save.take(itr.skipDocument) // Scoped JavaScript
+      case 16 ⇒ save.take(itr.skipInt) // Integer
+      case 17 ⇒ save.take(itr.skipLong) // Timestamp
+      case 18 ⇒ save.take(itr.skipLong) // Long
+      case _  ⇒ throw new NoSuchElementException("Unrecognized BSON Type Code")
+    }
+    code = itr.getByte
+    key → (currCode → bi)
+  }
+}
+
 object BSONDocument {
   object empty extends BSONDocument(Map.empty[String, (Byte, ByteIterator)], None)
 
@@ -312,6 +362,7 @@ object BSONDocument {
   }
 
   def apply(buffer : ByteString) : BSONDocument = BSONDocument(buffer.iterator)
+
 
   def apply(itr : ByteIterator) : BSONDocument = {
     val docItr = itr.clone()

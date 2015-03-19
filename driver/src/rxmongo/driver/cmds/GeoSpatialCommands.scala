@@ -22,87 +22,176 @@
 
 package rxmongo.driver.cmds
 
-import akka.util.ByteString
+import akka.util.ByteIterator
 import rxmongo.bson._
 import rxmongo.driver.Command
-/* TODO: Fix GeoSpatial commands codecs
+import rxmongo.messages.Query
 
 
-sealed trait GeoJSON extends BSONProvider
+sealed trait GeoJSON
 
-case class GeoPoint(long : Double, lat : Double) extends GeoJSON {
-  def toByteString : ByteString = {
-    val b = BSONBuilder()
-    b.string("type", "Point")
-    b.array("coordinates", long, lat)
-    b.toByteString
-  }
-  def asArray : BSONArray = BSONArray(long, lat)
-}
+object GeoJSON {
 
-object GeoPoint {
-  implicit object Codec extends BSONCodec[GeoPoint, BSONObject] {
-    def code : TypeCode = ObjectCode
-    def write(value : GeoPoint) : BSONObject = { value.toBSONObject }
-    def read(value : BSONObject) : GeoPoint = {
-      val a = value.getAsArray[Double, BSONDouble]("coordinates")
-      GeoPoint(a(0), a(1))
+  val Point = "Point"
+  val LineString = "LineString"
+  val Polygon = "Polygon"
+  val MultiPoint = "MultiPoint"
+  val MultiPolygon = "MultiPolygon"
+  val Collection = "GeometryCollection"
+
+  implicit object Codec extends DocumentCodec[GeoJSON] {
+    def write(value : GeoJSON, bldr: BSONBuilder) : BSONBuilder = {
+      value match {
+        case x: GeoPoint ⇒ GeoPoint.Codec.write(x, bldr)
+        case x: GeoLineString ⇒ GeoLineString.Codec.write(x, bldr)
+        case x: GeoPolygon ⇒ GeoPolygon.Codec.write(x, bldr)
+        case x: GeoMultiPoint ⇒ GeoMultiPoint.Codec.write(x, bldr)
+        case x: GeoMultiPolygon ⇒ GeoMultiPolygon.Codec.write(x, bldr)
+        case x: GeometryCollection ⇒ GeometryCollection.Codec.write(x, bldr)
+        case x ⇒ throw new NoSuchElementException(s"$x is not a GeoJSON")
+      }
+    }
+    def read(doc : BSONDocument) : GeoJSON = {
+      doc.asString("type") match {
+        case Point ⇒ GeoPoint.Codec.read(doc)
+        case LineString ⇒ GeoLineString.Codec.read(doc)
+        case Polygon ⇒ GeoPolygon.Codec.read(doc)
+        case MultiPoint ⇒ GeoMultiPoint.Codec.read(doc)
+        case MultiPolygon ⇒ GeoMultiPolygon.Codec.read(doc)
+        case Collection ⇒ GeometryCollection.Codec.read(doc)
+      }
     }
   }
 }
 
-case class GeoLineString(positions : Seq[GeoPoint]) extends GeoJSON {
-  def toByteString : ByteString = {
-    val b = BSONBuilder()
-    b.string("type", "LineString")
-    b.array[GeoPoint, BSONObject]("coordinates", positions)
-    b.toByteString
+case class GeoPoint(long : Double, lat : Double) extends GeoJSON {
+  def asArray : BSONArray = BSONArray(long, lat)
+}
+
+object GeoPoint {
+  implicit object Codec extends DocumentCodec[GeoPoint] {
+    def write(value : GeoPoint, bldr: BSONBuilder) : BSONBuilder = {
+      bldr.string("type", GeoJSON.Point)
+      bldr.array("coordinates", value.long, value.lat)
+    }
+    def read(doc : BSONDocument) : GeoPoint = {
+      require(doc.asString("type") == GeoJSON.Point)
+      val coords = doc.asSeq[Double]("coordinates")
+      GeoPoint(coords(0), coords(1))
+    }
+  }
+
+  implicit object SeqCodec extends Codec[Seq[GeoPoint]] {
+    override val code = ArrayCode
+    def write(value: Seq[GeoPoint], bldr: BSONBuilder) : BSONBuilder = {
+      bldr.bldr.putArray[GeoPoint](value)(GeoPoint.Codec)
+      bldr
+    }
+    def read(itr: ByteIterator) : Seq[GeoPoint] = {
+      val i = new BSONIterator(itr)
+      for ((k, (c,b)) ← i) yield {
+        require(c == ObjectCode.code)
+        GeoPoint.Codec.read(b)
+      }
+    }.toSeq
   }
 }
 
-case class GeoPolygon(linearRing : Seq[GeoPoint], holes : Seq[Seq[GeoPoint]]) extends GeoJSON {
-  def toByteString : ByteString = {
-    val b = BSONBuilder()
-    b.string("type", "Polygon")
-    b.array("coordinates", asArray)
-    b.toByteString
+case class GeoLineString(coordinates : Seq[GeoPoint]) extends GeoJSON
+
+object GeoLineString {
+  implicit object Codec extends DocumentCodec[GeoLineString] {
+    def write(value: GeoLineString, bldr: BSONBuilder) : BSONBuilder = {
+      bldr.string("type", GeoJSON.LineString)
+      bldr.array("coordinates", value.coordinates)
+    }
+    def read(doc: BSONDocument) : GeoLineString = {
+      require(doc.asString("type") == GeoJSON.LineString)
+      val coords = doc.asSeq[GeoPoint]("coordinates")
+      GeoLineString(coords)
+    }
   }
-  def asArray : BSONArray = {
-    val ring = BSONArray(linearRing.map { p ⇒ p.asArray })
-    val h = holes.map { one ⇒ BSONArray(one.map { p ⇒ p.asArray }) }
-    BSONArray(h :+ ring)
+}
+
+case class GeoPolygon(coordinates : Seq[Seq[GeoPoint]]) extends GeoJSON {
+  def asArray: BSONArray = {
+    BSONArray ( coordinates map { segment ⇒ BSONArray( segment.map { p ⇒ p.asArray } ) } )
   }
 }
 
 object GeoPolygon {
-  implicit object Codec extends BSONCodec[GeoPolygon, BSONObject]
-}
-
-case class GeoMultiPoint(positions : Seq[GeoPoint]) extends GeoJSON {
-  def toByteString : ByteString = {
-    val b = BSONBuilder()
-    b.string("type", "MultiPoint")
-    b.array[GeoPoint, BSONObject]("coordinates", positions)
-    b.toByteString
+  implicit object Codec extends DocumentCodec[GeoPolygon] {
+    def write(value: GeoPolygon, bldr: BSONBuilder) : BSONBuilder = {
+      bldr.string("type", GeoJSON.Polygon)
+      bldr.array("coordinates", value.asArray)
+    }
+    def read(doc: BSONDocument) : GeoPolygon = {
+      require(doc.asString("type") == GeoJSON.Polygon)
+      GeoPolygon(doc.asSeq[Seq[GeoPoint]]("coordinates"))
+    }
+  }
+  implicit object SeqCodec extends Codec[Seq[GeoPolygon]] {
+    override val code = ArrayCode
+    def write(value: Seq[GeoPolygon], bldr: BSONBuilder) : BSONBuilder = {
+      bldr.bldr.putArray[GeoPolygon](value)(GeoPolygon.Codec)
+      bldr
+    }
+    def read(itr: ByteIterator) : Seq[GeoPolygon] = {
+      val i = new BSONIterator(itr)
+      for ((k, (c,b)) ← i) yield {
+        require(c == ObjectCode.code)
+        GeoPolygon.Codec.read(b)
+      }
+    }.toSeq
   }
 }
 
-case class GeoMultiPolygon(polygons : Seq[GeoPolygon]) extends GeoJSON {
-  def toByteString : ByteString = {
-    val b = BSONBuilder()
-    b.string("type", "MultiPolygon")
-    b.array("coordinates", polygons)
-    b.toByteString
+case class GeoMultiPoint(coordinates : Seq[GeoPoint]) extends GeoJSON
+
+object GeoMultiPoint {
+  implicit object Codec extends DocumentCodec[GeoMultiPoint] {
+    def write(value: GeoMultiPoint, bldr: BSONBuilder) : BSONBuilder = {
+      bldr.string("type", GeoJSON.MultiPoint)
+      bldr.array[GeoPoint]("coordinates", value.coordinates)
+    }
+    def read(doc: BSONDocument) : GeoMultiPoint = {
+      require(doc.asString("type") == GeoJSON.MultiPoint)
+      GeoMultiPoint(doc.asSeq[GeoPoint]("coordinates"))
+    }
   }
 }
 
-case class GeometryCollection(geometries : Seq[GeoJSON]) extends GeoJSON {
-  def toByteString : ByteString = {
-    val b = BSONBuilder()
-    b.string("type", "GeometryCollection")
-    val geos = geometries.map { g ⇒ g.result }
-    b.array("geometries", geos)
-    b.toByteString
+case class GeoMultiPolygon(coordinates : Seq[GeoPolygon]) extends GeoJSON
+
+object GeoMultiPolygon {
+
+  implicit object Codec extends DocumentCodec[GeoMultiPolygon] {
+    def write(value: GeoMultiPolygon, bldr: BSONBuilder): BSONBuilder = {
+      bldr.string("type", GeoJSON.MultiPolygon)
+      bldr.array("coordinates", value.coordinates)
+    }
+
+    def read(doc: BSONDocument): GeoMultiPolygon = {
+      require(doc.asString("type") == GeoJSON.MultiPolygon)
+      GeoMultiPolygon(doc.asSeq[GeoPolygon]("coordinates"))
+    }
+  }
+}
+
+case class GeometryCollection(geometries : Seq[GeoJSON]) extends GeoJSON
+
+object GeometryCollection {
+
+  implicit object Codec extends DocumentCodec[GeometryCollection] {
+    def write(value: GeometryCollection, bldr: BSONBuilder): BSONBuilder = {
+      bldr.string("type", GeoJSON.Collection)
+      bldr.array("geometries", value.geometries)
+    }
+
+    def read(doc: BSONDocument): GeometryCollection = {
+      require(doc.asString("type") == GeoJSON.Collection)
+      GeometryCollection(doc.asSeq[GeoJSON]("geometries"))
+    }
   }
 }
 
@@ -151,7 +240,7 @@ case class GeoNearCmd(
 ) extends Command(db, {
   val b = BSONBuilder()
   b.string("geoNear", coll)
-  b.obj("near", near.result)
+  b.obj("near", near)
   b.boolean("spherical", spherical)
   limit.map { l ⇒ b.integer("limit", l) }
   minDistance.map { md ⇒ b.double("minDistance", md) }
@@ -182,10 +271,9 @@ case class GeoSearchCmd(
 ) extends Command(db, {
   val b = BSONBuilder()
   b.string("geoSearch", coll)
-  b.obj("near", near.result)
+  b.obj("near", near)
   b.obj("search", query.result)
   b.integer("maxDistance", maxDistance)
   limit.map { l ⇒ b.integer("limit", l) }
   b.result
 })
- */
