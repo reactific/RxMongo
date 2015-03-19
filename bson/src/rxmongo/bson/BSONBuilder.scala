@@ -26,9 +26,9 @@ import java.nio.ByteOrder
 import java.util.Date
 import java.util.regex.Pattern
 
-import scala.collection.mutable
-
 import akka.util.{ ByteStringBuilder, ByteString }
+
+import scala.collection.mutable
 
 /** A Trait for things that provide BSON ByteStrings
   *

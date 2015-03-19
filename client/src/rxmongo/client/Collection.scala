@@ -47,7 +47,8 @@ class Collection(val name : String, val db : Database)(
   override implicit val timeout : Timeout = db.timeout,
   override implicit val writeConcern : WriteConcern = db.writeConcern,
   implicit val retryStrategy : RetryStrategy = RetryStrategy.default,
-  implicit val statsRefresh : FiniteDuration = 1.day) extends RxMongoComponent(db.driver) {
+  implicit val statsRefresh : FiniteDuration = 1.day,
+  val statsScale : Int = 1024) extends RxMongoComponent(db.driver) {
 
   val fullName = db.namespace + "." + name
 
@@ -62,43 +63,89 @@ class Collection(val name : String, val db : Database)(
   private def getRefreshedStats() : CollStatsReply = Try {
     val timeNow = System.currentTimeMillis()
     if (_stats_refreshed_at.get() + statsRefresh.toMillis < timeNow) {
-      val result = (db.client.connection ? CollStatsCmd(db.namespace, name)).mapTo[ReplyMessage] map { reply ⇒
-        if (reply.numberReturned >= 1) {
-          val stats = reply.documents.head.to[CollStatsReply]
-          _stats.set(stats)
-          _stats_refreshed_at.set(timeNow)
-          stats
-        } else {
-          throw new IllegalStateException("Mongo didn't return a document for ColLStatsCmd")
+      this.synchronized {
+        val result = (db.client.connection ? CollStatsCmd(db.namespace, name, statsScale)).mapTo[ReplyMessage] map { reply ⇒
+          if (reply.numberReturned >= 1) {
+            val stats = reply.documents.head.to[CollStatsReply]
+            _stats.set(stats)
+            _stats_refreshed_at.set(timeNow)
+            stats
+          } else {
+            throw new IllegalStateException("Mongo didn't return a document for ColLStatsCmd")
+          }
         }
+        Await.result(result, timeout.duration)
       }
-      Await.result(result, timeout.duration)
     } else {
       _stats.get
     }
   } match {
     case Success(stats) ⇒ stats
     case Failure(xcptn) ⇒
-      log.error(xcptn, "Failed to acquire collection statustics")
+      log.error(xcptn, "Failed to acquire collection statistics")
       throw xcptn
   }
+
+  /** Return the average size of an object (document) in the collection. This value is refreshed only as frequently
+    * as statsRefresh permits.
+    */
+  def avgObjSize = getRefreshedStats().avgObjSize
+
+  def capped : Boolean = getRefreshedStats().capped
+
+  /** Count Of Documents.
+    * @return a count of the number of documents in this collection.
+    */
+  def count = getRefreshedStats().count
+
+  /** Storage Size of Collection.
+    * @return The size of the data storage for the collection, in bytes.
+    */
+  def storageSize : Long = getRefreshedStats().storageSize * statsScale
+
+  /** Index Size Of Collection.
+    * @return
+    */
+  def indexSize : Long = getRefreshedStats().totalIndexSize * statsScale
+
+  /** Last Extent Size.
+    * @return The size of the last extent added to the collection.
+    */
+  def lastExtentSize = getRefreshedStats().lastExtentSize
+
+  /** Number of indexes.
+    * @return The number of indexes associated with the collection
+    */
+  def numIndexes = getRefreshedStats().nindexes
+
+  /** Number of database extents.
+    *
+    * @return The number of space allocation extents allocated to the collection
+    */
+  def numExtents = getRefreshedStats().numExtents
+
+  /** Collection Stats
+    * @return Returns the CollStatsReply object that contains all collection statistics
+    */
+  def stats : CollStatsReply = getRefreshedStats()
 
   /** Provides access to the aggregation pipeline.
     *
     */
   def aggregate() = ???
 
-  /** Return the average size of an object (document) in the collection. This value is refreshed only as frequently
-    * as statsRefresh permits.
+  /** Count matching documents
+    *
+    * @param selector A query that selects which documents to count in a collection.
+    * @param limit The maximum number of matching documents to return.
+    * @param skip The number of matching documents to skip before returning results.
+    * @param hint The index to use. Specify either the index name as a string or the index specification document.
+    * @return
     */
-  def avgObjSize() = getRefreshedStats().avgObjSize
-
-  /** Return a count of the number of documents in this collection. This value is refreshed only as frequently as
-    * statsRefresh permits.
-    */
-  def count() = getRefreshedStats().count
-
-  def count(selector : Query, limit : Int) : Future[Int] = ???
+  def count(selector : Query, limit : Option[Int], skip : Option[Int], hint : Option[String]) : Future[Int] = {
+    val cmd = CountCmd(db.name, name, selector, limit, skip, hint)
+    db.client.connection.ask(cmd) map processReplyMessage(cmd) map { obj ⇒ obj.asInt("n") }
+  }
 
   /** Wraps eval to copy data between collections in a single MongoDB instance. */
   def copyTo() = ???
@@ -117,13 +164,6 @@ class Collection(val name : String, val db : Database)(
     val cmd = CreateIndicesCmd(db.name, name, indices)
     db.client.connection.ask(cmd) map processReplyMessage(cmd)
   }
-
-  /** Renders a human-readable view of the data collected by indexStats which reflects B-tree utilization. */
-  def getIndexStats() = ???
-  /** Renders a human-readable view of the data collected by indexStats which reflects B-tree utilization. */
-  def indexStats() = ???
-  /** Returns the size of the collection. Wraps the size field in the output of the collStats. */
-  def dataSize() = ???
 
   def deleteOne(delete : Delete, ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONDocument] = {
     remove(Seq(delete), ordered)(to, wc)
@@ -220,15 +260,36 @@ class Collection(val name : String, val db : Database)(
     }
   }
 
-  /** Atomically modifies and returns a single document. */
-  def findAndModify() = ???
+  /** Atomically modifies and returns a single document.
+    * @param selector The query selector to find the document to be modified
+    * @param update The update specification for modifying the found document
+    * @param remove A boolean value to determine whether the found document should be deleted. If true, the update
+    *            parameter is ignored.
+    * @param projection The field projection to apply after the modification
+    * @param fetchNewObject Return the new object instead of the old one
+    * @param upsert A boolean value to determine whether the update should be used to construct a new document if
+    *            the selector doesn't find a match.
+    */
+  def findAndModify(
+    selector : Option[Query] = None,
+    update : Update,
+    remove : Boolean = false,
+    projection : Option[Projection] = None,
+    fetchNewObject : Boolean = true,
+    upsert : Boolean = false) = {
+    // TODO: Finish implementing FindAndModify
+    val msg = FindAndModifyCmd(db.name, name, selector)
+  }
 
   /** Returns an array of documents that describe the existing indexes on a collection. */
   def getIndexes() = ???
+
   /** For collections in sharded clusters, db.collection.getShardDistribution() reports data of chunk distribution. */
   def getShardDistribution() = ???
+
   /** Internal diagnostic method for shard cluster. */
   def getShardVersion() = ???
+
   /** Provides simple data aggregation function.
     * Groups documents in a collection by a key, and processes the results.
     * Use aggregate() for more complex data aggregation.
@@ -280,15 +341,6 @@ class Collection(val name : String, val db : Database)(
 
   /** Provides a wrapper around an insert() and update() to insert new documents. */
   def save() = ???
-  /** Reports on the state of a collection. */
-  def stats() : CollStatsReply = getRefreshedStats()
-
-  /** Reports the total size used by the collection in bytes. Provides a wrapper around the storageSize field of the collStats output. */
-  def storageSize() = getRefreshedStats().storageSize
-  /** Reports the total size of a collection, including the size of all documents and all indexes on a collection. */
-  def totalSize() = getRefreshedStats().size
-  /** Reports the total size used by the indexes on a collection. Provides a wrapper around the totalIndexSize field of the collStats output. */
-  def totalIndexSize() = getRefreshedStats().totalIndexSize
 
   /** Modifies a document in a collection. */
   def update(updates : Seq[Update], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
@@ -300,8 +352,8 @@ class Collection(val name : String, val db : Database)(
     * Apply a single Update selector and updater to the collection.
     * @param u The Update specification
     * @param ordered If true, then when an update statement fails, return without performing the remaining update
-    *             statements. If false, then when an update fails, continue with the remaining update statements,
-    *             if any. Defaults to true.
+    *          statements. If false, then when an update fails, continue with the remaining update statements,
+    *          if any. Defaults to true.
     * @param to The timeout for the update operation
     * @param wc The write concern for the update operation
     * @return A future WriteResult that returns the result of the update operation

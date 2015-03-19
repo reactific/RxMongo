@@ -22,7 +22,6 @@
 
 package rxmongo.driver
 
-import akka.util.{ ByteStringBuilder, ByteIterator }
 import rxmongo.bson._
 
 /** Reply From The CollStatsCmd
@@ -40,7 +39,7 @@ import rxmongo.bson._
   * the mmapv1 storage engine.
   * @param nindexes The number of indexes on the collection. All collections have at least one index on the _id field.
   * @param lastExtentSize The size of the last extent allocated. The scale argument affects this value. Only present
-  *  when using the mmapv1 storage engine.
+  * when using the mmapv1 storage engine.
   * @param userFlags Reports the flags on this collection set by the user. See the collMod command for more information
   * on setting user flags and usePowerOf2Sizes. Only appears when using the mmapv1 storage engine.
   * @param totalIndexSize The total size of all indexes. The scale argument affects this value.
@@ -146,16 +145,16 @@ case class ExtentInfo(len : Int, file : Int, offset : Int)
 object ExtentInfo {
   implicit object Codec extends DocumentCodec[ExtentInfo] {
     override def read(doc : BSONDocument) : ExtentInfo = {
-      val obj = doc.asMap[Int]("loc:")
+      val obj = doc.asMap[Int]("loc: ")
       ExtentInfo(
-        doc.getOrElse("len", 0).asInstanceOf[Int],
+        doc.asIntOrElse("len", 0),
         obj.getOrElse("file", 0),
         obj.getOrElse("offset", 0)
       )
     }
     override def write(value : ExtentInfo, bldr : BSONBuilder) : BSONBuilder = {
       bldr.integer("len", value.len)
-      bldr.anyObj("loc:", Seq("file" → value.file, "offset" → value.offset))
+      bldr.anyObj("loc: ", Seq("file" → value.file, "offset" → value.offset))
       bldr
     }
   }
