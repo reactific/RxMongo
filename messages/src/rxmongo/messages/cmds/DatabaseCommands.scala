@@ -20,10 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages.cmds
 
 import rxmongo.bson._
-import rxmongo.driver.{ AdminCommand, Index, IndexOptions, Command }
+import rxmongo.messages.{ AdminCommand, Index, IndexOptions, Command }
 import rxmongo.messages.Query
 
 /** listCollections

@@ -20,10 +20,9 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages
 
-import rxmongo.bson.{ BSONBuilder, BSONProvider }
-import rxmongo.messages.Query
+import rxmongo.bson.{BSONBuilder, BSONProvider}
 
 /** Represents A MongoDB Query Projection
   *

@@ -20,10 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages.cmds
 
 import rxmongo.bson.BSONObject
-import rxmongo.driver.{ AuthMechanism, Command }
+import rxmongo.messages.{ AuthMechanism, Command }
 
 /** logout
   * @see [[http://docs.mongodb.org/master/reference/command/logout]]

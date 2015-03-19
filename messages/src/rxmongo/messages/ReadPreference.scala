@@ -20,22 +20,32 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages
 
-sealed trait AuthMechanism { val asStr : String }
-case object MONGODB_X509 extends AuthMechanism { override def toString = asStr; val asStr = "MONGODB-X509"; }
-case object MONGODB_CR extends AuthMechanism { override def toString = asStr; val asStr = "MONGODB-CR" }
-case object GSSAPI extends AuthMechanism { override def toString = asStr; val asStr = "GSSAPI" }
-case object PLAIN extends AuthMechanism { override def toString = asStr; val asStr = "PLAIN" }
+sealed trait ReadPreference
+case object PrimaryRP extends ReadPreference { override def toString = "primary" }
+case object PrimaryPreferredRP extends ReadPreference { override def toString = "primaryPreferred" }
+case object SecondaryRP extends ReadPreference { override def toString = "secondary" }
+case object SecondaryPreferredRP extends ReadPreference { override def toString = "secondaryPreferred" }
+case object NearestRP extends ReadPreference { override def toString = "nearest" }
 
-object AuthMechanism {
-  def apply(str : String) : AuthMechanism = {
+object ReadPreference {
+  def apply(str : String) : ReadPreference = {
     str match {
-      case MONGODB_X509.asStr ⇒ MONGODB_X509
-      case MONGODB_CR.asStr ⇒ MONGODB_CR
-      case GSSAPI.asStr ⇒ GSSAPI
-      case PLAIN.asStr ⇒ PLAIN
-      case _ ⇒ MONGODB_X509
+      case "primary" ⇒ PrimaryRP
+      case "primaryPreferred" ⇒ PrimaryPreferredRP
+      case "secondary" ⇒ SecondaryRP
+      case "secondaryPreferred" ⇒ SecondaryPreferredRP
+      case "nearest" ⇒ NearestRP
+      case _ ⇒ PrimaryRP
+    }
+  }
+
+  def tags(str : String) : Iterable[(String, String)] = {
+    val parts = str.split(",")
+    for (part ← parts if part.contains(":")) yield {
+      val parts = part.split(":")
+      parts(0) -> parts(1)
     }
   }
 }

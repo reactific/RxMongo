@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages.cmds
 
 import akka.util.{ ByteIterator, ByteString }
 import rxmongo.bson._

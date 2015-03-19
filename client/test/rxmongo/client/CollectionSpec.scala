@@ -24,7 +24,6 @@ package rxmongo.client
 
 import rxmongo.bson._
 import rxmongo.messages._
-import rxmongo.driver.{ WriteResult, IndexOptions, Index }
 
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration

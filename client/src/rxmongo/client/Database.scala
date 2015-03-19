@@ -23,7 +23,7 @@
 package rxmongo.client
 
 import akka.util.Timeout
-import rxmongo.driver.{ WriteConcern }
+import rxmongo.messages.WriteConcern
 
 /** Represents A MongoDB Database
   *

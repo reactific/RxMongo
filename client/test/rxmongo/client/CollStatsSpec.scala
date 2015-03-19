@@ -23,7 +23,7 @@
 package rxmongo.client
 
 import rxmongo.bson.BSONObject
-import rxmongo.driver.WriteResult
+import rxmongo.messages.WriteResult
 
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration

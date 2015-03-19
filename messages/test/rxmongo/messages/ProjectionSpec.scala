@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages
 
 import org.specs2.mutable.Specification
 import rxmongo.bson.BSONObject

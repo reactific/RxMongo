@@ -20,10 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages.cmds
 
 import rxmongo.bson.{ BSONBuilder, BSONObject }
-import rxmongo.driver.{ AdminCommand, Command }
+import rxmongo.messages.{ AdminCommand, Command }
 
 /** logApplicationMessage
   * The logApplicationMessage command allows users to post a custom message to the audit log. If running with

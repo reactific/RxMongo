@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages.cmds
 
 import akka.util.ByteString
 import rxmongo.bson.{ BSONBuilder, BSONProvider, BSONObject }
-import rxmongo.driver.AdminCommand
+import rxmongo.messages.AdminCommand
 
 case class ReplicaSetMemberConfiguration(
   _id : Int,

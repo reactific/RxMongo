@@ -26,6 +26,7 @@ import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
 import akka.http.model.Uri.Query
+import rxmongo.messages._
 
 import scala.concurrent.duration._
 

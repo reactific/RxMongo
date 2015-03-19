@@ -20,10 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages.cmds
 
 import rxmongo.bson.{ BSONObject, BSONBuilder }
-import rxmongo.driver.{ Command, WriteConcern }
+import rxmongo.messages.{ Command, WriteConcern }
 
 /** createRole
   * Creates a role and specifies its privileges.

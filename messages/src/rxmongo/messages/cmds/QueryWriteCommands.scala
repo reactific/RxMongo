@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages.cmds
 
 import akka.util.ByteString
 import rxmongo.bson._
-import rxmongo.driver.{ Command, Projection, WriteConcern }
+import rxmongo.messages.{ Command, Projection, WriteConcern }
 import rxmongo.messages.{ Delete, Query, Update }
 
 /** Represents A MongoDB Write Command

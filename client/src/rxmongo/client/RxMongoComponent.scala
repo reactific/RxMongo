@@ -24,7 +24,8 @@ package rxmongo.client
 
 import akka.event.{ Logging, LoggingAdapter }
 import akka.util.Timeout
-import rxmongo.driver.{ WriteConcern, Driver }
+import rxmongo.driver.Driver
+import rxmongo.messages.WriteConcern
 
 import scala.concurrent.ExecutionContext
 

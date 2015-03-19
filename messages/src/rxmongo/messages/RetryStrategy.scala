@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages
 
 import scala.concurrent.duration._
 

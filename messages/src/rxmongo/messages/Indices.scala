@@ -20,10 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages
 
 import akka.util.ByteString
-import rxmongo.bson.{ BSONBuilder, BSONObject, BSONProvider }
+import rxmongo.bson.{BSONBuilder, BSONObject, BSONProvider}
 
 /** Storage Engine Configuration */
 sealed trait StorageEngineConfig extends BSONProvider {

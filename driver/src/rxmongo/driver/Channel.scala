@@ -27,6 +27,7 @@ import java.net.InetSocketAddress
 import akka.actor._
 import akka.event.LoggingReceive
 import akka.util.ByteString
+import rxmongo.messages.{ReplyMessage, RequestMessage}
 
 import scala.collection.mutable
 

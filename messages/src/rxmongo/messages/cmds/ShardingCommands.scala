@@ -20,10 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages.cmds
 
 import rxmongo.bson.{ BSONBuilder, BSONObject }
-import rxmongo.driver.{ AdminCommand, WriteConcern }
+import rxmongo.messages.{ AdminCommand, WriteConcern }
 
 /** flushRouterConfig
   * Forces an update to the cluster metadata cached by a mongos.

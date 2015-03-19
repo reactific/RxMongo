@@ -25,6 +25,7 @@ package rxmongo.driver
 import java.util.concurrent.TimeUnit
 
 import org.specs2.mutable.Specification
+import rxmongo.messages._
 
 import scala.concurrent.duration.{ Duration, FiniteDuration }
 

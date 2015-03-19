@@ -20,13 +20,11 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages
 
 import org.specs2.mutable.Specification
-
 import rxmongo.bson._
-import rxmongo.driver.cmds.FindAndModifyCmd
-import rxmongo.messages._
+import rxmongo.messages.cmds.FindAndModifyCmd
 
 class CommandsSpec extends Specification {
 

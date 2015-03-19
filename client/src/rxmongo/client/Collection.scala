@@ -30,8 +30,8 @@ import akka.util.Timeout
 
 import rxmongo.bson._
 import rxmongo.driver._
-import rxmongo.driver.cmds._
-import rxmongo.messages.{ Delete, Query, Update }
+import rxmongo.messages.cmds._
+import rxmongo.messages._
 
 import scala.concurrent.{ ExecutionContext, Await, Future }
 import scala.concurrent.duration._
@@ -315,7 +315,11 @@ class Collection(val name : String, val db : Database)(
 
   /** Performs map-reduce style data aggregation. */
   def mapReduce() = ???
-  /** Rebuilds all existing indexes on a collection. */
+
+  /** Rebuilds all existing indexes on a collection.
+    * @see http://docs.mongodb.org/manual/reference/command/reIndex/#dbcmd.reIndex
+    * @return
+    */
   def reIndex() = ???
   /** Deletes documents from a collection. */
   def removeRaw(selector : Query) : Unit = {

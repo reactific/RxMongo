@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages.cmds
 
 import akka.util.ByteIterator
 import rxmongo.bson._
-import rxmongo.driver.Command
+import rxmongo.messages.Command
 import rxmongo.messages.Query
 
 

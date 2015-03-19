@@ -20,16 +20,22 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages
 
-import rxmongo.bson.{ BSONObject, BSONObjectID }
-import rxmongo.driver.AdminCommand
+sealed trait AuthMechanism { val asStr : String }
+case object MONGODB_X509 extends AuthMechanism { override def toString = asStr; val asStr = "MONGODB-X509"; }
+case object MONGODB_CR extends AuthMechanism { override def toString = asStr; val asStr = "MONGODB-CR" }
+case object GSSAPI extends AuthMechanism { override def toString = asStr; val asStr = "GSSAPI" }
+case object PLAIN extends AuthMechanism { override def toString = asStr; val asStr = "PLAIN" }
 
-/** filemd5
-  * @see [[http://docs.mongodb.org/master/reference/command/filemd5/]]
-  * @param fileMD5 The ObjectID of the file
-  * @param root The root
-  */
-case class FileMD5Cmd(fileMD5 : BSONObjectID, root : String) extends AdminCommand(
-  BSONObject("filemd5" → BSONObjectID, "root" → root)
-)
+object AuthMechanism {
+  def apply(str : String) : AuthMechanism = {
+    str match {
+      case MONGODB_X509.asStr ⇒ MONGODB_X509
+      case MONGODB_CR.asStr ⇒ MONGODB_CR
+      case GSSAPI.asStr ⇒ GSSAPI
+      case PLAIN.asStr ⇒ PLAIN
+      case _ ⇒ MONGODB_X509
+    }
+  }
+}

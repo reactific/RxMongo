@@ -24,12 +24,11 @@ package rxmongo.client
 
 import java.io.Closeable
 
-import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 
 import rxmongo.bson.BSONDocument
-import rxmongo.driver.{ KillCursorsMessage, GetMoreMessage, ReplyMessage }
+import rxmongo.messages.{ReplyMessage, KillCursorsMessage, GetMoreMessage}
 
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration._

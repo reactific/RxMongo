@@ -20,10 +20,7 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
-
-import akka.util.{ ByteIterator, ByteStringBuilder }
-import rxmongo.bson._
+package rxmongo.messages
 
 /** The Options For A Query
   *

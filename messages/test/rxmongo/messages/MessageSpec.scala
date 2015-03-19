@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages
 
 import akka.util.ByteString
 import org.specs2.mutable.Specification

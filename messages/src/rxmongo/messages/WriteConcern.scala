@@ -20,11 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages
 
 import java.util.concurrent.TimeUnit
 
-import akka.util.{ ByteIterator, ByteStringBuilder }
 import rxmongo.bson._
 
 import scala.concurrent.duration._

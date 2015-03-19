@@ -20,10 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages.cmds
 
 import rxmongo.bson.{ BSONArray, BSONBuilder, BSONObject }
-import rxmongo.driver.Command
+import rxmongo.messages.Command
 import rxmongo.messages.Query
 
 /** aggregate

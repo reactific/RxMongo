@@ -20,10 +20,10 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver.cmds
+package rxmongo.messages.cmds
 
 import rxmongo.bson.{ BSONBuilder, BSONObject }
-import rxmongo.driver.{ Command, WriteConcern }
+import rxmongo.messages.{ Command, WriteConcern }
 
 /** createUser
   * Creates a new user.

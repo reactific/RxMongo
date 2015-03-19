@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages
 
 import rxmongo.bson._
 

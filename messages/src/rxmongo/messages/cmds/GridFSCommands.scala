@@ -20,32 +20,16 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages.cmds
 
-sealed trait ReadPreference
-case object PrimaryRP extends ReadPreference { override def toString = "primary" }
-case object PrimaryPreferredRP extends ReadPreference { override def toString = "primaryPreferred" }
-case object SecondaryRP extends ReadPreference { override def toString = "secondary" }
-case object SecondaryPreferredRP extends ReadPreference { override def toString = "secondaryPreferred" }
-case object NearestRP extends ReadPreference { override def toString = "nearest" }
+import rxmongo.bson.{ BSONObject, BSONObjectID }
+import rxmongo.messages.AdminCommand
 
-object ReadPreference {
-  def apply(str : String) : ReadPreference = {
-    str match {
-      case "primary" ⇒ PrimaryRP
-      case "primaryPreferred" ⇒ PrimaryPreferredRP
-      case "secondary" ⇒ SecondaryRP
-      case "secondaryPreferred" ⇒ SecondaryPreferredRP
-      case "nearest" ⇒ NearestRP
-      case _ ⇒ PrimaryRP
-    }
-  }
-
-  def tags(str : String) : Iterable[(String, String)] = {
-    val parts = str.split(",")
-    for (part ← parts if part.contains(":")) yield {
-      val parts = part.split(":")
-      parts(0) -> parts(1)
-    }
-  }
-}
+/** filemd5
+  * @see [[http://docs.mongodb.org/master/reference/command/filemd5/]]
+  * @param fileMD5 The ObjectID of the file
+  * @param root The root
+  */
+case class FileMD5Cmd(fileMD5 : BSONObjectID, root : String) extends AdminCommand(
+  BSONObject("filemd5" → BSONObjectID, "root" → root)
+)

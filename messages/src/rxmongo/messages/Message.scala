@@ -20,11 +20,11 @@
  * SOFTWARE.
  */
 
-package rxmongo.driver
+package rxmongo.messages
 
-import akka.util.{ ByteStringBuilder, ByteString }
+import akka.util.{ByteString, ByteStringBuilder}
 import rxmongo.bson._
-import rxmongo.driver.Message.OP_NOT_A_MESSAGE
+import rxmongo.messages
 
 object Message {
 
@@ -250,7 +250,7 @@ abstract class GenericQueryMessage extends RequestMessage(Message.OP_QUERY) {
   * elements, each of which is the name of a field that should be returned, and and the
   * integer value 1. In JSON notation, a returnFieldsSelector to limit to the fields
   * a, b and c would be: `{ a : 1, b : 1, c : 1}`.
-  * @param options The options for the query. See [[rxmongo.driver.QueryOptions]].
+  * @param options The options for the query. See [[messages.QueryOptions]].
   *
   * The database will respond to an OP_QUERY message with an OP_REPLY message.
   */
@@ -401,7 +401,7 @@ case class KillCursorsMessage(
   * The OP_REPLY message is sent by the database in response to an OP_QUERY or OP_GET_MORE message.
   * @param buffer The ByteString buffer received from mongo from which the values for this object are extracted
   */
-case class ReplyMessage private[driver] (private val buffer : ByteString) extends Message {
+case class ReplyMessage private[rxmongo] (private val buffer : ByteString) extends Message {
   val opcode = Message.OP_REPLY
 
   /** {{{
@@ -498,8 +498,8 @@ case class ReplyMessage private[driver] (private val buffer : ByteString) extend
   * write. The contained messages will each have their own reply, if they warrant one.
   * @param msgs The batch of messages
   */
-case class MessageBatch private[driver] (private val msgs : Seq[Message]) extends Message {
-  val opcode = OP_NOT_A_MESSAGE
+case class MessageBatch private[messages] (private val msgs : Seq[Message]) extends Message {
+  val opcode = Message.OP_NOT_A_MESSAGE
   def addTo(bldr : ByteStringBuilder) : ByteStringBuilder = {
     msgs.foldLeft(ByteString.newBuilder) { (x, m) ⇒ x.append(m.finish) }
   }
