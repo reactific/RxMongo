@@ -29,7 +29,7 @@ import akka.util.Timeout
 import com.typesafe.config.Config
 
 import rxmongo.driver.{ Driver, MongoURI }
-import rxmongo.messages.{WriteConcern, Query}
+import rxmongo.messages.{ WriteConcern, Query }
 
 import scala.concurrent.Await
 import scala.util.{ Failure, Success }

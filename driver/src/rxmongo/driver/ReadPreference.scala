@@ -20,22 +20,32 @@
  * SOFTWARE.
  */
 
-package rxmongo.bson
+package rxmongo.driver
 
-object Keywords {
+sealed trait ReadPreference
+case object PrimaryRP extends ReadPreference { override def toString = "primary" }
+case object PrimaryPreferredRP extends ReadPreference { override def toString = "primaryPreferred" }
+case object SecondaryRP extends ReadPreference { override def toString = "secondary" }
+case object SecondaryPreferredRP extends ReadPreference { override def toString = "secondaryPreferred" }
+case object NearestRP extends ReadPreference { override def toString = "nearest" }
 
-  sealed trait Keyword { def value : String }
+object ReadPreference {
+  def apply(str : String) : ReadPreference = {
+    str match {
+      case "primary" ⇒ PrimaryRP
+      case "primaryPreferred" ⇒ PrimaryPreferredRP
+      case "secondary" ⇒ SecondaryRP
+      case "secondaryPreferred" ⇒ SecondaryPreferredRP
+      case "nearest" ⇒ NearestRP
+      case _ ⇒ PrimaryRP
+    }
+  }
 
-  // Aggregation Pipeline Keywords
-  object $geoNear extends Keyword { def value = "$geoNear" }
-  object $group extends Keyword { def value = "$group" }
-  object $limit extends Keyword { def value = "$limit" }
-  object $match extends Keyword { def value = "$match" }
-  object $out extends Keyword { def value = "$out" }
-  object $project extends Keyword { def value = "$project" }
-  object $redact extends Keyword { def value = "$redact" }
-  object $skip extends Keyword { def value = "$skip" }
-  object $sort extends Keyword { def value = "$sort " }
-  object $unwind extends Keyword { def value = "$unwind" }
-
+  def tags(str : String) : Iterable[(String, String)] = {
+    val parts = str.split(",")
+    for (part ← parts if part.contains(":")) yield {
+      val parts = part.split(":")
+      parts(0) -> parts(1)
+    }
+  }
 }

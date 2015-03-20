@@ -30,7 +30,8 @@ import akka.event.LoggingReceive
 import akka.routing.{ Broadcast, DefaultResizer, SmallestMailboxPool }
 
 import rxmongo.bson.{ BSONDocument, RxMongoError }
-import rxmongo.messages.{ReplyMessage, RequestMessage, IsMasterReply}
+import rxmongo.messages.replies.IsMasterReply
+import rxmongo.messages.{ ReplyMessage, RequestMessage }
 import rxmongo.messages.cmds.IsMasterCmd
 
 import scala.concurrent.ExecutionContext

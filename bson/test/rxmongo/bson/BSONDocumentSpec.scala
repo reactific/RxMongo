@@ -454,7 +454,7 @@ class BSONDocumentSpec extends Specification with ByteStringTestUtils {
         }
       })
       val construction = profiler.get_one_item("Construction")._2
-      construction / repetitions must beLessThan(75000.0) // Construct in less than 75 microseconds
+      construction / repetitions must beLessThan(100000.0) // Construct in less than 75 microseconds
     }
   }
 }

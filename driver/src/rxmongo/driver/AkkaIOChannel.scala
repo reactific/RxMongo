@@ -28,7 +28,7 @@ import akka.actor.{ Terminated, ActorRef }
 import akka.io.Inet.SocketOption
 import akka.io.{ IO, Tcp }
 import akka.util.ByteString
-import rxmongo.messages.{ReplyMessage, RequestMessage}
+import rxmongo.messages.{ ReplyMessage, RequestMessage }
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration

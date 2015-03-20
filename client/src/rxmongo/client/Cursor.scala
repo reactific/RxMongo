@@ -28,7 +28,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 
 import rxmongo.bson.BSONDocument
-import rxmongo.messages.{ReplyMessage, KillCursorsMessage, GetMoreMessage}
+import rxmongo.messages.{ ReplyMessage, KillCursorsMessage, GetMoreMessage }
 
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration._
@@ -125,8 +125,7 @@ case class Cursor private[client] (
     Await.result(toFlatSeq, 5.seconds).toArray
   }
 
-  /**
-    * Name	Description
+  /** Name	Description
     * cursor.addOption()	Adds special wire protocol flags that modify the behavior of the query.’
     * cursor.batchSize()	Controls the number of documents MongoDB will return to the client in a single network message.
     * cursor.count()	Returns the total number of documents in a cursor.

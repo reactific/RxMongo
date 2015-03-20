@@ -31,15 +31,15 @@ import rxmongo.messages.{ Command, WriteConcern }
   * @param db THe name of the database on which the user will be created
   * @param userName The name of the new user.
   * @param password The user’s password. The pwd field is not required if you run createUser on the \$external
-  *     database to create users who have credentials stored externally to MongoDB.
+  *    database to create users who have credentials stored externally to MongoDB.
   * @param customData Optional. Any arbitrary information. This field can be used to store any data an admin wishes
-  *       to associate with this particular user. For example, this could be the user’s full name or
-  *       employee id.
+  *      to associate with this particular user. For example, this could be the user’s full name or
+  *      employee id.
   * @param thisDbRole The roles granted to the user. Can specify an empty array [] to create users without roles.
   * @param roles Optional. When true, the mongod instance will create the hash of the user password; otherwise, the
-  *  client is responsible for creating the hash of the password. Defaults to true.
+  * client is responsible for creating the hash of the password. Defaults to true.
   * @param writeConcern Optional. The level of write concern for the creation operation. The writeConcern document
-  *         takes the same fields as the getLastError command.
+  *        takes the same fields as the getLastError command.
   */
 case class CreateUserCmd(
   db : String,
@@ -67,11 +67,11 @@ case class CreateUserCmd(
   * @param pwd Optional. The user’s password.
   * @param customData	Optional. Any arbitrary information.
   * @param roles Optional. The roles granted to the user. An update to the roles array overrides the previous array’s
-  *  values.
+  * values.
   * @param digestPassword	Optional. When true, the mongod instance will create the hash of the user password;
-  *           otherwise, the client is responsible for creating the hash of the password. Defaults to true.
+  *          otherwise, the client is responsible for creating the hash of the password. Defaults to true.
   * @param writeConcern	Optional. The level of write concern for the update operation. The writeConcern document takes
-  *         the same fields as the getLastError command.
+  *        the same fields as the getLastError command.
   */
 case class UpdateUserCmd(
   db : String,

@@ -49,10 +49,10 @@ case class BSONDocument private[rxmongo] (
     }
   }
 
-  def asSeq[T](key : String, code: TypeCode, conv : (ByteIterator) ⇒ T) : Seq[T] = {
+  def asSeq[T](key : String, code : TypeCode, conv : (ByteIterator) ⇒ T) : Seq[T] = {
     data.get(key) match {
       case Some((tc, bi)) if tc == ArrayCode.code ⇒ {
-        for ( (k, (c, b)) ← BSONDocument(bi)) yield {
+        for ((k, (c, b)) ← BSONDocument(bi)) yield {
           if (c != code.code)
             throw new IllegalArgumentException(s"Field '$k' has type ${TypeCode(c).typeName} not ${code.typeName}")
           else
@@ -311,14 +311,14 @@ case class BSONDocument private[rxmongo] (
   }
 }
 
-class BSONIterator(itr: ByteIterator) extends Iterator[(String,(Byte,ByteIterator))] {
+class BSONIterator(itr : ByteIterator) extends Iterator[(String, (Byte, ByteIterator))] {
   val byteLen = itr.getInt
   require(itr.len + 4 == byteLen)
   var code = itr.getByte
 
   def hasNext : Boolean = itr.hasNext && code != 0
 
-  def next : (String,(Byte,ByteIterator)) = {
+  def next : (String, (Byte, ByteIterator)) = {
     if (!hasNext)
       throw new NoSuchElementException("Exhausted BSONIterator")
     val key = itr.getCStr
@@ -362,7 +362,6 @@ object BSONDocument {
   }
 
   def apply(buffer : ByteString) : BSONDocument = BSONDocument(buffer.iterator)
-
 
   def apply(itr : ByteIterator) : BSONDocument = {
     val docItr = itr.clone()

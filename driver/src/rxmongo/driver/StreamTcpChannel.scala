@@ -24,12 +24,13 @@ package rxmongo.driver
 
 import java.net.InetSocketAddress
 
-import akka.actor.{ ActorSystem, ActorRef }
+import akka.actor.{ ActorRef }
 import akka.io.Inet.SocketOption
 import akka.io.Tcp.SO
+import akka.stream.stage.{ Directive, Context, PushStage }
 import akka.stream.{ ActorFlowMaterializerSettings, ActorFlowMaterializer }
 import akka.stream.scaladsl._
-import akka.stream.scaladsl.StreamTcp.OutgoingConnection
+import akka.util.ByteString
 import rxmongo.messages.RequestMessage
 
 import scala.collection.mutable
@@ -39,7 +40,13 @@ import scala.concurrent.duration.Duration
   *
   * Description of thing
   */
-case class TcpStreamChannel(remote : InetSocketAddress, options : ConnectionOptions)(implicit system : ActorSystem) {
+case class StreamTcpChannel(
+  remote : InetSocketAddress,
+  options : ConnectionOptions,
+  listener : ActorRef,
+  isPrimary : Boolean) extends Channel(remote, options, listener, isPrimary) {
+
+  implicit val system = context.system
 
   val streamTcp = StreamTcp(system)
 
@@ -50,10 +57,7 @@ case class TcpStreamChannel(remote : InetSocketAddress, options : ConnectionOpti
         maxSize = 64)
   )
 
-  type RequestSink = Sink[RequestMessage]
-  type RequestSource = Source[RequestMessage]
-
-  val connection : OutgoingConnection = streamTcp.outgoingConnection(
+  val connection = streamTcp.outgoingConnection(
     remoteAddress = remote,
     localAddress = Some(new InetSocketAddress(options.localIP.orNull, options.localPort)),
     options = List[SocketOption](
@@ -64,16 +68,19 @@ case class TcpStreamChannel(remote : InetSocketAddress, options : ConnectionOpti
     connectTimeout = options.connectTimeoutMS match { case 0 ⇒ Duration.Inf; case x : Long ⇒ Duration(x, "ms") }
   )
 
-  val toByteStringFlow = Flow[RequestMessage].map { msg ⇒ msg.finish }
+  val stage = new PushStage[ByteString, ByteString] {
+    def onPush(elem : ByteString, ctx : Context[ByteString]) : Directive = {
+      doReply(elem)
+      ctx.push(ByteString.empty)
+    }
+  }
+
+  val handler = Flow[ByteString].map { msg ⇒ doReply(msg); msg }
+
+  val materialized = connection.join[Unit](handler)
 
   val pendingRequestQueue = mutable.Queue.empty[RequestMessage]
 
-  val source : Source[RequestMessage] = Source { () ⇒ pendingRequestQueue.iterator }
-
-  val materialized = connection.flow.map { msg ⇒ }
-
-  def send(msg : RequestMessage, replyTo : ActorRef) = {
-
-  }
-
+  def handleRequest(requestMsg : RequestMessage, msg_to_send : ByteString) : Unit = {}
 }
+

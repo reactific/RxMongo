@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-package rxmongo.messages
+package rxmongo.messages.replies
 
 import java.util.Date
 

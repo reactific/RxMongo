@@ -29,7 +29,7 @@ import com.typesafe.config.ConfigFactory
 
 import rxmongo.driver._
 import rxmongo.bson._
-import rxmongo.messages.{ReplyMessage, QueryMessage}
+import rxmongo.messages.{ ReplyMessage, QueryMessage }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

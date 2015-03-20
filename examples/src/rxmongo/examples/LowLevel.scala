@@ -29,8 +29,9 @@ import akka.util.Timeout
 import rxmongo.driver.Connection.CheckReplicaSet
 
 import rxmongo.driver._
-import rxmongo.messages.{ReplyMessage, IsMasterReply}
+import rxmongo.messages.ReplyMessage
 import rxmongo.messages.cmds._
+import rxmongo.messages.replies.IsMasterReply
 
 import scala.collection.mutable
 import scala.concurrent.{ Future, Await }

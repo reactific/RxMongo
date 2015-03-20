@@ -22,7 +22,7 @@
 
 package rxmongo.messages
 
-import rxmongo.bson.{BSONBuilder, BSONProvider}
+import rxmongo.bson.{ BSONBuilder, BSONProvider }
 
 /** Represents A MongoDB Query Projection
   *

@@ -26,7 +26,7 @@ import java.net.{ InetAddress, InetSocketAddress }
 import java.util.concurrent.TimeUnit
 
 import org.specs2.mutable.Specification
-import rxmongo.messages.{WaitForMembersWC, WriteConcern, PrimaryPreferredRP, PLAIN}
+import rxmongo.messages.{ WaitForMembersWC, WriteConcern, PLAIN }
 
 import scala.concurrent.duration.Duration
 

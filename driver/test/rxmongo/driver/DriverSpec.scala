@@ -30,7 +30,7 @@ import akka.pattern.ask
 
 import org.specs2.execute.Result
 import rxmongo.bson.BSONObject
-import rxmongo.messages.{ReplyMessage, QueryMessage}
+import rxmongo.messages.{ ReplyMessage, QueryMessage }
 
 import scala.concurrent.{ Await }
 import scala.concurrent.duration._

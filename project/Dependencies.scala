@@ -33,7 +33,7 @@ object Dependencies {
 
   // Akka Stuff
   val akkaV = "2.3.9"
-  val akkaStreamsV = "1.0-M3"
+  val akkaStreamsV = "1.0-M4"
   val akka_actor      = "com.typesafe.akka"   %% "akka-actor"                   % akkaV
   val akka_slf4j      = "com.typesafe.akka"   %% "akka-slf4j"                   % akkaV
   val akka_testkit    = "com.typesafe.akka"   %% "akka-testkit"                 % akkaV

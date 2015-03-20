@@ -27,7 +27,7 @@ import java.net.InetSocketAddress
 import akka.actor._
 import akka.event.LoggingReceive
 import akka.util.ByteString
-import rxmongo.messages.{ReplyMessage, RequestMessage}
+import rxmongo.messages.{ ReplyMessage, RequestMessage }
 
 import scala.collection.mutable
 
@@ -35,7 +35,7 @@ object Channel {
   def props(remote : InetSocketAddress, options : ConnectionOptions, replies : ActorRef,
     isPrimary : Boolean, useStreams : Boolean = false) = {
     if (useStreams) {
-      Props(classOf[TcpStreamChannel], remote, options, replies, isPrimary)
+      Props(classOf[StreamTcpChannel], remote, options, replies, isPrimary)
     } else {
       Props(classOf[AkkaIOChannel], remote, options, replies, isPrimary)
     }

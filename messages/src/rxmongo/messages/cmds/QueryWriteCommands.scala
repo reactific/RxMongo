@@ -141,7 +141,7 @@ case class UpdateCmd(
   * @param remove Must specify either the remove or the update field. Removes the document specified in the query field.
   * Set this to true to remove the selected document . The default is false.
   * @param returnNew Optional. When true, returns the modified document rather than the original. The findAndModify
-  *   method ignores the new option for remove operations. The default is false.
+  *  method ignores the new option for remove operations. The default is false.
   * @param upsert Optional. Used in conjunction with the update field. When true, findAndModify creates a new document
   * if no document matches the query, or if documents match the query, findAndModify performs an update.
   * To avoid multiple upserts, ensure that the query fields are uniquely indexed. The default is false.

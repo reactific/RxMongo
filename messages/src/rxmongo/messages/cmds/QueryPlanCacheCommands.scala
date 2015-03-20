@@ -47,10 +47,10 @@ case class PlanCacheListFiltersCmd(
   * @param sort Optional. The sort associated with the filter. Together with the query and the projection, the sort
   * make up the query shape for the specified index filter.
   * @param projection Optional. The projection associated with the filter. Together with the query and the sort,
-  *      the projection make up the query shape for the specified index filter.
+  *     the projection make up the query shape for the specified index filter.
   * @param indexes An array of index specification documents that act as the index filter for the specified query
-  *   shape. Because the query optimizer chooses among the collection scan and these indexes, if the
-  *   indexes are non-existent, the optimizer will choose the collection scan.
+  *  shape. Because the query optimizer chooses among the collection scan and these indexes, if the
+  *  indexes are non-existent, the optimizer will choose the collection scan.
   */
 case class PlanCacheSetFilterCmd(
   db : String,
@@ -109,7 +109,7 @@ case class PlanCacheListQueryShapesCmd(
   * @param db The name of the database towards which the command should be directed.
   * @param coll The name of the collection which will have have plans listed
   * @param query The query predicate of the query shape. Only the structure of the predicate, including the field
-  *   names, are significant to the shape; the values in the query predicate are insignificant.
+  *  names, are significant to the shape; the values in the query predicate are insignificant.
   * @param sort Optional. The sort associated with the query shape.
   * @param projection Optional. The projection associated with the query shape.
   */

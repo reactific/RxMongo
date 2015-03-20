@@ -32,10 +32,10 @@ import rxmongo.messages.Query
   * @param db The database containing the collection to aggregate
   * @param coll The name of the collection to as the input for the aggregation pipeline.
   * @param pipeline An array of aggregation pipeline stages that process and transform the document stream as
-  *   part of the aggregation pipeline.
+  *  part of the aggregation pipeline.
   * @param explain Optional. Specifies to return the information on the processing of the pipeline.
   * @param allowDiskUse Optional. Enables writing to temporary files. When set to true, aggregation stages can write
-  *       data to the _tmp subdirectory in the dbPath directory.
+  *      data to the _tmp subdirectory in the dbPath directory.
   * @param batchSize Optional. Specify a document that contains options that control the creation of the cursor object.
   */
 case class AggregateCmd(
@@ -115,9 +115,9 @@ case class DistinctCmd(
   * @param cond Optional. The selection criteria to determine which documents in the collection to process. If you
   * omit the cond field, group processes all the documents in the collection for the group operation.
   * @param finalizer Optional. A function that runs each item in the result set before group returns the final value.
-  *   This function can either modify the result document or replace the result document as a whole.
-  *   Unlike the \$keyf and \$reduce fields that also specify a function, this field name is finalize,
-  *   not \$finalize.
+  *  This function can either modify the result document or replace the result document as a whole.
+  *  Unlike the \$keyf and \$reduce fields that also specify a function, this field name is finalize,
+  *  not \$finalize.
   */
 case class GroupCmd(
   db : String,
@@ -169,7 +169,7 @@ case class GroupCmd(
   * function, which can result in faster execution. You can only use jsMode for result sets with fewer
   * than 500,000 distinct key arguments to the mapper’s emit() function. The jsMode defaults to false.
   * @param verbose Optional. Specifies whether to include the timing information in the result information. The verbose
-  *  defaults to true to include the timing information.
+  * defaults to true to include the timing information.
   */
 case class MapReduceCmd(
   db : String,
