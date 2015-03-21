@@ -23,7 +23,7 @@
 package rxmongo.client
 
 import rxmongo.bson.BSONObject
-import rxmongo.messages.WriteResult
+import rxmongo.messages.replies.WriteResult
 
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration
@@ -47,7 +47,7 @@ class CollStatsSpec extends RxMongoTest("rxmongo", "collstats") {
     }
 
     "populate collection before testing" in mongoTest { () ⇒
-      val future = collection.insert(objs) map { doc ⇒ WriteResult(doc) }
+      val future = collection.insert(objs)
       val result = Await.result(future, FiniteDuration(1, "seconds"))
       result.ok must beEqualTo(1)
       result.n must beEqualTo(6)

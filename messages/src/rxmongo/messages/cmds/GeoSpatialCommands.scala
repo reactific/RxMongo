@@ -216,7 +216,7 @@ object GeometryCollection {
   *               the results to those documents that fall within the specified distance from the center point.
   *               Specify the distance in meters for GeoJSON data and in radians for legacy coordinate pairs.
   * @param query Optional. Limits the results to the documents that match the query. The query syntax is the usual
-  *         MongoDB read operation query syntax. You cannot specify a $near predicate in the query field of
+  *         MongoDB read operation query syntax. You cannot specify a \$near predicate in the query field of
   *         the geoNear command.
   * @param distanceMultiplier The factor to multiply all distances returned by the query. For example, use the
   *                      distanceMultiplier to convert radians, as returned by a spherical query, to kilometers

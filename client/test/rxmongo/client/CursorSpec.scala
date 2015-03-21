@@ -24,6 +24,7 @@ package rxmongo.client
 
 import rxmongo.bson._
 import rxmongo.messages._
+import rxmongo.messages.replies.WriteResult
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -46,7 +47,7 @@ class CursorSpec extends RxMongoTest("rxmongo", "cursor") {
     }
 
     "insert 6 records to test" in mongoTest { () ⇒
-      val future = collection.insert(objs) map { doc ⇒ WriteResult(doc) }
+      val future = collection.insert(objs)
       val result = Await.result(future, FiniteDuration(1, "seconds"))
       result.ok must beEqualTo(1)
       result.n must beEqualTo(6)

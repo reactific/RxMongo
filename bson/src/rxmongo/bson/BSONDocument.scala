@@ -199,6 +199,14 @@ case class BSONDocument private[rxmongo] (
     }
   }.toMap
 
+  def asSeqOf[T](implicit codec: Codec[T]) : Seq[(String,T)] = {
+    iterator.map {
+      case (k, (bc, bi)) if bc == codec.code.code ⇒ k -> codec.read(bi)
+      case (k, (bc, bi)) ⇒
+        throw new IllegalArgumentException(s"Field '$k' has type ${TypeCode(bc).typeName} not ${codec.code.typeName}")
+    }
+  }.toSeq
+
   def asAnyMap : Map[String, Any] = {
     iterator.map {
       case (k, (bc, bi)) ⇒ k → BSONValue(bc, bi).value
@@ -225,6 +233,10 @@ case class BSONDocument private[rxmongo] (
           throw new IllegalArgumentException(s"Field '$key' has type ${TypeCode(b).typeName} not ${codec.typeName}")
       }.toMap
     }
+  }
+
+  def asOptionalSeq[T](key : String)(implicit codec : Codec[T]) : Option[Seq[T]] = {
+    asOptionSeq[T](key, ObjectCode, codec)
   }
 
   def asOptionalString(key : String) : Option[String] = { asOption[String](key, StringCode, StringCodec) }

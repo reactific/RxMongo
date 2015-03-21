@@ -155,3 +155,19 @@ case class HostInfoCmd() extends AdminCommand(BSONObject("hostInfo" -> 1))
   * @see [[http://docs.mongodb.org/master/reference/command/serverStatus/]]
   */
 case class serverStatusCmd() extends AdminCommand(BSONObject("serverStatus" → 1))
+
+/** Validate Commands
+ *
+ * @param db The name of the database towards which the command should be directed.
+ * @param collection The collection to be validated
+ * @param full Provides a more thorough scan of the data when true. Default is false.
+ * @param scanData Skips the scan of the base collection when false. Default is true.
+ */
+case class ValidateCmd(db: String, collection: String, full: Boolean = false, scanData: Boolean = true)
+  extends Command(db, {
+    val b = BSONBuilder()
+    b.string("validate", collection)
+    b.boolean("full", full)
+    b.boolean("scandata", scanData)
+    b.result
+  })

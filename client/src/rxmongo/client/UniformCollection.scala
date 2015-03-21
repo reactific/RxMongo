@@ -24,7 +24,9 @@ package rxmongo.client
 
 import rxmongo.bson._
 import rxmongo.messages._
+import rxmongo.messages.replies.WriteResult
 
+import scala.concurrent.duration._
 import scala.concurrent.{ Await, ExecutionContext, Future }
 
 /** The Base Class Of All Uniform Strables
@@ -59,12 +61,15 @@ abstract class UniformCollection[Model <: Storable[Id], Id](coll : Collection)(
     *
     * @param selector Selector document which may be empty.
     */
-  def count(selector : Query, limit : Int = 0) : Future[Int] /* = {
-    coll.count(selector, limit)
+  def count(selector : Query,
+    limit : Option[Int] = None, skip : Option[Int] = None, hint : Option[String] = None) : Future[Int]  = {
+    coll.count(selector, limit, skip, hint)
   }
 
-  def countSync(selector: Query)(implicit timeout: FiniteDuration = coll.timeout.duration) : Int = {
-    Await.result(count(selector), timeout)
+  def countSync(selector: Query,
+      limit : Option[Int] = None, skip : Option[Int] = None, hint : Option[String] = None)
+      (implicit timeout: FiniteDuration = coll.timeout.duration) : Int = {
+    Await.result(count(selector, limit, skip, hint), timeout)
   }
 
   /** Fetch An Object By Its Primary Identifier
@@ -163,16 +168,18 @@ abstract class UniformCollection[Model <: Storable[Id], Id](coll : Collection)(
    *
    * @param selector The selection criteria for the update.
    * @param update Performs an update of the selected model.
+   * @param projection The projection to apply to the result set to filter fields
    * @param fetchNewObject When true, returns the updated model rather than the original.
    * @param upsert When true, findAndUpdate() creates a new model if no model matches the query.
    */
   def findAndUpdate(
     selector: Query,
     update: Update,
+    projection : Option[Projection] = None,
     fetchNewObject: Boolean = true,
     upsert: Boolean = false
   ) : Future[Option[Model]] = {
-    coll.findAndModify(Some(selector), update)
+    ??? // coll.findAndModify(Some(selector), update, remove=false, projection, fetchNewObject, upsert)
   }
 
   /** Find an object, remove it, and return it.
@@ -198,7 +205,7 @@ abstract class UniformCollection[Model <: Storable[Id], Id](coll : Collection)(
   /**
    * Defines the default write concern for this collection which defaults to `Acknowledged`. Subclasses may override
    * this value to specify a different default WriteConcern
-   */
+
   implicit val defaultWriteConcern: GetLastError = GetLastError.Acknowledged
 
   /** Inserts the given model. */
