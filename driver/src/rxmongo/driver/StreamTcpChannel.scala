@@ -27,9 +27,10 @@ import java.net.InetSocketAddress
 import akka.actor.{ ActorRef }
 import akka.io.Inet.SocketOption
 import akka.io.Tcp.SO
-import akka.stream.stage.{ Directive, Context, PushStage }
+import akka.stream.stage.{ SyncDirective, Context, PushStage }
 import akka.stream.{ ActorFlowMaterializerSettings, ActorFlowMaterializer }
-import akka.stream.scaladsl._
+import akka.stream.scaladsl.Tcp
+import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 import rxmongo.messages.RequestMessage
 
@@ -48,7 +49,7 @@ case class StreamTcpChannel(
 
   implicit val system = context.system
 
-  val streamTcp = StreamTcp(system)
+  val streamTcp = Tcp(system)
 
   implicit val materializer = ActorFlowMaterializer(
     ActorFlowMaterializerSettings(system)
@@ -69,7 +70,7 @@ case class StreamTcpChannel(
   )
 
   val stage = new PushStage[ByteString, ByteString] {
-    def onPush(elem : ByteString, ctx : Context[ByteString]) : Directive = {
+    def onPush(elem : ByteString, ctx : Context[ByteString]) : SyncDirective = {
       doReply(elem)
       ctx.push(ByteString.empty)
     }

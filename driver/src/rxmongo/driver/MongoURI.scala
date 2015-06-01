@@ -24,9 +24,9 @@ package rxmongo.driver
 
 import rxmongo.bson.RxMongoError
 
-import akka.http.model.Uri
-import akka.http.model.Uri.Path.{ Segment, Slash, Empty }
-import akka.http.model.Uri.Path
+import akka.http.scaladsl.model.Uri
+import akka.http.scaladsl.model.Uri.Path
+import akka.http.scaladsl.model.Uri.Path.{ Segment, Slash, Empty }
 
 import java.net.InetSocketAddress
 

@@ -22,26 +22,26 @@
 
 package rxmongo.messages
 
-import rxmongo.bson.{BSONDocument, DocumentCodec, BSONBuilder}
+import rxmongo.bson.{ BSONDocument, DocumentCodec, BSONBuilder }
 
 /** A Sort Specification
   *
   * Description of thing
   */
-case class Sort(fields: Seq[(String,Boolean)])
+case class Sort(fields : Seq[(String, Boolean)])
 
 object Sort {
-  val empty = Sort(Seq.empty[(String,Boolean)])
+  val empty = Sort(Seq.empty[(String, Boolean)])
 
   implicit object Codec extends DocumentCodec[Sort] {
-    def write(value: Sort, bldr: BSONBuilder): BSONBuilder = {
-      for ( (key,ascending) ← value.fields) {
+    def write(value : Sort, bldr : BSONBuilder) : BSONBuilder = {
+      for ((key, ascending) ← value.fields) {
         bldr.integer(key, if (ascending) 1 else -1)
       }
       bldr
     }
-    def read(doc: BSONDocument): Sort = {
-      Sort(doc.asSeqOf[Int].map { case (key,value) ⇒ key -> (if (value < 0) false else true ) })
+    def read(doc : BSONDocument) : Sort = {
+      Sort(doc.asSeqOf[Int].map { case (key, value) ⇒ key -> (if (value < 0) false else true) })
     }
   }
 }

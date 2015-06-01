@@ -25,7 +25,7 @@ package rxmongo.driver
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
-import akka.http.model.Uri.Query
+import akka.http.scaladsl.model.Uri.Query
 import rxmongo.messages._
 
 import scala.concurrent.duration._
@@ -63,9 +63,9 @@ import scala.concurrent.duration._
   * @param waitQueueTimeoutMS The maximum time in milliseconds that a request can wait for a connection to become
   * available. The default is 60,000
   * @param writeConcern The Write Concern option. Write concern describes the kind of assurances that the mongod and
-  *        the driver provide to the application regarding the success and durability of the write
-  *        operation. This option defines the level and kind of write concern. This option can take either
-  *        a number or a string as a value, as follows:
+  *       the driver provide to the application regarding the success and durability of the write
+  *       operation. This option defines the level and kind of write concern. This option can take either
+  *       a number or a string as a value, as follows:
   * {{{
   * Option	Type	  Description
   * -1      number  The driver will not acknowledge write operations and will suppress all network or socket errors.
@@ -87,15 +87,6 @@ import scala.concurrent.duration._
   * tags configured return confirmation of the write operation.
   * }}}
   *
-  * @param wtimeoutMS The time in milliseconds to wait for replication to succeed, as specified in the w option,
-  * before timing out. When wtimeoutMS is 0 (the default), write operations will never time out.
-  * @param journal Controls whether write operations will wait until the mongod acknowledges the write operations and
-  * commits the data to the on disk journal. When true: Enables journal commit acknowledgment write
-  * concern. Equivalent to specifying a write concern with the j option enabled. When false: Does not
-  * require that mongod commit write operations to the journal before acknowledging the write operation.
-  * This is the default option for the journal parameter. If you set journal to true, and specify a w
-  * value less than 1, journal prevails. If you set journal to true, and the mongod does not have
-  * journaling enabled, as with storage.journal.enabled, then MongoDB will error.
   * @param readPreference The Read Preference Option. The Read preference describe the behavior of read operations with
   * regards to replica sets. It specifies the replica set read preference for this connection.
   * The read preference values are the following: "primary": All read operations use only the

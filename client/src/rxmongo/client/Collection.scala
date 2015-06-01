@@ -24,14 +24,14 @@ package rxmongo.client
 
 import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{ Actor, ActorRef }
 import akka.pattern.ask
 import akka.util.Timeout
 
 import rxmongo.bson._
 import rxmongo.messages.cmds._
 import rxmongo.messages._
-import rxmongo.messages.replies.{BulkWriteResult, WriteResult, CollStatsReply}
+import rxmongo.messages.replies.{ BulkWriteResult, WriteResult, CollStatsReply }
 
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration._
@@ -147,7 +147,7 @@ class Collection(val name : String, val db : Database)(
     * @return
     */
   def count(selector : Query,
-            limit : Option[Int] = None, skip : Option[Int] = None, hint : Option[String] = None) : Future[Int] = {
+    limit : Option[Int] = None, skip : Option[Int] = None, hint : Option[String] = None) : Future[Int] = {
     val cmd = CountCmd(db.name, name, selector, limit, skip, hint)
     db.client.connection.ask(cmd) map processReplyMessage(cmd) map { obj ⇒ obj.asInt("n") }
   }
@@ -178,13 +178,11 @@ class Collection(val name : String, val db : Database)(
     db.client.connection.ask(cmd) map processReplyMessage(cmd)
   }
 
-  def deleteOne(delete : Delete, ordered : Boolean = true)
-      (implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def deleteOne(delete : Delete, ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
     removeOne(delete, ordered)(to, wc)
   }
 
-  def delete(deletes : Seq[Delete], ordered : Boolean = true)
-      (implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def delete(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
     remove(deletes, ordered)(to, wc)
   }
 
@@ -205,7 +203,7 @@ class Collection(val name : String, val db : Database)(
     * @see http://docs.mongodb.org/manual/reference/method/db.collection.dropIndex/
     * @return
     */
-  def dropIndex(indexName: String) = {
+  def dropIndex(indexName : String) = {
     val drop = DropIndicesCmd(db.name, name, indexName)
     db.client.connection.ask(drop) map processDoubleOkCommandResult(drop)
   }
@@ -215,7 +213,7 @@ class Collection(val name : String, val db : Database)(
 
   /** Test for existence of the collection */
   def exists() : Future[Boolean] = {
-    val msg = QueryMessage("system.namespace", BSONObject("name" → fullName ))
+    val msg = QueryMessage("system.namespace", BSONObject("name" → fullName))
     val doc = db.client.connection.ask(msg) map processReplyMessage(msg)
     doc.map { d ⇒ d.contains("options") }
   }
@@ -302,25 +300,23 @@ class Collection(val name : String, val db : Database)(
 
   /** Atomically modifies and returns a single document.
     * @see http://docs.mongodb.org/manual/reference/method/db.collection.findAndModify/
-    * @param selector The query selector to find the document to be modified
     * @param update The update specification for modifying the found document
     * @param remove A boolean value to determine whether the found document should be deleted. If true, the update
-    *          parameter is ignored.
+    *         parameter is ignored.
     * @param projection The field projection to apply after the modification
     * @param fetchNewObject Return the new object instead of the old one
     * @param upsert A boolean value to determine whether the update should be used to construct a new document if
-    *          the selector doesn't find a match.
+    *         the selector doesn't find a match.
     */
   def findAndModify(
-    selector : Option[Query] = None,
-    update : Option[BSONObject] = None,
+    update : Option[Update] = None,
     remove : Option[Boolean] = None,
     sort : Sort = Sort.empty,
     projection : Option[Projection] = None,
     fetchNewObject : Boolean = true,
     upsert : Boolean = false) : Future[BSONDocument] = {
-    val msg = FindAndModifyCmd(db.name, name, selector, sort.fields, update,
-      remove, Some(fetchNewObject), Some(upsert), projection)
+    val msg = FindAndModifyCmd(db.name, name, update.map { u ⇒ u.selector }, sort.fields,
+      update.map{ u ⇒ u.updater }, remove, Some(fetchNewObject), Some(upsert), projection)
     db.client.connection.ask(msg) map processReplyMessage(msg)
   }
 
@@ -329,7 +325,7 @@ class Collection(val name : String, val db : Database)(
     * @see http://docs.mongodb.org/manual/reference/method/db.collection.getIndexes/#db.collection.getIndexes
     * @return
     */
-  def getIndexes() : Future[(Index,IndexOptions)]= {
+  def getIndexes() : Future[(Index, IndexOptions)] = {
     ???
   }
 
@@ -348,19 +344,16 @@ class Collection(val name : String, val db : Database)(
   def getShardVersion() = ???
 
   /** Creates a new document in a collection and returns the Raw result */
-  def insertRaw(objs : Seq[BSONObject], ordered : Boolean = true)
-      (implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONDocument] = {
+  def insertRaw(objs : Seq[BSONObject], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONDocument] = {
     val msg = InsertCmd(db.name, name, objs, ordered, wc)
     db.client.connection.ask(msg)(to) map processReplyMessage(msg)
   }
 
-  def insertOne(obj : BSONObject)
-      (implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def insertOne(obj : BSONObject)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
     insertRaw(Seq(obj), ordered = true)(to, wc) map { doc ⇒ WriteResult(doc) }
   }
 
-  def insert(objs : Seq[BSONObject], ordered : Boolean = true)
-      (implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def insert(objs : Seq[BSONObject], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
     insertRaw(objs, ordered = true)(to, wc) map { doc ⇒ WriteResult(doc) }
   }
 
@@ -379,19 +372,16 @@ class Collection(val name : String, val db : Database)(
   def reIndex() = ???
 
   /** Deletes documents from a collection. */
-  def removeRaw(deletes : Seq[Delete], ordered : Boolean = true)
-      (implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONDocument] = {
+  def removeRaw(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[BSONDocument] = {
     val delete = DeleteCmd(db.name, name, deletes, ordered, wc)
     db.client.connection.ask(delete)(to) map processReplyMessage(delete)
   }
 
-  def removeOne(del: Delete, ordered : Boolean = true)
-      (implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
-    removeRaw(Seq(del), ordered)(to,wc) map { doc ⇒ WriteResult(doc) }
+  def removeOne(del : Delete, ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+    removeRaw(Seq(del), ordered)(to, wc) map { doc ⇒ WriteResult(doc) }
   }
 
-  def remove(deletes : Seq[Delete], ordered : Boolean = true)
-      (implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def remove(deletes : Seq[Delete], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
     removeRaw(deletes, ordered)(to, wc) map { doc ⇒ WriteResult(doc) }
   }
 
@@ -413,12 +403,10 @@ class Collection(val name : String, val db : Database)(
     * @param wc
     * @return
     */
-  def save(doc: BSONDocument)
-      (implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = ???
+  def save(doc : BSONDocument)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = ???
 
   /** Modifies a document in a collection. */
-  def update(updates : Seq[Update], ordered : Boolean = true)
-      (implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def update(updates : Seq[Update], ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
     val update = UpdateCmd(db.name, name, updates, ordered, wc)
     db.client.connection.ask(update)(to) map processWriteResult(update)
   }
@@ -427,35 +415,34 @@ class Collection(val name : String, val db : Database)(
     * Apply a single Update selector and updater to the collection.
     * @param u The Update specification
     * @param ordered If true, then when an update statement fails, return without performing the remaining update
-    *        statements. If false, then when an update fails, continue with the remaining update statements,
-    *        if any. Defaults to true.
+    *       statements. If false, then when an update fails, continue with the remaining update statements,
+    *       if any. Defaults to true.
     * @param to The timeout for the update operation
     * @param wc The write concern for the update operation
     * @return A future WriteResult that returns the result of the update operation
     */
-  def updateOne(u : Update, ordered : Boolean = true)
-      (implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
+  def updateOne(u : Update, ordered : Boolean = true)(implicit to : Timeout = timeout, wc : WriteConcern = writeConcern) : Future[WriteResult] = {
     update(Seq(u), ordered)(to, wc)
   }
 
   /** Performs diagnostic operations on a collection. */
-  def validate(full: Boolean = false, scanData: Boolean = true)
-      (implicit to : Timeout = timeout) : Future[BSONDocument] = {
+  def validate(full : Boolean = false, scanData : Boolean = true)(implicit to : Timeout = timeout) : Future[BSONDocument] = {
     val cmd = ValidateCmd(db.name, name, full, scanData)
     db.client.connection.ask(cmd)(to) map processReplyMessage(cmd)
   }
 
   private def processReplyMessage[T](request : RequestMessage)(any : Any) : BSONDocument = {
+    processReplyMessages[T](request)(any).head
+  }
+
+  private def processReplyMessages[T](request : RequestMessage)(any : Any) : Seq[BSONDocument] = {
     any match {
       case reply : ReplyMessage ⇒
         require(request.requestId == reply.responseTo,
           s"Response to #${request.requestId} is actually for #${reply.responseTo}")
         reply.error match {
-          case Some(msg) ⇒
-            throw new RxMongoError(s"Error while processing $request: $msg")
-          case None ⇒
-            require(reply.numberReturned > 0, s"No write result from $request")
-            reply.documents.head
+          case Some(msg) ⇒ throw new RxMongoError(s"Error while processing $request: $msg")
+          case None ⇒ reply.documents
         }
       case foo ⇒ {
         throw new RxMongoError(s"Unknown result from Connection: $foo")
@@ -464,12 +451,12 @@ class Collection(val name : String, val db : Database)(
   }
 
   private def processWriteResult(request : RequestMessage)(any : Any) : WriteResult = {
-    val doc = processReplyMessage(request)(any)
-    WriteResult(doc)
+    val docs = processReplyMessage(request)(any)
+    WriteResult(docs)
   }
 
-  private def processBulkWriteResult(request: RequestMessage)(any : Any) : BulkWriteResult = {
-    BulkWriteResult( processReplyMessage(request)(any) )
+  private def processBulkWriteResult(request : RequestMessage)(any : Any) : BulkWriteResult = {
+    BulkWriteResult(processReplyMessage(request)(any))
   }
 
   private def processDoubleOkCommandResult(request : RequestMessage)(any : Any) : Boolean = {

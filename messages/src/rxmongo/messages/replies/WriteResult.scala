@@ -62,7 +62,7 @@ case class WriteResult private[rxmongo] (doc : BSONDocument) {
   lazy val writeConcernError = doc.asOptionalObjectOfType[WriteConcernError]("writeConcernError")
 }
 
-case class BulkWriteResult private[rxmongo] (doc: BSONDocument) {
+case class BulkWriteResult private[rxmongo] (doc : BSONDocument) {
   lazy val nInserted : Int = doc.asInt("nInserted")
   lazy val nMatched : Int = doc.asInt("nMatched")
   lazy val nModified : Int = doc.asInt("nModified")

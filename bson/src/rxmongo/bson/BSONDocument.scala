@@ -199,7 +199,7 @@ case class BSONDocument private[rxmongo] (
     }
   }.toMap
 
-  def asSeqOf[T](implicit codec: Codec[T]) : Seq[(String,T)] = {
+  def asSeqOf[T](implicit codec : Codec[T]) : Seq[(String, T)] = {
     iterator.map {
       case (k, (bc, bi)) if bc == codec.code.code ⇒ k -> codec.read(bi)
       case (k, (bc, bi)) ⇒

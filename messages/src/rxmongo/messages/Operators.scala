@@ -263,6 +263,11 @@ class UpdateExpression extends Expression {
 
 object UpdateExpression {
   def apply() = new UpdateExpression
+  def apply(doc : BSONDocument) : UpdateExpression = {
+    val result = UpdateExpression()
+    doc.addTo(result)
+    result
+  }
 
   import rxmongo.bson._
 
@@ -593,7 +598,6 @@ object $pull {
     * @param value The value that should be pulled
     * @param codec A codec for translating the values
     * @tparam T The scala type of the values
-    * @tparam B The BSONValue type of the values
     * @return A new UpdateExpression with the \$pull operator
     */
   def apply[T](field : String, value : T)(implicit codec : Codec[T]) : UpdateExpression = {
@@ -605,7 +609,6 @@ object $pull {
     * @param fields The values of the array fields that should be pulled from the document
     * @param codec A codec for translating the values
     * @tparam T The scala type of the values
-    * @tparam B The BSONValue type of the values
     * @return A new UpdateExpression with the \$pull operator
     */
   def apply[T](fields : (String, T)*)(implicit codec : Codec[T]) : UpdateExpression = {
@@ -631,10 +634,9 @@ object $push {
   /** Adds an item to an array.
     *
     * @param fields The array fields and values to be pushed
-    * @param codec
-    * @tparam T
-    * @tparam B
-    * @return
+    * @param codec The codec to convert the fields to bytes
+    * @tparam T The type of the fields in the array
+    * @return An UpdateExpression with the \$push operator
     */
   def apply[T](fields : (String, T)*)(implicit codec : Codec[T]) : UpdateExpression = {
     UpdateExpression("$push", fields)(codec)
