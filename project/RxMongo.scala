@@ -58,19 +58,19 @@ object RxMongo extends Build {
       )).
     dependsOn(bson_deps, messages)
 
-  lazy val macros =
+/*  lazy val macros =
     Project(s"${BuildSettings.name}-Macros", file("./macros"),
       settings = buildSettings ++ Seq(
         libraryDependencies := Dependencies.macros
       )).
       dependsOn(bson_deps)
-
+*/
   lazy val messages =
     Project(s"${BuildSettings.name}-Messages", file("./messages"),
       settings = buildSettings ++ Seq(
         libraryDependencies := Dependencies.messages
       )).
-    dependsOn(bson_deps, macros)
+    dependsOn(bson_deps)
 
   lazy val bson =
     Project(s"${BuildSettings.name}-BSON", file("./bson"),
