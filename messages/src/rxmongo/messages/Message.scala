@@ -436,14 +436,14 @@ case class ReplyMessage private[rxmongo] (private val buffer : ByteString) exten
   /** {{{
     * bit   name	description
     * 0	 CursorNotFound	  Set when getMore is called but the cursor id is not valid at the server. Returned with zero
-    *     results.
+    *    results.
     * 1  QueryFailure	    Set when query failed. Results consist of one document containing an “\$err” field describing
-    *     the failure.
+    *    the failure.
     * 2  ShardConfigStale	Drivers should ignore this. Only mongos will ever see this set, in which case, it needs to
-    *     update config from the server.
+    *    update config from the server.
     * 3  AwaitCapable     Set when the server supports the AwaitData Query option. If it does not, a client should sleep
-    *     a little between getMore’s of a Tailable cursor. Mongod version 1.6 supports AwaitData and
-    *     thus always sets AwaitCapable.
+    *    a little between getMore’s of a Tailable cursor. Mongod version 1.6 supports AwaitData and
+    *    thus always sets AwaitCapable.
     * 4-31	 Reserved	    Ignore
     * }}}
     */

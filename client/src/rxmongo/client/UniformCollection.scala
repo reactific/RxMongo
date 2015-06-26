@@ -306,9 +306,9 @@ abstract class UniformCollection[Model <: Storable[Id], Id](coll : Collection)(
     *
     * {{{
     * object PersonDao extends {
-    *  override val autoIndexes = Seq(
-    *    Index(Seq("name" -> IndexType.Ascending), unique = true, background = true),
-    *    Index(Seq("age" -> IndexType.Ascending), background = true))
+    * override val autoIndexes = Seq(
+    *   Index(Seq("name" -> IndexType.Ascending), unique = true, background = true),
+    *   Index(Seq("age" -> IndexType.Ascending), background = true))
     * } with BsonDao[Person, BSONObjectID](MongoContext.db, "persons")
     * }}}
     *
@@ -317,9 +317,9 @@ abstract class UniformCollection[Model <: Storable[Id], Id](coll : Collection)(
     * {{{
     * object PersonDao extends BsonDao[Person, BSONObjectID](MongoContext.db, "persons") {
     *
-    *  override def autoIndexes = Seq(
-    *    Index(Seq("name" -> IndexType.Ascending), unique = true, background = true),
-    *    Index(Seq("age" -> IndexType.Ascending), background = true))
+    * override def autoIndexes = Seq(
+    *   Index(Seq("name" -> IndexType.Ascending), unique = true, background = true),
+    *   Index(Seq("age" -> IndexType.Ascending), background = true))
     * }
     * }}}
     */

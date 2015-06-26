@@ -63,9 +63,9 @@ import scala.concurrent.duration._
   * @param waitQueueTimeoutMS The maximum time in milliseconds that a request can wait for a connection to become
   * available. The default is 60,000
   * @param writeConcern The Write Concern option. Write concern describes the kind of assurances that the mongod and
-  *       the driver provide to the application regarding the success and durability of the write
-  *       operation. This option defines the level and kind of write concern. This option can take either
-  *       a number or a string as a value, as follows:
+  *      the driver provide to the application regarding the success and durability of the write
+  *      operation. This option defines the level and kind of write concern. This option can take either
+  *      a number or a string as a value, as follows:
   * {{{
   * Option	Type	  Description
   * -1      number  The driver will not acknowledge write operations and will suppress all network or socket errors.

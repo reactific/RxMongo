@@ -200,30 +200,30 @@ object GeometryCollection {
   * @param db The name of the database containing the collection to query.
   * @param coll The name of the collection to query
   * @param near The point for which to find the closest documents. If using a 2dsphere index, you can specify the point
-  *       as either a GeoJSON point or legacy coordinate pair. If using a 2d index, specify the point as a legacy
-  *       coordinate pair.
+  *      as either a GeoJSON point or legacy coordinate pair. If using a 2d index, specify the point as a legacy
+  *      coordinate pair.
   * @param spherical Required if using a 2dsphere index. Determines how MongoDB calculates the distance.
-  *            The default value is false. If true, then MongoDB uses spherical geometry to calculate distances
-  *            in meters if the specified (near) point is a GeoJSON point and in radians if the specified (near)
-  *            point is a legacy coordinate pair. If false, then MongoDB uses 2d planar geometry to calculate
-  *            distance between points. If using a 2dsphere index, spherical must be true.
+  *           The default value is false. If true, then MongoDB uses spherical geometry to calculate distances
+  *           in meters if the specified (near) point is a GeoJSON point and in radians if the specified (near)
+  *           point is a legacy coordinate pair. If false, then MongoDB uses 2d planar geometry to calculate
+  *           distance between points. If using a 2dsphere index, spherical must be true.
   * @param limit Optional. The maximum number of documents to return. The default value is 100. See also the num option.
   * @param minDistance Optional. The minimum distance from the center point that the documents must be. MongoDB filters
-  *              the results to those documents that are at least the specified distance from the center point.
-  *              Only available for use with 2dsphere index. Specify the distance in meters for GeoJSON data
-  *              and in radians for legacy coordinate pairs.
+  *             the results to those documents that are at least the specified distance from the center point.
+  *             Only available for use with 2dsphere index. Specify the distance in meters for GeoJSON data
+  *             and in radians for legacy coordinate pairs.
   * @param maxDistance Optional. The maximum distance from the center point that the documents can be. MongoDB limits
-  *              the results to those documents that fall within the specified distance from the center point.
-  *              Specify the distance in meters for GeoJSON data and in radians for legacy coordinate pairs.
+  *             the results to those documents that fall within the specified distance from the center point.
+  *             Specify the distance in meters for GeoJSON data and in radians for legacy coordinate pairs.
   * @param query Optional. Limits the results to the documents that match the query. The query syntax is the usual
-  *        MongoDB read operation query syntax. You cannot specify a \$near predicate in the query field of
-  *        the geoNear command.
+  *       MongoDB read operation query syntax. You cannot specify a \$near predicate in the query field of
+  *       the geoNear command.
   * @param distanceMultiplier The factor to multiply all distances returned by the query. For example, use the
-  *                     distanceMultiplier to convert radians, as returned by a spherical query, to kilometers
-  *                     by multiplying by the radius of the Earth.
+  *                    distanceMultiplier to convert radians, as returned by a spherical query, to kilometers
+  *                    by multiplying by the radius of the Earth.
   * @param includeLocs Optional. If this is true, the query returns the location of the matching documents in the
-  *              results. The default is false. This option is useful when a location field contains multiple
-  *              locations. To specify a field within a subdocument, use dot notation.
+  *             results. The default is false. This option is useful when a location field contains multiple
+  *             locations. To specify a field within a subdocument, use dot notation.
   */
 case class GeoNearCmd(
   db : String,

@@ -63,11 +63,11 @@ case class MMapV1Config(doc : BSONObject) extends { val name : String = "mmapv1"
   * the indexed fields and the sort order. Whether user specified or MongoDB generated, index names
   * including their full namespace (i.e. database.collection) cannot be longer than the Index Name Limit.
   * @param expireAfterSeconds Specifies a value, in seconds, as a TTL to control how long MongoDB retains documents in
-  *        this collection. This applies only to TTL indexes.
+  *       this collection. This applies only to TTL indexes.
   * @param storageEngine Allows users to specify configuration to the storage engine on a per-index basis when
-  *   creating an index. Storage engine configuration specified when creating indexes are validated
-  *   and logged to the oplog during replication to support replica sets with members that use
-  *   different storage engines.
+  *  creating an index. Storage engine configuration specified when creating indexes are validated
+  *  and logged to the oplog during replication to support replica sets with members that use
+  *  different storage engines.
   * @param weights For Text indices, specifies the weights to assign fields in the document
   * @param default_language For Text indices, specifies the default language for the text
   * @param language_override For Text indices, specifies the field name that provides the language of the text

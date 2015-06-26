@@ -48,17 +48,17 @@ case class AddShardCmd(host : String, maxSize : Option[Int], name : Option[Strin
   * @param db The name of the database containing the collection for which orphan data will be cleaned
   * @param coll The name of the collection for which orphan data will be cleaned
   * @param startingFromKey Optional. The shard key value that determines the lower bound of the cleanup range.
-  *           The default value is MinKey. If the range that contains the specified startingFromKey value
-  *           belongs to a chunk owned by the shard, cleanupOrphaned continues to examine the next
-  *           ranges until it finds a range not owned by the shard.
+  *          The default value is MinKey. If the range that contains the specified startingFromKey value
+  *          belongs to a chunk owned by the shard, cleanupOrphaned continues to examine the next
+  *          ranges until it finds a range not owned by the shard.
   * @param secondaryThrottle Optional. If true, each delete operation must be replicated to another secondary before
-  *             the cleanup operation proceeds further. If false, do not wait for replication. Defaults
-  *             to false. Independent of the secondaryThrottle setting, after the final delete,
-  *             cleanupOrphaned waits for all deletes to replicate to a majority of replica set members
-  *             before returning.
+  *            the cleanup operation proceeds further. If false, do not wait for replication. Defaults
+  *            to false. Independent of the secondaryThrottle setting, after the final delete,
+  *            cleanupOrphaned waits for all deletes to replicate to a majority of replica set members
+  *            before returning.
   * @param writeConcern Optional. A document that expresses the write concern that the secondaryThrottle will use to
-  *        wait for the secondaries when removing orphaned data. Any specified writeConcern implies
-  *        _secondaryThrottle.
+  *       wait for the secondaries when removing orphaned data. Any specified writeConcern implies
+  *       _secondaryThrottle.
   */
 case class CleanupOrphanedCmd(
   db : String,
@@ -114,11 +114,11 @@ case class MergeChunksCmd(db : String, coll : String, bounds : Seq[BSONObject]) 
   * MongoDB creates the index prior to sharding the collection. The key may be in the form
   * { field : "hashed" }, which will use the specified field as a hashed shard key.
   * @param unique When true, the unique option ensures that the underlying index enforces a unique constraint. Hashed
-  *  shard keys do not support unique constraints.
+  * shard keys do not support unique constraints.
   * @param numInitialChunks Specifies the number of chunks to create initially when sharding an empty collection with a
-  *            hashed shard key. MongoDB will then create and balance chunks across the cluster. The
-  *            numInitialChunks must be less than 8192 per shard. If the collection is not empty,
-  *            numInitialChunks has no effect.
+  *           hashed shard key. MongoDB will then create and balance chunks across the cluster. The
+  *           numInitialChunks must be less than 8192 per shard. If the collection is not empty,
+  *           numInitialChunks has no effect.
   */
 case class ShardCollectionCmd(
   db : String,

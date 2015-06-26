@@ -302,11 +302,11 @@ class Collection(val name : String, val db : Database)(
     * @see http://docs.mongodb.org/manual/reference/method/db.collection.findAndModify/
     * @param update The update specification for modifying the found document
     * @param remove A boolean value to determine whether the found document should be deleted. If true, the update
-    *         parameter is ignored.
+    *        parameter is ignored.
     * @param projection The field projection to apply after the modification
     * @param fetchNewObject Return the new object instead of the old one
     * @param upsert A boolean value to determine whether the update should be used to construct a new document if
-    *         the selector doesn't find a match.
+    *        the selector doesn't find a match.
     */
   def findAndModify(
     update : Option[Update] = None,
@@ -415,8 +415,8 @@ class Collection(val name : String, val db : Database)(
     * Apply a single Update selector and updater to the collection.
     * @param u The Update specification
     * @param ordered If true, then when an update statement fails, return without performing the remaining update
-    *       statements. If false, then when an update fails, continue with the remaining update statements,
-    *       if any. Defaults to true.
+    *      statements. If false, then when an update fails, continue with the remaining update statements,
+    *      if any. Defaults to true.
     * @param to The timeout for the update operation
     * @param wc The write concern for the update operation
     * @return A future WriteResult that returns the result of the update operation
