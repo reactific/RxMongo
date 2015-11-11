@@ -24,10 +24,10 @@ package rxmongo.client
 
 import rxmongo.bson._
 import rxmongo.messages._
-import rxmongo.messages.replies.WriteResult
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class CursorSpec extends RxMongoTest("rxmongo", "cursor") {
 

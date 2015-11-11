@@ -24,11 +24,10 @@ package rxmongo.driver
 
 import java.net.InetSocketAddress
 
-import akka.actor.{ ActorRef }
+import akka.actor.ActorRef
 import akka.io.Inet.SocketOption
 import akka.io.Tcp.SO
 import akka.stream.stage.{ SyncDirective, Context, PushStage }
-import akka.stream.{ ActorFlowMaterializerSettings, ActorFlowMaterializer }
 import akka.stream.scaladsl.Tcp
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
@@ -50,13 +49,6 @@ case class StreamTcpChannel(
   implicit val system = context.system
 
   val streamTcp = Tcp(system)
-
-  implicit val materializer = ActorFlowMaterializer(
-    ActorFlowMaterializerSettings(system)
-      .withInputBuffer(
-        initialSize = 64,
-        maxSize = 64)
-  )
 
   val connection = streamTcp.outgoingConnection(
     remoteAddress = remote,

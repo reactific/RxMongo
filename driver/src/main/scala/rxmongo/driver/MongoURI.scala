@@ -119,7 +119,7 @@ object MongoURI {
       case _ ⇒ throw RxMongoError(s"Mongo URI path must only be one segment")
     }
     val creds = if (auth.userinfo.isEmpty) None else Some(Credentials(auth.userinfo))
-    val options = ConnectionOptions(uri.query)
+    val options = ConnectionOptions(uri.query())
 
     val hostList : List[InetSocketAddress] = {
       hosts.map { h ⇒

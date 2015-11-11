@@ -25,29 +25,20 @@ import scala.language.postfixOps
 
 object Dependencies {
 
-  val resolvers = Seq(
-    "Typesafe repository snapshots" at "http://repo.typesafe.com/typesafe/snapshots/",
-    "Typesafe repository releases" at "http://repo.typesafe.com/typesafe/releases/",
-    "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
-  )
-
   // Akka Stuff
-  val akkaV = "2.3.9"
-  val akkaStreamsV = "1.0-RC3"
+  val akkaV = "2.3.12"
+  val akkaStreamsV = "2.0-M1"
   val akka_actor      = "com.typesafe.akka"   %% "akka-actor"                   % akkaV
   val akka_slf4j      = "com.typesafe.akka"   %% "akka-slf4j"                   % akkaV
   val akka_testkit    = "com.typesafe.akka"   %% "akka-testkit"                 % akkaV
   val akka_streams    = "com.typesafe.akka"   %% "akka-stream-experimental"     % akkaStreamsV
   val akka_http_core  = "com.typesafe.akka"   %% "akka-http-core-experimental"  % akkaStreamsV
   val akka_http       = "com.typesafe.akka"   %% "akka-http-experimental"       % akkaStreamsV
-  val scala_logging   = "com.typesafe.scala-logging" %% "scala-logging"         % "3.1.0"
-  val logback_test    = "ch.qos.logback"       % "logback-classic"              % "1.1.2"      % "test"
-  val logback_prod    = "ch.qos.logback"       % "logback-classic"              % "1.1.2"
-  val specs           = "org.specs2"          %% "specs2-core"                  % "2.4.15"     % "test"
-  val hsp             = "com.reactific"       %% "hotspot-profiler"             % "0.1.0-SNAPSHOT" % "test"
-  val scala_compiler  = "org.scala-lang"      % "scala-compiler"                % "2.11.5"
+  val helpers         = "com.reactific"       %% "helpers"                      % "0.1.0-SNAPSHOT"
+  val hsp             = "com.reactific"       %% "hotspot-profiler"             % "0.3.0"   % "test"
+  val scala_compiler  = "org.scala-lang"      % "scala-compiler"                % "2.11.6"
 
-  val common = Seq(specs, logback_test, hsp)
+  val common = Seq(helpers, hsp)
 
   val bson = common ++ Seq( akka_actor)
 
@@ -55,11 +46,11 @@ object Dependencies {
 
   val messages = common
 
-  val driver = common ++ Seq( akka_streams, akka_actor, akka_testkit, akka_slf4j, akka_http_core, scala_logging)
+  val driver = common ++ Seq( akka_streams, akka_actor, akka_testkit, akka_slf4j, akka_http_core)
 
   val client = common ++ Seq( )
 
   val gridfs = common ++ Seq( )
 
-  val examples = common ++ Seq( logback_prod )
+  val examples = common ++ Seq( )
 }

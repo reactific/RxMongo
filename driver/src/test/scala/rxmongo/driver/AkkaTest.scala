@@ -30,6 +30,6 @@ import org.specs2.specification.Scope
 import org.specs2.time.NoTimeConversions
 
 abstract class AkkaTest(_actorSystem : ActorSystem) extends TestKit(_actorSystem)
-  with SpecificationLike with ImplicitSender with Matchers with NoTimeConversions with Scope {
+  with SpecificationLike with ImplicitSender with Matchers with Scope {
 
 }

@@ -20,43 +20,82 @@
  * SOFTWARE.
  */
 
+import com.reactific.sbt.ProjectPlugin
+import com.reactific.sbt.ProjectPlugin.autoImport._
 import sbt._
 import sbt.Keys._
+import scoverage.ScoverageSbtPlugin
 import scala.language.postfixOps
 
 
 object RxMongo extends Build {
 
-  import BuildSettings._
+  val name = "RxMongo"
 
-  lazy val RxMongo =
-    Project(BuildSettings.name, file("."),
-      settings = buildSettings ++ Seq(
-        libraryDependencies := Dependencies.examples
-      )).
-      dependsOn(examples, client, driver, messages, bson_deps).
-      aggregate(bson, messages, driver, client, examples)
+  val filter = { (ms: Seq[(File, String)]) =>
+    ms filter {
+      case (file, path) =>
+        path != "logback.xml" && !path.startsWith("toignore") && !path.startsWith("samples")
+    }
+  }
 
-  lazy val gridfs =
-    Project(s"${BuildSettings.name}-GridFS", file("./gridfs"),
-      settings = buildSettings ++ Seq(
-        libraryDependencies ++= Dependencies.gridfs
-      )).
-    dependsOn(client, bson_deps, driver)
+  val classesIgnoredByScoverage : String = Seq[String](
+    "rxmongo.examples",
+    "<empty>" // Avoids warnings from scoverage
+  ).mkString(";")
 
-  lazy val client =
-    Project(s"${BuildSettings.name}-Client", file("./client"),
-      settings = buildSettings ++ Seq(
-        libraryDependencies ++= Dependencies.client
-      )).
-    dependsOn(bson_deps, driver)
+  val buildSettings: Seq[sbt.Def.Setting[_]] = Defaults.coreDefaultSettings ++
+    Seq(
+      organization := "com.reactific",
+      copyrightYears := Seq(2015),
+      copyrightHolder := "Reactific Software LLC",
+      codePackage     := "com.reactific.slickery",
+      titleForDocs    := "Reactific Slick Utilities",
+      developerUrl    := url("http://www.reactific.com/"),
+      ScoverageSbtPlugin.ScoverageKeys.coverageFailOnMinimum := true,
+      ScoverageSbtPlugin.ScoverageKeys.coverageExcludedPackages := classesIgnoredByScoverage,
+      mappings in(Compile, packageBin) ~= filter,
+      mappings in(Compile, packageSrc) ~= filter,
+      mappings in(Compile, packageDoc) ~= filter
+    )
 
-  lazy val driver =
-    Project(s"${BuildSettings.name}-Driver", file("./driver"),
-      settings = buildSettings ++ Seq(
-        libraryDependencies := Dependencies.driver
-      )).
-    dependsOn(bson_deps, messages)
+
+  lazy val root = sbt.Project(name, file("."))
+    .enablePlugins(ProjectPlugin)
+    .settings(buildSettings:_*)
+    .settings(
+      libraryDependencies ++= Dependencies.examples,
+      ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 45
+    ).
+    dependsOn(examples, client, driver, messages, bson_deps).
+    aggregate(bson, messages, driver, client, examples)
+
+  lazy val gridfs = sbt.Project(s"$name-GridFS", file("./gridfs"))
+    .enablePlugins(ProjectPlugin)
+    .settings(buildSettings:_*)
+    .settings(
+      libraryDependencies ++= Dependencies.gridfs,
+      ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 0
+    )
+    .dependsOn(client, bson_deps, driver)
+
+  lazy val client = sbt.Project(s"$name-Client", file("./client"))
+    .enablePlugins(ProjectPlugin)
+    .settings(buildSettings:_*)
+    .settings(
+      libraryDependencies ++= Dependencies.client,
+      ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 43
+    )
+    .dependsOn(bson_deps, driver)
+
+  lazy val driver = sbt.Project(s"$name-Driver", file("./driver"))
+    .enablePlugins(ProjectPlugin)
+    .settings(buildSettings:_*)
+    .settings(
+      libraryDependencies ++= Dependencies.driver,
+      ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 64
+    )
+    .dependsOn(bson_deps, messages)
 
 /*  lazy val macros =
     Project(s"${BuildSettings.name}-Macros", file("./macros"),
@@ -65,24 +104,30 @@ object RxMongo extends Build {
       )).
       dependsOn(bson_deps)
 */
-  lazy val messages =
-    Project(s"${BuildSettings.name}-Messages", file("./messages"),
-      settings = buildSettings ++ Seq(
-        libraryDependencies := Dependencies.messages
-      )).
-    dependsOn(bson_deps)
+  lazy val messages = sbt.Project(s"$name-Messages", file("./messages"))
+    .enablePlugins(ProjectPlugin)
+    .settings(buildSettings:_*)
+    .settings(
+      libraryDependencies ++= Dependencies.messages,
+      ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 35
+    )
+    .dependsOn(bson_deps)
 
-  lazy val bson =
-    Project(s"${BuildSettings.name}-BSON", file("./bson"),
-      settings = buildSettings ++ Seq(
-        libraryDependencies ++= Dependencies.bson
-      ))
+  lazy val bson = sbt.Project(s"$name-BSON", file("./bson"))
+    .enablePlugins(ProjectPlugin)
+    .settings(buildSettings:_*)
+    .settings(
+      libraryDependencies ++= Dependencies.bson,
+      ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 55
+    )
   lazy val bson_deps = bson % "compile->compile;test->test"
 
-  lazy val examples =
-    Project(s"${BuildSettings.name}-Examples", file("./examples"),
-      settings = buildSettings ++ Seq(
-        libraryDependencies ++= Dependencies.examples
-      )).
+  lazy val examples = sbt.Project(s"$name-Examples", file("./examples"))
+    .enablePlugins(ProjectPlugin)
+    .settings(buildSettings:_*)
+    .settings(
+      libraryDependencies ++= Dependencies.examples,
+      ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 0
+    ).
     dependsOn(client,driver)
 }
