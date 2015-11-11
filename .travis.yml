@@ -26,6 +26,13 @@ script:
 services:
   - mongodb
 
+addons:
+  apt:
+    sources:
+    - mongodb-3.0-precise
+    packages:
+    - mongodb-org-server
+
 # What to cache between builds (speeds up next build)
 cache:
   directories:
