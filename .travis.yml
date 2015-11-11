@@ -1,9 +1,38 @@
+
+# Travis Configuration File
+# See http://www.scala-sbt.org/0.13/docs/Travis-CI-with-sbt.html
+# See http://docs.travis-ci.com/
+
+# Ensure we get a container-based build
+sudo: false
+
+# Our primary language is scala
 language: scala
+
+# The version of scala we use in our build
 scala:
-   - "2.11.5"
+   - "2.11.6"
+
+# Right now we only use JDK 8
 jdk:
-   - oraclejdk7
-   - openjdk7
+   - oraclejdk8
+
+# How to run the build. Note the use of scoverage commands
+script:
+  - sbt ++$TRAVIS_SCALA_VERSION -Dfile.encoding=UTF8 clean coverage test coverageAggregate
+
+# What to cache between builds (speeds up next build)
+cache:
+  directories:
+  - $HOME/.ivy2
+
+# Whenw e are done,
+after_success:
+  - sbt coveralls
+  # Tricks to avoid unnecessary cache updates
+  - find $HOME/.sbt -name "*.lock" | xargs rm
+  - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
+
 notifications:
   email:
     - reid@reactific.com
