@@ -34,7 +34,7 @@ object Dependencies {
   val akka_streams    = "com.typesafe.akka"   %% "akka-stream-experimental"     % akkaStreamsV
   val akka_http_core  = "com.typesafe.akka"   %% "akka-http-core-experimental"  % akkaStreamsV
   val akka_http       = "com.typesafe.akka"   %% "akka-http-experimental"       % akkaStreamsV
-  val helpers         = "com.reactific"       %% "helpers"                      % "0.1.0-SNAPSHOT"
+  val helpers         = "com.reactific"       %% "helpers"                      % "0.1.0"
   val hsp             = "com.reactific"       %% "hotspot-profiler"             % "0.3.0"   % "test"
   val scala_compiler  = "org.scala-lang"      % "scala-compiler"                % "2.11.6"
 
