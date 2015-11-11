@@ -16,9 +16,15 @@ scala:
 jdk:
    - oraclejdk8
 
+before_script:
+  - sleep 15
+
 # How to run the build. Note the use of scoverage commands
 script:
   - sbt ++$TRAVIS_SCALA_VERSION -Dfile.encoding=UTF8 clean coverage test coverageAggregate
+
+services:
+  - mongodb
 
 # What to cache between builds (speeds up next build)
 cache:
