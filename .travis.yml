@@ -3,7 +3,7 @@
 # See http://docs.travis-ci.com/
 
 # Ensure we get a container-based build
-sudo: false
+sudo: required
 
 # Our primary language is scala
 language: scala
