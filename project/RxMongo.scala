@@ -84,7 +84,7 @@ object RxMongo extends Build {
     .settings(buildSettings:_*)
     .settings(
       libraryDependencies ++= Dependencies.client,
-      ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 43
+      ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 35
     )
     .dependsOn(bson_deps, driver)
 
