@@ -24,13 +24,14 @@ package rxmongo.bson
 
 import java.time.Instant
 
+import akka.util.ByteString
 import org.specs2.mutable.Specification
 
 /** Title Of Thing.
   *
   * Description of thing
   */
-class BSONArraySpec extends Specification {
+class BSONArraySpec extends Specification with ByteStringTestUtils {
 
   "BSONArray" should {
     "yield single empty object for empty construction" in {
@@ -66,21 +67,115 @@ class BSONArraySpec extends Specification {
       anArray(6).code must beEqualTo(NullCode)
       anArray(7).code must beEqualTo(DateCode)
     }
+
+    "constructs from Seq[BSONValue]" in {
+      val values = Seq[BSONValue](BSONInteger(1), BSONLong(2), BSONString("three"), BSONDouble(4), BSONBoolean(true))
+      val anArray = BSONArray(values.iterator)
+      anArray.length must beEqualTo(5)
+      anArray(0).value must beEqualTo(1)
+      anArray(1).value must beEqualTo(2L)
+      anArray(2).value must beEqualTo("three")
+      anArray(3).value must beEqualTo(4.0)
+      anArray(4).value must beEqualTo(true)
+    }
+
+    "constructs from a list of BSONObject" in {
+      val one = makeAnObject().toBSONObject
+      val two = makeAnObject().toBSONObject
+      val three = makeAnObject().toBSONObject
+      val anArray = BSONArray(one, two, three)
+      anArray.length must beEqualTo(3)
+      anArray(0).value must beEqualTo(one)
+      anArray(1).value must beEqualTo(two)
+      anArray(2).value must beEqualTo(three)
+    }
+
+    "constructs from homogeneous data" in {
+      val anArray = BSONArray(1,2,3,4,5)
+      anArray.length must beEqualTo(5)
+      anArray(0).value must beEqualTo(1)
+      anArray(1).value must beEqualTo(2)
+      anArray(2).value must beEqualTo(3)
+      anArray(3).value must beEqualTo(4)
+      anArray(4).value must beEqualTo(5)
+    }
+
+    "converts to an Array[BSONValue]" in {
+      val a1 = BSONArray.fromAny(Array(1,2.toShort, 3L, true, 5.0, "six", null))
+      val array = a1.asArray
+      array.length must beEqualTo(7)
+      array(0).value must beEqualTo(1)
+      array(1).value must beEqualTo(2)
+      array(2).value must beEqualTo(3L)
+      array(3).value must beEqualTo(true)
+      array(4).value must beEqualTo(5.0)
+      array(5).value must beEqualTo("six")
+      array(6).value must beEqualTo(())
+    }
+
+    "converts to a Seq" in {
+      val seq = Seq(1,2)
+      val anArray = BSONArray(seq)
+      val seq2 = anArray.value.map { bv => bv.asInstanceOf[BSONInteger].value }
+      seq.equals(seq2) must beTrue
+    }
+
+    "converts to a ByteString" in {
+      val seq = Seq(1,2)
+      val anArray = BSONArray(seq)
+      val bs = anArray.toByteString
+      val expected = {
+        val bldr = ByteString.newBuilder
+        bldr.putByte(16)
+        bldr.putCStr("0")
+        bldr.putInt(1)
+        bldr.putByte(16)
+        bldr.putCStr("1")
+        bldr.putInt(2)
+        bldr.wrapAndTerminate
+      }
+      bs must beEqualTo(expected)
+    }
+
+    "converts to a String" in {
+      val a1 = BSONArray.fromAny(Array(1,2.toShort, 3L, true, 5.0, "six", null))
+      val str = a1.toString()
+      str must beEqualTo("[ 1, 2, 3, true, 5.0, six, () ]")
+    }
+
+    "equals works" in {
+      val a1 = BSONArray.fromAny(Array(1,2.toShort, 3L, true, 5.0, "six", null, Instant.now()))
+      val a2 = BSONArray.fromAny(Array(1,2.toShort, 3L, true, 5.0, "six", null, Instant.now()))
+      a1.equals(a2) must beTrue
+    }
+
+    "not be equal to non BSONArray types" in {
+      val anArray = BSONArray.fromAny(Array(1,2.toShort, 3L, true, 5.0, "six", null, Instant.now()))
+      anArray.equals("nothing") must beFalse
+    }
+    "throw on invalid index" in {
+      val anArray = BSONArray.fromAny(Array(1))
+      anArray(0).isInstanceOf[BSONValue] must beTrue
+      anArray(1) must throwA[NoSuchElementException]
+    }
+    "allow iteration with a Codec" in {
+      val data = Seq[Long](1,2,3)
+      val anArray = BSONArray(data)
+      val longs = for (i <- anArray.as[Long]) yield { i }
+      longs.toSeq must beEqualTo(data)
+    }
+    "throw on iterating a heterogeneous array with as[T]" in {
+      val data = Seq(1, 2, "3")
+      val anArray = BSONArray.fromAny(data)
+      val iter = anArray.as[Int]
+      iter.next must beEqualTo(1)
+      iter.next must beEqualTo(2)
+      iter.next must throwA[IllegalArgumentException]
+    }
   }
 }
 
 /*
-case class BSONArray private[bson] ( final val doc : BSONDocument) extends BSONValue
-  with SeqLike[BSONValue, BSONArray] {
-  final val code : TypeCode = ArrayCode
-  final def value : Seq[BSONValue] = seq
-
-  override def equals(other : Any) : Boolean = {
-    other match {
-      case that : BSONArray ⇒ this.doc.equals(that.doc)
-      case _ ⇒ false
-    }
-  }
 
   override def toByteString : ByteString = doc.toByteString
 

@@ -118,7 +118,7 @@ object RxMongo extends Build {
     .settings(buildSettings:_*)
     .settings(
       libraryDependencies ++= Dependencies.bson,
-      ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 48
+      ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 50
     )
   lazy val bson_deps = bson % "compile->compile;test->test"
 

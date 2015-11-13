@@ -191,7 +191,7 @@ object BSONDate {
 
 case object BSONNull extends BSONValue {
   final val code = NullCode
-  final val value : Unit = {}
+  final val value : Unit = ()
   def addTo(b : ByteStringBuilder) : Unit = {
     // nothing to do
   }

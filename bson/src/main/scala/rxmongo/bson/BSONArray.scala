@@ -48,7 +48,7 @@ case class BSONArray private[bson] ( final val doc : BSONDocument) extends BSONV
 
   def iterator : Iterator[BSONValue] = {
     new Iterator[BSONValue] {
-      val i = doc.iterator
+      val i = doc.toSeq.sortBy { x => x._1.toInt }.iterator
       def hasNext : Boolean = i.hasNext
       def next() : BSONValue = {
         val (key, (b, bi)) = i.next()
@@ -57,19 +57,29 @@ case class BSONArray private[bson] ( final val doc : BSONDocument) extends BSONV
     }
   }
 
-  def apply(index : Int) = {
+  def apply(index : Int) : BSONValue = {
     doc.get(index.toString) match {
-      case Some((typeCode, byteIterator)) ⇒ BSONValue(typeCode, byteIterator)
-      case None ⇒ throw new NoSuchElementException(index.toString)
+      case Some((typeCode, byteIterator)) ⇒
+        BSONValue(typeCode, byteIterator)
+      case None ⇒
+        throw new NoSuchElementException(index.toString)
     }
   }
 
   protected[this] def newBuilder : mutable.Builder[BSONValue, BSONArray] = ???
 
-  def seq : Seq[BSONValue] = doc.values.map {
-    case (b, bi) ⇒
-      BSONValue(b, bi)
-  }.toSeq
+  def seq : Seq[BSONValue] = {
+    doc.toSeq.sortBy { x => x._1.toInt } map {
+      case (key, (b, bi)) ⇒
+        BSONValue(b, bi)
+    }
+  }
+
+  def asArray : Array[BSONValue] = {
+    doc.toSeq.sortBy { x => x._1.toInt} .map {
+      case (key, (b, bi)) ⇒ BSONValue(b, bi)
+    }.toArray
+  }
 
   override def toString() : String = {
     val s = new StringBuilder
@@ -87,13 +97,12 @@ case class BSONArray private[bson] ( final val doc : BSONDocument) extends BSONV
     s.toString()
   }
 
-  def asArray : Array[BSONValue] = doc.values.map { case (b, bi) ⇒ BSONValue(b, bi) }.toArray
-
   def as[T](implicit codec : Codec[T]) : Iterator[T] = {
     iterator.map {
-      case v : BSONValue if v.code == codec.code ⇒ codec.read(v)
-      case v : BSONValue ⇒ throw new IllegalArgumentException(
-        s"Expected type ${codec.typeName} but got type ${v.typeName}"
+      case v : BSONValue if v.code == codec.code ⇒
+        codec.read(v)
+      case v : BSONValue ⇒
+        throw new IllegalArgumentException(s"Expected type ${codec.typeName} but got type ${v.typeName}"
       )
     }
   }
