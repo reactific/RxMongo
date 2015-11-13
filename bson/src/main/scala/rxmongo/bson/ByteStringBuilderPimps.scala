@@ -23,6 +23,7 @@
 package rxmongo.bson
 
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import java.util.Date
 import java.util.regex.Pattern
 
@@ -75,7 +76,7 @@ trait ByteStringBuilderPimps extends ByteStringBuilderWrapper {
     bldr
   }
 
-  private[rxmongo] def putDocs(values : Iterable[BSONDocument]) : ByteStringBuilder = {
+  @inline private[rxmongo] def putDocs(values : Iterable[BSONDocument]) : ByteStringBuilder = {
     for (doc ← values) { putDoc(doc) }
     bldr
   }
@@ -205,7 +206,7 @@ trait ByteStringBuilderPimps extends ByteStringBuilderWrapper {
     bldr ++= tmp
   }
 
-  private[rxmongo] def put[T](value : T)(implicit codec : Codec[T]) : ByteStringBuilder = {
+  @inline private[rxmongo] def put[T](value : T)(implicit codec : Codec[T]) : ByteStringBuilder = {
     codec.write(value, bldr)
     bldr
   }
@@ -418,6 +419,8 @@ trait ByteStringBuilderPimps extends ByteStringBuilderWrapper {
         string(key, s)
       case d : Date ⇒
         date(key, d.getTime)
+      case i : Instant =>
+        date(key, i.toEpochMilli)
       case b : ByteString ⇒
         binary(key, b, UserDefinedBinary)
       case p : Pattern ⇒

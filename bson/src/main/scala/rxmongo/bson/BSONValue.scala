@@ -149,6 +149,12 @@ case class BSONObjectID(value : Array[Byte]) extends BSONValue {
     b.putBytes(value, 0, 12)
   }
   override def toString = "BSONObjectId(" + value + ")"
+  override def equals(other : Any) : Boolean = {
+    if (!other.isInstanceOf[BSONObjectID])
+      return false
+    val that = other.asInstanceOf[BSONObjectID]
+    java.util.Arrays.equals(that.value, this.value)
+  }
 }
 
 object BSONObjectID {
@@ -216,6 +222,13 @@ case class BSONDBPointer( final val value : (String, Array[Byte])) extends BSONV
   def addTo(b : ByteStringBuilder) : Unit = {
     b.putStr(value._1)
     b.putBytes(value._2, 0, 12)
+  }
+  override def equals(other : Any) : Boolean = {
+    if (!other.isInstanceOf[BSONDBPointer])
+      return false
+    val that = other.asInstanceOf[BSONDBPointer]
+    this.value._1 == that.value._1 &&
+      java.util.Arrays.equals(that.value._2, this.value._2)
   }
 }
 

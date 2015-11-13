@@ -22,10 +22,54 @@
 
 package rxmongo.bson
 
-import akka.util.{ ByteIterator, ByteString, ByteStringBuilder }
+import java.time.Instant
 
-import scala.collection._
+import org.specs2.mutable.Specification
 
+/** Title Of Thing.
+  *
+  * Description of thing
+  */
+class BSONArraySpec extends Specification {
+
+  "BSONArray" should {
+    "yield single empty object for empty construction" in {
+      val anArray = BSONArray()
+      anArray must beEqualTo(BSONArray.empty)
+      val otherArray = BSONArray()
+      otherArray must beEqualTo(BSONArray.empty)
+      otherArray must beEqualTo(anArray)
+    }
+    "construct from an Array[Any]" in {
+      val anArray = BSONArray.fromAny(Array(1,2.toShort, 3L, true, 5.0, "six", null, Instant.now()))
+      anArray.length must beEqualTo(8)
+      anArray(0).code must beEqualTo(IntegerCode)
+      anArray(1).code must beEqualTo(IntegerCode)
+      anArray(2).code must beEqualTo(LongCode)
+      anArray(3).code must beEqualTo(BooleanCode)
+      anArray(4).code must beEqualTo(DoubleCode)
+      anArray(5).code must beEqualTo(StringCode)
+      anArray(6).code must beEqualTo(NullCode)
+      anArray(7).code must beEqualTo(DateCode)
+    }
+
+    "construct from an Iterator[Any]" in {
+      val values = Seq[Any](1,2.toShort, 3L, true, 5.0, "six", null, Instant.now())
+      val anArray = BSONArray.fromAny(values)
+      anArray.length must beEqualTo(8)
+      anArray(0).code must beEqualTo(IntegerCode)
+      anArray(1).code must beEqualTo(IntegerCode)
+      anArray(2).code must beEqualTo(LongCode)
+      anArray(3).code must beEqualTo(BooleanCode)
+      anArray(4).code must beEqualTo(DoubleCode)
+      anArray(5).code must beEqualTo(StringCode)
+      anArray(6).code must beEqualTo(NullCode)
+      anArray(7).code must beEqualTo(DateCode)
+    }
+  }
+}
+
+/*
 case class BSONArray private[bson] ( final val doc : BSONDocument) extends BSONValue
   with SeqLike[BSONValue, BSONArray] {
   final val code : TypeCode = ArrayCode
@@ -66,10 +110,7 @@ case class BSONArray private[bson] ( final val doc : BSONDocument) extends BSONV
 
   protected[this] def newBuilder : mutable.Builder[BSONValue, BSONArray] = ???
 
-  def seq : Seq[BSONValue] = doc.values.map {
-    case (b, bi) ⇒
-      BSONValue(b, bi)
-  }.toSeq
+  def seq : Seq[BSONValue] = doc.values.map { case (b, bi) ⇒ BSONValue(b, bi) }.toSeq
 
   override def toString() : String = {
     val s = new StringBuilder
@@ -112,8 +153,6 @@ object BSONArray {
     new BSONArray(BSONDocument(pairs.toMap))
   }
 
-  def apply() : BSONArray = empty
-
   def apply(objs : BSONObject*) : BSONArray = {
     val bldr = ByteString.newBuilder
     bldr.putAnyArray(objs)
@@ -145,3 +184,5 @@ object BSONArray {
     BSONArray(bldr.result())
   }
 }
+
+ */

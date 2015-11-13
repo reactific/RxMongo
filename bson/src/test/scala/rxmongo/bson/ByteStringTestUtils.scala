@@ -52,6 +52,13 @@ trait ByteStringTestUtils {
     cstring(bldr, fieldName)
   }
 
+  /** Preamble for a new object buffer and its first field
+    *
+    * @param len The length of the whole object
+    * @param code The type code byte of the first field
+    * @param fieldName the name of the first field
+    * @return ByteStringBuilder with first field preamble constructed
+    */
   def preamble(len : Int, code : Byte, fieldName : String) : ByteStringBuilder = {
     val bldr : ByteStringBuilder = ByteString.newBuilder
     bldr.putInt(len)

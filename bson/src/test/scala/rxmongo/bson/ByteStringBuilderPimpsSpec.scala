@@ -113,38 +113,26 @@ class ByteStringBuilderPimpsSpec extends Specification with ByteStringTestUtils 
       actual.equals(expected) must beTrue
     }
 
-    /*
-        @inline def obj(key : String, value : BSONObject) : ByteStringBuilder = {
-          putPrefix(ObjectCode, key)
-          putObject(value)
-        }
+    "build object from any iterable values" in {
+      val data = Seq( "one" -> 1, "two" -> 2.0)
+      val expected = BSONObject.from(data)
+      val builder = ByteString.newBuilder
+      builder.anyObj("obj", data)
+      val container = builder.toBSONObject
+      val actual = container.getObj("obj")
+      actual.equals(expected) must beTrue
+    }
 
-        @inline def obj(key : String, value : BSONBuilder) : ByteStringBuilder = {
-          putPrefix(ObjectCode, key)
-          putDoc(value)
-        }
+    "build object from specific iterable values" in {
+      val data = Map[String,Int]("one" -> 1, "two" -> 2)
+      val expected = BSONObject.from(data.toSeq)
+      val builder = ByteString.newBuilder
+      builder.obj[Int]("obj", data)
+      val container = builder.toBSONObject
+      val actual = container.getObj("obj")
+      actual.equals(expected) must beTrue
+    }
 
-        @inline def anyObj(key : String, value: Iterable[(String,Any)]) : ByteStringBuilder = {
-          putPrefix(ObjectCode, key)
-          putAnyObject(value)
-        }
-
-        @inline def obj[T](key : String, values: Iterable[(String,T)])(implicit codec: Codec[T]) : ByteStringBuilder = {
-          putPrefix(ObjectCode, key)
-          putObject(values)
-        }
-
-        @inline def obj[T](key : String, value : T)(implicit encoder: Encoder[T]) = {
-          putPrefix(ObjectCode, key)
-          bldr ++= encoder.write(value)
-        }
-
-        @inline def obj(key : String, value: ByteString) : ByteStringBuilder = {
-          putPrefix(ObjectCode, key)
-          bldr ++= value
-        }
-
-    */
     "build array correctly" in {
       val data1 = "fourty-two"
       val data2 = 42.0D
