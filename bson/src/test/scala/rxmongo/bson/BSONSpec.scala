@@ -208,32 +208,16 @@ class BSONSpec extends Specification with ByteStringTestUtils {
     }
 
     "build a tree of 2^12 (8,192) objects of 18 fields, quickly" in {
-      val profiler = new Profiler
-      val obj = profiler.profile("TreeTop") { makeObject(2, 12, profiler) }
-      profiler.print_profile_summary(System.out)
-      if (suitableForTimingTests) {
-        val (count1, time1) = profiler.get_one_item("makeAnObject")
-        count1 must beEqualTo(8191)
-        time1 must beLessThan(75000.0 * count1) //  < 75 μs each
-        val (count2, time2) = profiler.get_one_item("TreeTop")
-        count2 must beEqualTo(1)
-        time2 must beLessThan(6500000000.0) // < 5 seconds for constructing a 2^12 binary tree
-      } else {
-        skipped(": machine too busy for timing tests")
+      timedAndCountedTests("TreeTop",
+        Map("makeAnObject" -> (8191L,75000.0*8191), "TreeTop" -> (1L, 6500000000.0) )) { profiler =>
+        makeObject(2, 12, profiler)
       }
       success
     }
 
     "build and compact 100,000 objects of 18 fields, quickly" in {
-      val profiler = new Profiler
-      val obj = profiler.profile("ListTop") { for (i ← 1 to 100000) { makeAnObject(profiler) } }
-      profiler.print_profile_summary(System.out)
-      val (count, constructionTime) = profiler.get_one_item("makeAnObject")
-      if (suitableForTimingTests) {
-        count must beEqualTo(100000)
-        constructionTime must beLessThan(20000.0 * count) // < 12 μs each
-      } else {
-        skipped(": machine too busy for timing tests")
+      timedAndCountedTests("ListTop", Map("makeAnObject" -> (100000L, 100000*20000.0 ))) { profiler =>
+        makeAnObject(profiler)
       }
       success
     }

@@ -431,13 +431,14 @@ class BSONDocumentSpec extends Specification with ByteStringTestUtils {
       obj1.equals(obj2) must beTrue
     }
 
-    "interpret documents from ByteString quickly" in {
+    "interpret 100,000 documents from ByteString quickly" in {
       val bs : ByteString = makeAnObject().wrapAndTerminate
-      val repetitions = 100000
-      val limit = 80000.0 * repetitions
-      val profiler = timedTest(limit, "ByteString Interpretation", { profiler : Profiler ⇒
+      val repetitions = 100000L
+      timedAndCountedTests("ByteString Interpretation",
+        scala.collection.immutable.Map("Construction" -> (repetitions,100000.0*repetitions),
+            "Validation" -> (repetitions, 80000.0*repetitions))) { profiler : Profiler ⇒
         val docs = profiler.profile("Construction") {
-          for (i ← 1 to 100000) yield { BSONDocument(bs) }
+          for (i ← 1L to repetitions) yield { BSONDocument(bs) }
         }
         profiler.profile("Validation") {
           for (doc ← docs) {
@@ -452,9 +453,8 @@ class BSONDocumentSpec extends Specification with ByteStringTestUtils {
             doc.asObject("obj") must beEqualTo(anObject)
           }
         }
-      })
-      val construction = profiler.get_one_item("Construction")._2
-      construction / repetitions must beLessThan(100000.0) // Construct in less than 75 microseconds
+      }
+      success
     }
   }
 }

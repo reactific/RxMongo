@@ -123,19 +123,31 @@ trait ByteStringTestUtils {
     }
   }
 
-  def timedTest(maxNanoSeconds : Double, name : String, func : (Profiler) ⇒ Unit) : Profiler = {
+  def timedTest(maxNanoSeconds : Double, name : String)(func : (Profiler) ⇒ Unit) : Profiler = {
     val p = new Profiler
-    if (suitableForTimingTests) {
-      val r = p.profile(name) { func(p) }
-      val (count, time) = Profiler.get_one_item(name)
-      p.print_profile_summary(System.out)
-      println()
-      if (time > maxNanoSeconds) {
-        throw new Exception(s"Test '$name' took ${time}ns which exceeded limit of ${maxNanoSeconds}ns")
-      }
-      p
-    } else {
-      Profiler
+    val r = p.profile(name) { func(p) }
+    val (count, time) = Profiler.get_one_item(name)
+    p.print_profile_summary(System.out)
+    println()
+    val limit = if (suitableForTimingTests) maxNanoSeconds else maxNanoSeconds*10
+    if (time > limit) {
+      throw new Exception(s"Test '$name' took ${time}ns which exceeded limit of ${maxNanoSeconds}ns")
     }
+    p
+  }
+
+  def timedAndCountedTests(testName: String, expected: Map[String,(Long,Double)])(func : (Profiler) => Unit) : Profiler = {
+    val p = new Profiler
+    val r = p.profile(testName) { func(p) }
+    p.print_profile_summary(System.out)
+    println()
+    for ( (name, (maxCount,maxNanoSeconds)) <- expected) {
+      val (count, time) = Profiler.get_one_item(name)
+      val limit = if (suitableForTimingTests) maxNanoSeconds else maxNanoSeconds*10
+      if (time > limit) {
+        throw new Exception(s"Test '$name' took ${time}ns which exceeded limit of ${limit}ns")
+      }
+    }
+    p
   }
 }

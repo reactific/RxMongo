@@ -36,7 +36,7 @@ abstract class RxMongoTest(dbName : String, collName : String) extends Specifica
 
   var collection = database.collection(collName)
 
-  val haveLocalMongo : Boolean = {
+  lazy val haveLocalMongo : Boolean = {
     val addr = InetAddress.getLoopbackAddress
     val port = 27017
     val socketAddress = new InetSocketAddress(addr, port)

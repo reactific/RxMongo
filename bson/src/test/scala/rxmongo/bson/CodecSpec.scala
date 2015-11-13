@@ -29,9 +29,6 @@ import java.util.regex.Pattern
 
 import akka.util.ByteString
 import org.specs2.mutable.Specification
-import rxmongo.bson.Codec.BooleanCodec._
-
-import scala.util.matching.Regex
 
 /** Test Cases For Codec */
 class CodecSpec extends Specification with ByteStringTestUtils {
@@ -144,7 +141,6 @@ class CodecSpec extends Specification with ByteStringTestUtils {
       val bs = ByteString.newBuilder.putByte(1).putByte(2).putByte(3).result()
       val result = read(write(bs,bldr).bldr.result().iterator)
       result.equals(bs) must beTrue
-
     }
   }
 }

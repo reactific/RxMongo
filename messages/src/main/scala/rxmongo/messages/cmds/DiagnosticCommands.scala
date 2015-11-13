@@ -59,19 +59,19 @@ object ExplainCmd {
   * Returns a document that lists all databases and returns basic database statistics.
   * http://docs.mongodb.org/master/reference/command/listDatabases/
   */
-case class ListDatabasesCmd() extends AdminCommand(BSONObject("listDatabases" → 1))
+case object ListDatabasesCmd extends AdminCommand(BSONObject("listDatabases" → 1))
 
 /** listCommands
   * Lists all database commands provided by the current mongod instance.
   * @see [[http://docs.mongodb.org/master/reference/command/listCommands/]]
   */
-case class ListCommandsCmd() extends AdminCommand(BSONObject("listCommands" → 1))
+case object ListCommandsCmd extends AdminCommand(BSONObject("listCommands" → 1))
 
 /** buildInfo
   * Displays statistics about the MongoDB build.
   * @see [[http://docs.mongodb.org/master/reference/command/buildInfo/]]
   */
-case class BuildInfoCmd() extends AdminCommand(BSONObject("buildInfo" → 1))
+case object BuildInfoCmd extends AdminCommand(BSONObject("buildInfo" → 1))
 
 /** collStats
   * Reports storage utilization statics for a specified collection.
@@ -89,13 +89,13 @@ case class CollStatsCmd(db : String, collection : String, scale : Int = 1024, ve
   * deployment.
   * @see [[http://docs.mongodb.org/master/reference/command/connPoolStats/]]
   */
-case class ConnPoolStatsCmd() extends AdminCommand(BSONObject("connPoolStats" → 1))
+case object ConnPoolStatsCmd extends AdminCommand(BSONObject("connPoolStats" → 1))
 
 /** shardConnPoolStats
   * Reports statistics on a mongos‘s connection pool for client operations against shards.
   * @see [[http://docs.mongodb.org/master/reference/command/shardConnPoolStats/]]
   */
-case class ShardConnPoolStatsCmd() extends AdminCommand(BSONObject("shardConnPoolStats" -> 1))
+case object ShardConnPoolStatsCmd extends AdminCommand(BSONObject("shardConnPoolStats" -> 1))
 
 /** dbStats
   * Reports storage utilization statistics for the specified database.
@@ -108,7 +108,7 @@ case class DbStatsCmd(db : String, scale : Int = 1024) extends Command(db, BSONO
 /** getCmdLineOpts
   * Returns a document with the run-time arguments to the MongoDB instance and their parsed options.
   */
-case class GetCmdLineOptsCmd() extends AdminCommand(BSONObject("getCmdLineOpts" -> 1))
+case object GetCmdLineOptsCmd extends AdminCommand(BSONObject("getCmdLineOpts" -> 1))
 
 /** profile
   * Interface for the database profiler.
@@ -129,7 +129,7 @@ case class ProfileCmd(db : String, level : Int, slowms : Option[Int] = None) ext
   * Returns raw usage statistics for each database in the mongod instance.
   * @see [[http://docs.mongodb.org/master/reference/command/top/]]
   */
-case class TopCmd() extends AdminCommand(BSONObject("top" -> 1))
+case object TopCmd extends AdminCommand(BSONObject("top" -> 1))
 
 sealed trait GetLogOption
 case object GlobalLogOption extends GetLogOption { override def toString = "global" }
@@ -148,13 +148,13 @@ case class GetLogCmd(option : GetLogOption) extends AdminCommand(BSONObject("get
   * Returns data that reflects the underlying host system.
   * @see [[http://docs.mongodb.org/master/reference/command/hostInfo/]]
   */
-case class HostInfoCmd() extends AdminCommand(BSONObject("hostInfo" -> 1))
+case object HostInfoCmd extends AdminCommand(BSONObject("hostInfo" -> 1))
 
 /** serverStatus
   * Returns a collection metrics on instance-wide resource utilization and status.
   * @see [[http://docs.mongodb.org/master/reference/command/serverStatus/]]
   */
-case class serverStatusCmd() extends AdminCommand(BSONObject("serverStatus" → 1))
+case object ServerStatusCmd extends AdminCommand(BSONObject("serverStatus" → 1))
 
 /** Validate Commands
   *

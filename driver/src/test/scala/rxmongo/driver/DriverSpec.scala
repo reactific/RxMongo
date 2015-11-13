@@ -30,6 +30,9 @@ import akka.pattern.ask
 
 import org.specs2.execute.Result
 import rxmongo.bson.BSONObject
+import rxmongo.messages.cmds.BuildInfoCmd
+import rxmongo.messages.replies.BuildInfoReply
+import rxmongo.messages.replies.BuildInfoReply.BuildInfoCodec
 import rxmongo.messages.{ ReplyMessage, QueryMessage }
 
 import scala.concurrent.{ Await }
@@ -49,6 +52,21 @@ class DriverSpec extends AkkaTest(ActorSystem("DriverSpec")) {
 
   sequential
   "Driver" should {
+    "confirm verson 3 in BuildInfo" in mongoTest { () =>
+      val driver = Driver(None, "BuildInfo")
+      val future = driver.connect("mongodb://localhost/")
+      val conn = Await.result(future, Duration(1, "s"))
+      conn.isInstanceOf[ActorRef] must beTrue
+      val c = conn.asInstanceOf[ActorRef]
+      val future2 = c.ask(BuildInfoCmd)
+      val x = Await.result(future2, 1.seconds)
+      driver.close(500.millis)
+      x.isInstanceOf[ReplyMessage] must beTrue
+      val reply : ReplyMessage = x.asInstanceOf[ReplyMessage]
+      reply.documents.size must beEqualTo(1)
+      val buildInfoReply = reply.documents.head.to[BuildInfoReply]
+      buildInfoReply.versionArray(0) must beGreaterThanOrEqualTo(3)
+    }
     /*
         "mind its lifecycle" in {
           val driver = Driver(None, "Lifecycle")

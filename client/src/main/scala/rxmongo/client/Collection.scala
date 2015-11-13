@@ -91,6 +91,10 @@ class Collection(val name : String, val db : Database)(
     */
   def avgObjSize = getRefreshedStats().avgObjSize
 
+  /** Whether The Collection Is Capped Or Not
+    *
+    * @return true iff this is a capped collection
+    */
   def capped : Boolean = getRefreshedStats().capped
 
   /** Count Of Documents.

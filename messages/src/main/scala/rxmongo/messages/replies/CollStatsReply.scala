@@ -64,7 +64,7 @@ case class CollStatsReply(
   storageSize : Int,
   numExtents : Int,
   nindexes : Int,
-  lastExtentSize : Int,
+  lastExtentSize : Double,
   systemFlags : Option[Int] = Some(1),
   userFlags : Option[Int] = Some(1),
   totalIndexSize : Int = 0,
@@ -93,15 +93,14 @@ object CollStatsReply {
       b.integer("storageSize", value.storageSize)
       b.integer("numExtents", value.numExtents)
       b.integer("nindexes", value.nindexes)
-      b.integer("lastExtentSize", value.lastExtentSize)
+      b.double("lastExtentSize", value.lastExtentSize)
       value.systemFlags.map { sf ⇒ b.integer("systemFlags", sf) }
       value.userFlags.map { uf ⇒ b.integer("userFlags", uf) }
       b.integer("totalIndexSize", value.totalIndexSize)
       b.obj("indexSizes", value.indexSizes)
       b.array("extents", value.extents)(ExtentInfo.Codec)
       b.double("ok", value.ok)
-      if (value.capped)
-        b.boolean("capped", value = true)
+      b.boolean("capped", value.capped)
       value.max.map { max ⇒ b.integer("max", max) }
       value.maxSize.map { maxSize ⇒ b.integer("maxSize", maxSize) }
       value.wiredTiger.map { wt ⇒ b.obj("wiredTiger", wt) }
@@ -123,14 +122,14 @@ object CollStatsReply {
         value.asInt("storageSize"),
         value.asInt("numExtents"),
         value.asInt("nindexes"),
-        value.asInt("lastExtentSize"),
+        value.asDouble("lastExtentSize"),
         value.asOptionalInt("systemFlags"),
         value.asOptionalInt("userFlags"),
         value.asInt("totalIndexSize"),
         value.asMap[Int]("indexSizes"),
         value.asSeq[ExtentInfo]("extents")(ExtentInfo.Codec).toSeq,
         value.asDouble("ok"),
-        if (value.contains("capped")) true else false,
+        value.asBoolean("capped"),
         value.asOptionalInt("max"),
         value.asOptionalInt("maxSize"),
         value.asOptionalObject("wiredTiger"),
