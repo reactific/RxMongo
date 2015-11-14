@@ -4,19 +4,17 @@
 [![Join the chat at https://gitter.im/reactific/RxMongo](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/reactific/RxMongo?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 A reactive, non-blocking, asynchronous driver for MongoDB 3.0 using ReactiveStreams as implemented by akka-streams.
 
-# RxMongo
-
-# Status [![Build Status](https://travis-ci.org/reactific/RxMongo.svg?branch=master)](https://travis-ci.org/reactific/RxMongo)
+# RxMongo Status
 RxMongo is nearing completion of a working pre-release. Current work centers on making the BSON interface perform
 well, simplifying the construction of Codecs, adding a Codec code generator via macros, and adding higher level
 interfaces for collections of homogenous and heterogenous documents. The current implementation uses Akka IO not
-akka-streams. Conversion to akka-streams will occur once the first akka-streams release candidate is available (April?)
+akka-streams. Conversion to akka-streams will occur once akka-streams performance is sufficiently advantageous.
 
 # Quick Start
 
 ### Stable: Scala 2.11, SBT 0.13.7, Mongo 3.0
 
-- Not available yet. This is expected in May 2015 unless release of akka-streams is delayed late into April.
+- Not available yet. This is expected in early 2016
 
 ### Development: Scala 2.11, SBT 0.13.7, Mongo 3.0
 
@@ -29,7 +27,6 @@ the basics of the API should be stabilized.
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 libraryDependencies := "com.reactific" %% "rxmongo-client" % "0.1.0-SNAPSHOT"
 ```
-
 Other packages you can access are `rxmongo-driver` (lower level driver interface), `rxmongo-examples` (sample programs
 using RxMongo), and `rxmongo-bson` (Binary JSON interface for RxMongo).
 
@@ -42,7 +39,7 @@ our design. RxMongo differs in its approach by emphasizing performance over ease
 It utilizes Akka for nearly everything (logging, I/O, streams, actors, configuration, etc.) and is reticent to
 depend on other packages.
 
-The goals of RxMongo is to provide the best performing non-blocking, asynchronous Scala driver for MongoDB that is
+The goals of RxMongo are to provide the best performing non-blocking, asynchronous Scala driver for MongoDB that is
 provably correct and production ready. This will be accomplished by using reactive programming principles, ensuring
 that every necessary construct has a full test suite, and requiring commits to pass every test so the project never
 regresses.
@@ -73,10 +70,10 @@ server without further copying.
 
 ### Reactive Streams Based Interface
 
-RxMongo is based on [akka-streams](http://doc.akka.io/docs/akka-stream-and-http-experimental/1.0-M2/scala.html) which
+RxMongo is based on [akka-streams](http://doc.akka.io/docs/akka-stream-and-http-experimental/current//scala.html) which
 is an implementation of [Reactive Streams](http://www.reactive-streams.org/), and not much else. RxMongo uses the
 akka-streams internally but also provides akka-stream concepts (Sink, Source, Flow) in its API so that RxMongo can
-be included in larger [Flow Graphs](http://doc.akka.io/docs/akka-stream-and-http-experimental/1.0-M2/scala/stream-graphs.html).
+be included in larger [Flow Graphs](http://doc.akka.io/docs/akka-stream-and-http-experimental/current/scala/stream-graphs.html).
 For example, an RxMongo Cursor can be obtained as a `Source[BSON.Object]` which can then be processed with any Flow or
 connected to a Sink of some sort. Becasue of this, the application writer need not worry about buffering as back
 pressure is communicated all the way through and dealt with at the interface to mongod.
