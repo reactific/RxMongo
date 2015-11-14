@@ -1,7 +1,10 @@
-# RxMongo
+[![Build Status](https://travis-ci.org/reactific/RxMongo.svg?branch=master)](https://travis-ci.org/reactific/RxMongo)
+[![Coverage Status](https://coveralls.io/repos/reactific/RxMongo/badge.svg?branch=master&service=github)](https://coveralls.io/github/reactific/RxMongo?branch=master)
 
 [![Join the chat at https://gitter.im/reactific/RxMongo](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/reactific/RxMongo?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 A reactive, non-blocking, asynchronous driver for MongoDB 3.0 using ReactiveStreams as implemented by akka-streams.
+
+# RxMongo
 
 # Status [![Build Status](https://travis-ci.org/reactific/RxMongo.svg?branch=master)](https://travis-ci.org/reactific/RxMongo)
 RxMongo is nearing completion of a working pre-release. Current work centers on making the BSON interface perform
